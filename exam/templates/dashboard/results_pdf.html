@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body{font-family:Arial,sans-serif;color:#111827;}
+        h1{font-size:24px;}
+        table{width:100%;border-collapse:collapse;}
+        th,td{border:1px solid #d1d5db;padding:8px;text-align:left;}
+        th{background:#eef2ff;}
+    </style>
+</head>
+<body>
+    <h1>Quiz Results</h1>
+    <table>
+        <thead><tr><th>Student</th><th>Username</th><th>Quiz</th><th>Score</th><th>Submitted</th></tr></thead>
+        <tbody>
+        {% for result in results %}
+        <tr>
+            <td>{% if result.user.first_name %}{{ result.user.first_name }} {{ result.user.last_name }}{% else %}{{ result.user.username }}{% endif %}</td>
+            <td>{{ result.user.username }}</td>
+            <td>{{ result.quiz.title }}</td>
+            <td>{{ result.score }}</td>
+            <td>{{ result.submitted_at }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,58 @@
+{% extends 'dashboard/base.html' %}
+
+{% block heading %}Student Management{% endblock %}
+{% block subtitle %}Manage learners without relying on Django admin.{% endblock %}
+{% block actions %}
+<a class="dash-btn" href="{% url 'dashboard_student_create' %}"><i class="fa-solid fa-user-plus"></i>Create Student</a>
+<a class="dash-btn secondary" href="{% url 'dashboard_student_import' %}"><i class="fa-solid fa-file-csv"></i>Import CSV</a>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-card">
+    <form class="search-row" method="get">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search by student name, username, or email">
+        <button class="dash-btn secondary" type="submit">Search</button>
+    </form>
+    <table class="glass-table">
+        <thead><tr><th>Name</th><th>Username</th><th>Quiz Count</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for student in students %}
+        <tr>
+            <td>{% if student.first_name %}{{ student.first_name }} {{ student.last_name }}{% else %}{{ student.username }}{% endif %}</td>
+            <td>{{ student.username }}</td>
+            <td>{{ student.quiz_count }}</td>
+            <td><span class="pill {% if student.is_active %}success{% else %}warning{% endif %}">{% if student.is_active %}Enabled{% else %}Disabled{% endif %}</span></td>
+            <td>
+                <a class="btn-small secondary" href="{% url 'dashboard_student_edit' student.id %}">Edit</a>
+                <a class="btn-small secondary" href="{% url 'dashboard_student_reset_password' student.id %}">Reset Password</a>
+                <a class="btn-small secondary" href="{% url 'dashboard_student_toggle' student.id %}">{% if student.is_active %}Disable{% else %}Enable{% endif %}</a>
+                <button class="btn-small danger" onclick="showModal('deleteModal-{{ student.id }}')">Delete</button>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5"><div class="empty-state">No students found.</div></td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block modals %}
+{% for student in students %}
+<!-- Delete Modal -->
+<div id="deleteModal-{{ student.id }}" class="modal-overlay">
+    <div class="glass-modal">
+        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h2>Delete Student</h2>
+        <p>Are you sure you want to delete student "{{ student.username }}"?</p>
+        <form method="post" action="{% url 'dashboard_student_delete' student.id %}">
+            {% csrf_token %}
+            <div class="modal-actions">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('deleteModal-{{ student.id }}')">Cancel</button>
+                <button type="submit" class="modal-btn primary">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

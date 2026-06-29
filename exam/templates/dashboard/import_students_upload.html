@@ -1,0 +1,35 @@
+{% extends 'dashboard/base.html' %}
+
+{% block heading %}Import Students{% endblock %}
+{% block subtitle %}Upload a spreadsheet and map columns to student fields.{% endblock %}
+
+{% block content %}
+<div class="dashboard-card">
+    <p class="dashboard-subtitle" style="margin-bottom:20px;">
+        Upload your file and map columns on the next step. A header row is recommended for easier navigation.
+    </p>
+
+    <form class="dash-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="upload">
+
+        <p>
+            <label for="{{ form.file.id_for_label }}">{{ form.file.label }}</label>
+            {{ form.file }}
+            {% if form.file.help_text %}<span class="import-hint">{{ form.file.help_text }}</span>{% endif %}
+        </p>
+
+        <p class="import-checkbox">
+            <label>
+                {{ form.has_header }}
+                {{ form.has_header.label }}
+            </label>
+        </p>
+
+        <div class="dashboard-actions" style="justify-content:flex-start;">
+            <button class="dash-btn" type="submit"><i class="fa-solid fa-upload"></i> Upload &amp; Map Columns</button>
+            <a class="dash-btn secondary" href="{% url 'dashboard_students' %}">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Home | QuizX{% endblock %}
+
+{% block content %}
+<style>
+.hero-section{display:grid;grid-template-columns:1.12fr .88fr;gap:28px;align-items:stretch;padding:34px 0;}
+.hero-card,.info-card{background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(28px);border-radius:32px;box-shadow:var(--shadow);}
+.hero-card{padding:54px;display:flex;flex-direction:column;}
+.hero-card h1{font-size:clamp(2.5rem,5vw,5rem);line-height:.98;margin:18px 0 20px;letter-spacing:0;}
+.gradient-text{background:linear-gradient(90deg,#fff,#a7f3d0,#93c5fd);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero-card p{max-width:680px;font-size:1.08rem;line-height:1.8;color:var(--text-soft);margin-bottom:34px;}
+.hero-buttons{display:flex;gap:14px;flex-wrap:wrap;}
+.info-grid{display:grid;gap:18px;}
+.info-card{padding:28px;transition:var(--transition);}
+.info-card:hover{transform:translateY(-4px);}
+.info-icon{width:58px;height:58px;display:grid;place-items:center;border-radius:20px;margin-bottom:20px;color:#06201c;background:linear-gradient(135deg,var(--primary),var(--secondary));box-shadow:0 16px 34px rgba(45,212,191,.24);}
+.info-card h3{font-size:1.28rem;margin-bottom:10px;}
+.info-card p{color:var(--text-soft);line-height:1.7;}
+@media(max-width:900px){.hero-section{grid-template-columns:1fr}.hero-card{padding:36px;min-height:auto;}.info-grid{grid-template-columns:1fr;}}
+</style>
+
+<div class="hero-section">
+    <section class="hero-card">
+        <div class="badge">WELCOME BACK</div>
+        <h1><span class="gradient-text">Premium</span><br>Examination Workspace</h1>
+        <p>Take assessments in a calm, focused interface designed for clarity, speed, and confidence. Start with a quiz code, complete your exam, and revisit your outcomes whenever you need them.</p>
+        <div class="hero-buttons">
+            <a href="/enter-code/" class="btn"><i class="fa-solid fa-play"></i>Start Quiz</a>
+            <a href="/quiz-results/" class="btn btn-outline"><i class="fa-solid fa-chart-simple"></i>View Results</a>
+        </div>
+    </section>
+
+    <aside class="info-grid">
+        <div class="info-card">
+            <div class="info-icon"><i class="fa-solid fa-bolt"></i></div>
+            <h3>Fast Experience</h3>
+            <p>Move through exams smoothly with clear progress, saved answers, and distraction-free navigation.</p>
+        </div>
+        <div class="info-card">
+            <div class="info-icon"><i class="fa-solid fa-chart-line"></i></div>
+            <h3>Track Progress</h3>
+            <p>Your completed attempts stay organized so you can review performance at a glance.</p>
+        </div>
+        <div class="info-card">
+            <div class="info-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <h3>Secure Exams</h3>
+            <p>Each quiz is recorded securely and limited to one submission for fair assessment.</p>
+        </div>
+    </aside>
+</div>
+{% endblock %}

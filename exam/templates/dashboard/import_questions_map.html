@@ -1,0 +1,167 @@
+{% extends 'dashboard/base.html' %}
+
+{% block heading %}Map Question Columns{% endblock %}
+{% block subtitle %}Match spreadsheet columns to question fields for {{ quiz.title }}.{% endblock %}
+
+{% block content %}
+<div class="dashboard-card">
+    <p class="dashboard-subtitle" style="margin-bottom:16px;">
+        File: <strong>{{ filename }}</strong> &middot; {{ row_count }} data row{{ row_count|pluralize }}
+        &middot; Quiz: <strong>{{ quiz.title }}</strong>
+    </p>
+
+    {% if supports_color %}
+    <p class="import-note success"><i class="fa-solid fa-palette"></i> Colour highlighting detected — highlighted option cells will be marked as the correct answer.</p>
+    {% else %}
+    <p class="import-note warning"><i class="fa-solid fa-circle-info"></i> CSV files cannot store cell colours. Save as <strong>.xlsx</strong> and highlight the correct answer to auto-detect it. Rows without a detected correct answer will be skipped.</p>
+    {% endif %}
+
+    <form class="dash-form" method="post" id="mapForm">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="import">
+
+        <div class="import-mapping-grid">
+            <div class="mapping-row required">
+                <label>Question text</label>
+                <select name="map_text" required>
+                    <option value="">— Select column —</option>
+                    {% for col in columns %}
+                    <option value="{{ col.index }}">{{ col.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mapping-row">
+                <label>Order <span class="optional">optional</span></label>
+                <select name="map_order">
+                    <option value="">— None —</option>
+                    {% for col in columns %}
+                    <option value="{{ col.index }}">{{ col.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mapping-row">
+                <label>Subtopic <span class="optional">optional</span></label>
+                <select name="map_subtopic">
+                    <option value="">— None —</option>
+                    {% for col in columns %}
+                    <option value="{{ col.index }}">{{ col.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="section-heading" style="margin-top:24px;">
+            <h2>Options</h2>
+            <button class="btn-small secondary" type="button" id="addOptionMap">
+                <i class="fa-solid fa-plus"></i> Add Option Column
+            </button>
+        </div>
+        <p class="import-hint">Blank cells are ignored — that option will not be created for the question.</p>
+
+        <div id="optionMapList" class="import-mapping-grid">
+            {% for letter in "ABCD" %}
+            <div class="mapping-row option-map-row">
+                <label>Option {{ letter }}</label>
+                <select name="map_option_{{ forloop.counter0 }}">
+                    <option value="">— None —</option>
+                    {% for col in columns %}
+                    <option value="{{ col.index }}">{{ col.label }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn-small danger remove-option-map" type="button" aria-label="Remove option" {% if forloop.counter0 == 0 %}style="visibility:hidden;"{% endif %}>
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if preview %}
+        <div class="section-heading" style="margin-top:28px;">
+            <h2>Preview</h2>
+        </div>
+        <div class="import-preview-wrap">
+            <table class="glass-table import-preview-table">
+                <thead>
+                    <tr>
+                        {% if preview_headers %}
+                            {% for cell in preview_headers %}
+                            <th>{{ cell|default:"—" }}</th>
+                            {% endfor %}
+                        {% else %}
+                            {% for col in columns %}
+                            <th>{{ col.label }}</th>
+                            {% endfor %}
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in preview %}
+                    <tr>
+                        {% for cell in row %}
+                        <td>{{ cell|truncatechars:40|default:"—" }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <div class="dashboard-actions" style="justify-content:flex-start;margin-top:24px;">
+            <button class="dash-btn" type="submit"><i class="fa-solid fa-file-import"></i> Import Questions</button>
+            <a class="dash-btn secondary" href="{% url 'dashboard_question_import' %}?cancel=1">Start Over</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const optionMapList = document.getElementById("optionMapList");
+const addOptionMap = document.getElementById("addOptionMap");
+const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const columnOptions = `{% for col in columns %}<option value="{{ col.index }}">{{ col.label }}</option>{% endfor %}`;
+
+function optionLetter(index) {
+    return index < letters.length ? letters[index] : String(index + 1);
+}
+
+function refreshOptionLabels() {
+    optionMapList.querySelectorAll(".option-map-row").forEach((row, index) => {
+        row.querySelector("label").innerHTML = `Option ${optionLetter(index)}`;
+        row.querySelector("select").name = `map_option_${index}`;
+        const removeBtn = row.querySelector(".remove-option-map");
+        removeBtn.style.visibility = optionMapList.children.length === 1 ? "hidden" : "visible";
+    });
+}
+
+function addOptionMapRow() {
+    const index = optionMapList.children.length;
+    const row = document.createElement("div");
+    row.className = "mapping-row option-map-row";
+    row.innerHTML = `
+        <label>Option ${optionLetter(index)}</label>
+        <select name="map_option_${index}">
+            <option value="">— None —</option>
+            ${columnOptions}
+        </select>
+        <button class="btn-small danger remove-option-map" type="button" aria-label="Remove option">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+    `;
+    optionMapList.appendChild(row);
+    refreshOptionLabels();
+}
+
+addOptionMap.addEventListener("click", addOptionMapRow);
+
+optionMapList.addEventListener("click", (event) => {
+    const button = event.target.closest(".remove-option-map");
+    if (!button || optionMapList.children.length === 1) return;
+    button.closest(".option-map-row").remove();
+    refreshOptionLabels();
+});
+</script>
+{% endblock %}

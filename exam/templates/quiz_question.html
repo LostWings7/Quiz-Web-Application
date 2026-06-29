@@ -1,0 +1,689 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ quiz.title }}</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="{% static 'css/variables.css' %}">
+<link rel="stylesheet" href="{% static 'css/global.css' %}">
+<link rel="stylesheet" href="{% static 'css/animations.css' %}">
+<link rel="stylesheet" href="{% static 'css/quiz.css' %}">
+<link rel="stylesheet" href="{% static 'css/modal.css' %}">
+<link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
+</head>
+
+<body class="quiz-page">
+
+<div class="quiz-shell">
+
+<header class="exam-header">
+
+<div class="exam-left">
+    <div class="exam-logo">QuizX</div>
+
+    <div class="exam-meta">
+        <span class="exam-label">Exam</span>
+        <h2>{{ quiz.title }}</h2>
+    </div>
+</div>
+
+<div class="exam-right">
+
+<div class="candidate-chip">
+    <span class="candidate-label">Candidate</span>
+    <strong>
+        {% if user.first_name %}
+            {{ user.first_name }} {{ user.last_name }}
+        {% else %}
+            {{ user.username }}
+        {% endif %}
+    </strong>
+</div>
+
+{% if timer_enabled %}
+<div class="candidate-chip">
+    <span class="candidate-label">Time Left</span>
+    <strong id="examTimer">--:--</strong>
+</div>
+{% endif %}
+
+<a href="/home"
+   class="exit-btn"
+   id="exitExam">
+
+    Exit Exam
+
+</a>
+
+</div>
+
+</header>
+
+<main class="quiz-layout">
+
+<section class="quiz-card">
+
+<form method="post" id="quizForm">
+
+{% csrf_token %}
+
+<div class="quiz-header">
+
+    <!-- Previous Button -->
+    {% if question_num > 1 %}
+    <button
+        type="submit"
+        name="prev"
+        value="1"
+        class="nav-circle"
+        aria-label="Previous Question">
+
+        <i class="fa-solid fa-angle-left" style="color: rgb(30, 48, 80);"></i>
+
+    </button>
+    {% else %}
+    <button
+        type="button"
+        class="nav-circle disabled"
+        disabled
+        aria-label="Previous Question">
+
+        <i class="fa-solid fa-angle-left" style="color: rgb(30, 48, 80);"></i>
+
+    </button>
+    {% endif %}
+
+
+    <!-- Header Content -->
+
+    <div class="header-center">
+
+        <div class="question-title">
+
+            Question {{ question_num }} of {{ total_questions }}
+
+        </div>
+
+        <div class="question-progress">
+
+            {{ question_num }} / {{ total_questions }}
+
+        </div>
+
+    </div>
+
+
+    <!-- Next / Submit Button -->
+
+    {% if question_num < total_questions %}
+
+    <button
+        type="submit"
+        class="nav-circle"
+        aria-label="Next Question">
+
+        <i class="fa-solid fa-angle-right" style="color: rgb(30, 48, 80);"></i>
+
+    </button>
+
+    {% else %}
+
+    <button
+        type="submit"
+        id="submitExam"
+        class="nav-circle submit-circle"
+        aria-label="Submit Quiz">
+
+        ✓
+
+    </button>
+
+    {% endif %}
+
+</div>
+
+<div class="question-content">
+
+<div class="question-text">
+{{ question.text|safe }}
+</div>
+
+{% if question.image %}
+<div class="question-image-wrapper">
+<img src="{{ question.image.url }}" class="question-image">
+</div>
+{% endif %}
+
+<div class="options">
+
+    {% for option in question_options %}
+    <label class="option-card">
+    <input type="radio" name="answer" value="{{ option.value }}" {% if selected_answer == option.value or selected_answer == option.legacy_value %}checked{% endif %}>
+    <div class="option-body">
+    <span class="option-letter">{{ option.label }}</span>
+    <span>{{ option.text|safe }}</span>
+    </div>
+    </label>
+    {% endfor %}
+
+</div>
+
+<div class="answer-actions">
+
+    <button
+        type="button"
+        id="clear-answer"
+        class="secondary-action">
+
+        Clear Response
+
+    </button>
+
+    <div id="save-status"></div>
+
+    <button
+        type="button"
+        id="save-answer"
+        class="primary-action">
+
+        Save Answer
+
+    </button>
+
+</div>
+
+</div>
+
+</section>
+
+<aside class="quiz-sidebar">
+
+<div class="sidebar-card">
+
+<h3>Progress</h3>
+
+<div class="progress-bar">
+<div class="progress-fill">
+</div>
+</div>
+
+<p class="progress-text" id="progress-text">
+
+<strong>{{ answered_count }}</strong>
+of
+<strong>{{ total_questions }}</strong>
+Answered
+
+</p>
+
+</div>
+
+<div class="sidebar-card">
+
+<h3>Questions</h3>
+
+<div class="question-grid">
+
+{% for q in questions %}
+{% with q_id=q.id|stringformat:"s" %}
+<button
+    type="submit"
+    name="goto"
+    value="{{ forloop.counter }}"
+    class="question-number{% if forloop.counter == question_num %} current-question{% elif q_id in answered_ids %} attended-question{% endif %}">
+
+    {{ forloop.counter }}
+
+</button>
+{% endwith %}
+{% endfor %}
+
+</div>
+
+    <button
+        type="button"
+        id="submitExamSidebar"
+        class="sidebar-submit-btn">
+
+        <i class="fa-solid fa-paper-plane"></i>
+
+        Finish Examination
+
+    </button>
+
+</div>
+
+<div class="sidebar-card">
+
+<h3>Legend</h3>
+
+<div class="legend">
+
+<div><span class="legend-dot current"></span> Current Question</div>
+<div><span class="legend-dot answered"></span> Answered</div>
+<div><span class="legend-dot unanswered"></span> Unanswered</div>
+
+</div>
+
+</div>
+
+</aside>
+
+</form>
+
+</main>
+
+</div>
+
+<div class="modal-overlay" id="confirmModal">
+
+    <div class="glass-modal">
+
+        <div class="modal-icon" id="modalIcon">
+            ⚠
+        </div>
+
+        <h2 id="modalTitle">
+            Leave Examination?
+        </h2>
+
+        <p id="modalMessage">
+            Unsaved changes may be lost.
+        </p>
+
+        <div class="modal-actions">
+
+            <button
+                type="button"
+                class="modal-btn secondary"
+                id="modalCancel">
+
+                Cancel
+
+            </button>
+
+            <button
+                type="button"
+                class="modal-btn primary"
+                id="modalConfirm">
+
+                Confirm
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+const progressFill = document.querySelector(".progress-fill");
+const progressText = document.getElementById("progress-text");
+const saveBtn = document.getElementById("save-answer");
+const clearBtn = document.getElementById("clear-answer");
+const status = document.getElementById("save-status");
+
+// Store the current progress
+let currentProgress = parseFloat("{{ progress_percentage }}") || 0;
+let currentAnswered = parseInt("{{ answered_count }}", 10) || 0;
+let totalQuestions = parseInt("{{ total_questions }}", 10) || 0;
+let timerEnabled = "{{ timer_enabled|yesno:'true,false' }}" === "true";
+let durationSeconds = parseInt("{{ duration_seconds|default:0 }}", 10) || 0;
+
+// Initial width
+progressFill.style.width = currentProgress + "%";
+
+function showStatus(message, color){
+
+    status.textContent = message;
+    status.style.color = color;
+
+    setTimeout(() => {
+        status.textContent = "";
+    }, 1500);
+
+}
+
+function animateProgress(newProgress){
+
+    // If nothing changed, don't animate
+    if(newProgress === currentProgress)
+        return;
+
+    // Remove transition temporarily
+    progressFill.style.transition = "none";
+
+    // Set to current width
+    progressFill.style.width = currentProgress + "%";
+
+    // Force browser reflow
+    progressFill.offsetWidth;
+
+    // Restore transition
+    progressFill.style.transition =
+        "width .7s cubic-bezier(.22,.61,.36,1)";
+
+    // Animate to new width
+    progressFill.style.width = newProgress + "%";
+
+    currentProgress = newProgress;
+
+}
+
+async function saveAnswer(action){
+
+    const selected = document.querySelector(
+        'input[name="answer"]:checked'
+    );
+
+    const formData = new FormData();
+
+    formData.append(
+        "csrfmiddlewaretoken",
+        document.querySelector(
+            '[name=csrfmiddlewaretoken]'
+        ).value
+    );
+
+    formData.append("action", action);
+
+    if(selected){
+        formData.append("answer", selected.value);
+    }
+
+    const response = await fetch(
+        "{% url 'save_answer_ajax' quiz.id question_num %}",
+        {
+            method:"POST",
+            body:formData
+        }
+    );
+
+    const data = await response.json();
+
+    if(!data.success)
+        return;
+
+    if(action === "clear"){
+
+        if(selected){
+            selected.checked = false;
+        }
+
+        showStatus("Response Cleared","#dc2626");
+
+    }else{
+
+        showStatus("✓ Answer Saved","#16a34a");
+
+    }
+
+    animateProgress(data.progress);
+
+    progressText.innerHTML = `
+        <strong>${data.answered}</strong>
+        of
+        <strong>${data.total}</strong>
+        Answered
+    `;
+
+    currentAnswered = data.answered;
+    currentProgress = data.progress;
+
+}
+
+saveBtn.addEventListener("click", () => {
+    saveAnswer("save");
+});
+
+clearBtn.addEventListener("click", () => {
+    saveAnswer("clear");
+});
+
+const modal = document.getElementById("confirmModal");
+
+const modalIcon = document.getElementById("modalIcon");
+const modalTitle = document.getElementById("modalTitle");
+const modalMessage = document.getElementById("modalMessage");
+
+const modalCancel = document.getElementById("modalCancel");
+const modalConfirm = document.getElementById("modalConfirm");
+
+let confirmCallback = null;
+
+function showModal({
+
+    icon,
+    title,
+    message,
+    confirmText,
+    confirmAction
+
+}){
+
+    modalIcon.innerHTML = icon;
+
+    modalTitle.textContent = title;
+
+    modalMessage.innerHTML = message;
+
+    modalConfirm.textContent = confirmText;
+
+    confirmCallback = confirmAction;
+
+    modalIcon.classList.remove("success","warning");
+
+    if(confirmText === "Submit")
+        modalIcon.classList.add("success");
+    else
+        modalIcon.classList.add("warning");
+
+    modal.classList.add("show");
+
+}
+
+function closeModal(){
+
+    modal.classList.remove("show");
+
+}
+
+modalCancel.addEventListener("click", closeModal);
+
+modal.addEventListener("click", function(e){
+
+    if(e.target === modal){
+
+        closeModal();
+
+    }
+
+});
+
+document.addEventListener("keydown", function(e){
+
+    if(e.key === "Escape"){
+
+        closeModal();
+
+    }
+
+});
+
+modalConfirm.addEventListener("click", function(){
+
+    closeModal();
+
+    if(confirmCallback){
+
+        confirmCallback();
+
+    }
+
+});
+
+const exitButton = document.getElementById("exitExam");
+
+if(exitButton){
+
+    exitButton.addEventListener("click", function(e){
+
+        e.preventDefault();
+
+        showModal({
+
+            icon:"<i class='fa-solid fa-right-from-bracket'></i>",
+
+            title:"Leave Examination?",
+
+            message:
+                "Your <strong>current unsaved answer</strong> may be lost.<br><br>Are you sure you want to leave the examination?",
+
+            confirmText:"Exit",
+
+            confirmAction:function(){
+
+                window.location.href = exitButton.href;
+
+            }
+
+        });
+
+    });
+
+}
+
+const quizForm = document.getElementById("quizForm");
+const submitButton = document.getElementById("submitExam");
+
+if(submitButton){
+
+    submitButton.addEventListener("click", function(e){
+
+        e.preventDefault();
+
+        const answered = currentAnswered;
+        const total = totalQuestions;
+        const unanswered = total - answered;
+
+        showModal({
+
+            icon:"✓",
+
+            title:"Submit Examination?",
+
+            message:
+                `You have answered <strong>${answered}</strong> out of <strong>${total}</strong> questions.<br><br>` +
+                `Unanswered Questions : <strong>${unanswered}</strong><br><br>` +
+                `Once submitted, you will <strong>not be able to modify your answers.</strong>`,
+
+            confirmText:"Submit",
+
+            confirmAction:function(){
+
+                const finishInput = document.createElement("input");
+
+                finishInput.type = "hidden";
+                finishInput.name = "finish";
+                finishInput.value = "1";
+
+                quizForm.appendChild(finishInput);
+
+                quizForm.submit();
+
+            }
+
+        });
+
+    });
+
+}
+
+const sidebarSubmit = document.getElementById("submitExamSidebar");
+
+if(sidebarSubmit){
+
+    sidebarSubmit.addEventListener("click", function(){
+
+        const answered = currentAnswered;
+        const total = totalQuestions;
+        const unanswered = total - answered;
+
+        showModal({
+
+            icon:"✓",
+
+            title:"Submit Examination?",
+
+            message:
+                `You have answered <strong>${answered}</strong> out of <strong>${total}</strong> questions.<br><br>` +
+                `Unanswered Questions : <strong>${unanswered}</strong><br><br>` +
+                `Once submitted, you will <strong>not be able to modify your answers.</strong>`,
+
+            confirmText:"Submit",
+
+            confirmAction:function(){
+
+                const finishInput = document.createElement("input");
+
+                finishInput.type = "hidden";
+                finishInput.name = "finish";
+                finishInput.value = "1";
+
+                quizForm.appendChild(finishInput);
+
+                quizForm.submit();
+
+            }
+
+        });
+
+    });
+
+}
+
+function submitExamNow(){
+    const finishInput = document.createElement("input");
+    finishInput.type = "hidden";
+    finishInput.name = "finish";
+    finishInput.value = "1";
+    quizForm.appendChild(finishInput);
+    quizForm.submit();
+}
+
+if(timerEnabled){
+    const timerEl = document.getElementById("examTimer");
+    const storageKey = "quiz_{{ quiz.id }}_deadline";
+    let deadline = parseInt(sessionStorage.getItem(storageKey), 10);
+    if(!deadline){
+        deadline = Date.now() + durationSeconds * 1000;
+        sessionStorage.setItem(storageKey, deadline);
+    }
+    const timerInterval = setInterval(() => {
+        const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+        const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
+        const seconds = String(remaining % 60).padStart(2, "0");
+        timerEl.textContent = `${minutes}:${seconds}`;
+        if(remaining <= 60){
+            timerEl.style.color = "#fbbf24";
+        }
+        if(remaining <= 0){
+            clearInterval(timerInterval);
+            sessionStorage.removeItem(storageKey);
+            submitExamNow();
+        }
+    }, 1000);
+}
+
+</script>
+
+</body>
+</html>

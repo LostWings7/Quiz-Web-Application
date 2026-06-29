@@ -1,0 +1,26 @@
+{% extends 'dashboard/base.html' %}
+
+{% block heading %}Confirm Delete{% endblock %}
+{% block subtitle %}This action permanently removes the selected record.{% endblock %}
+
+{% block content %}
+<div class="dashboard-card">
+    <h2>Delete "{{ object_name }}"?</h2>
+    <p class="dashboard-subtitle" style="margin-bottom:24px;">This cannot be undone.</p>
+    <form method="post" class="dashboard-actions" style="justify-content:flex-start;">
+        {% csrf_token %}
+        <button class="dash-btn danger" type="submit"><i class="fa-solid fa-trash"></i>Delete</button>
+        {% if quiz_id %}
+            <a class="dash-btn secondary"
+            href="{% url 'dashboard_quiz_questions' quiz_id %}">
+                Cancel
+            </a>
+        {% else %}
+            <a class="dash-btn secondary"
+            href="{% url cancel_url %}">
+                Cancel
+            </a>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

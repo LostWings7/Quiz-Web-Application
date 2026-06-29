@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Enter Quiz Code{% endblock %}
+{% block content %}
+<style>
+.code-page{display:flex;justify-content:center;align-items:center;min-height:72vh;}
+.code-card{width:100%;max-width:560px;padding:48px;background:var(--glass);border:1px solid var(--glass-border);border-radius:32px;backdrop-filter:blur(28px);box-shadow:var(--shadow);}
+.icon{width:82px;height:82px;margin:0 auto 26px;display:grid;place-items:center;font-size:2rem;border-radius:26px;color:#06201c;background:linear-gradient(135deg,var(--primary),var(--secondary));box-shadow:0 18px 42px rgba(45,212,191,.28);}
+.code-card h2{text-align:center;font-size:2.3rem;margin-bottom:10px;}
+.subtitle{text-align:center;color:var(--text-soft);line-height:1.7;margin-bottom:32px;}
+.field{margin-bottom:24px;}
+.field label{display:block;margin-bottom:10px;font-weight:700;color:rgba(248,251,255,.82);}
+.field input{font-size:1.08rem;letter-spacing:2px;text-align:center;text-transform:uppercase;}
+.submit-btn{width:100%;}
+.error-box{margin-top:18px;padding:14px;border-radius:18px;background:rgba(251,113,133,.16);border:1px solid rgba(251,113,133,.28);text-align:center;color:#fecdd3;}
+.tip{margin-top:24px;text-align:center;font-size:.92rem;color:var(--text-soft);}
+</style>
+
+<div class="code-page">
+    <div class="code-card">
+        <div class="icon"><i class="fa-solid fa-ticket"></i></div>
+        <h2>Enter Quiz Code</h2>
+        <p class="subtitle">Use the examination code provided by your instructor to open your assessment.</p>
+        <form method="POST">
+            {% csrf_token %}
+            <div class="field">
+                <label for="id_code">Quiz Code</label>
+                <input type="text" name="code" id="id_code" placeholder="ABC123" required>
+            </div>
+            <button type="submit" class="submit-btn">Continue</button>
+            {% if form.errors %}<div class="error-box">That quiz code is invalid or inactive. Please try again.</div>{% endif %}
+        </form>
+        <div class="tip">Each quiz can only be attempted once.</div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,202 @@
+{% extends "dashboard/base.html" %}
+
+{% block heading %}
+{{ quiz.title }}
+{% endblock %}
+
+{% block subtitle %}
+Manage questions for this quiz.
+{% endblock %}
+
+{% block actions %}
+<a class="dash-btn"
+   href="{% url 'dashboard_question_create' %}?quiz={{ quiz.id }}">
+    <i class="fa-solid fa-plus"></i>
+    Add Question
+</a>
+<a class="dash-btn secondary"
+   href="{% url 'dashboard_question_import' %}?quiz={{ quiz.id }}">
+    <i class="fa-solid fa-file-import"></i>
+    Bulk Import
+</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="dashboard-card">
+
+<form method="post" action="{% url 'dashboard_question_reorder' %}">
+{% csrf_token %}
+<input type="hidden" name="quiz_filter" value="{{ quiz.id }}">
+<input type="hidden" name="source" value="quiz">
+
+<table class="glass-table">
+
+<thead>
+<tr>
+<th>Q.No</th>
+<th>Question</th>
+<th>Subtopic</th>
+<th>Answer</th>
+<th>Actions</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for question in questions %}
+
+<tr>
+<td>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <i class="fa-solid fa-grip-vertical drag-handle" style="cursor:grab;color:rgba(255,255,255,0.4);font-size:1.1rem;"></i>
+        <span class="order-display" style="font-weight:600;color:rgba(248,251,255,.9);">{{ forloop.counter }}</span>
+    </div>
+    <input type="hidden" class="order-input" name="order_{{ question.id }}" value="{{ forloop.counter }}">
+</td>
+<td>{{ question.text|striptags|truncatechars:60 }}</td>
+
+<td>
+{% if question.subtopic %}
+{{ question.subtopic.name }}
+{% else %}
+<span class="pill">None</span>
+{% endif %}
+</td>
+
+<td><span class="pill">{{ question.correct_option_label }}</span></td>
+
+<td>
+<a class="btn-small secondary"
+href="{% url 'dashboard_question_edit' question.id %}">
+Edit
+</a>
+
+<button
+    type="button"
+    class="btn-small danger delete-btn"
+    data-url="{% url 'dashboard_question_delete' question.id %}"
+    data-question="{{ question.text|striptags|truncatechars:70|escape }}">
+    Delete
+</button>
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+<td colspan="5">
+<div class="empty-state">
+No questions in this quiz.
+</div>
+</td>
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+<div style="margin-top:18px;">
+    <button class="dash-btn" type="submit"><i class="fa-solid fa-arrow-down-wide-short"></i>Save Order</button>
+</div>
+
+</form>
+
+</div>
+
+{% endblock %}
+
+{% block modals %}
+<div id="deleteModal" class="modal-overlay">
+    <div class="glass-modal">
+        <div class="modal-icon warning">
+            <i class="fa-solid fa-trash"></i>
+        </div>
+        <h2>Delete Question?</h2>
+        <p>
+            Are you sure you want to delete
+            <br><br>
+            <strong id="deleteQuestionName"></strong>
+            <br><br>
+            This action cannot be undone.
+        </p>
+        <form id="deleteForm" method="post">
+            {% csrf_token %}
+            <div class="modal-actions">
+                <button type="button" id="closeDelete" class="modal-btn secondary">Cancel</button>
+                <button type="submit" class="modal-btn primary">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var el = document.querySelector('.glass-table tbody');
+    if (el) {
+        Sortable.create(el, {
+            animation: 200,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            onEnd: function() {
+                var rows = el.querySelectorAll('tr');
+                rows.forEach(function(row, index) {
+                    var input = row.querySelector('.order-input');
+                    if (input) {
+                        input.value = index + 1;
+                    }
+                    var display = row.querySelector('.order-display');
+                    if (display) {
+                        display.innerText = index + 1;
+                    }
+                });
+            }
+        });
+    }
+});
+</script>
+<style>
+.sortable-ghost {
+    opacity: 0.5;
+    background: rgba(255,255,255,0.1) !important;
+}
+.drag-handle:hover {
+    color: #67e8f9 !important;
+}
+</style>
+<script>
+const modal = document.getElementById("deleteModal");
+const form = document.getElementById("deleteForm");
+const text = document.getElementById("deleteQuestionName");
+
+document.querySelectorAll(".delete-btn").forEach(btn=>{
+    btn.onclick = ()=>{
+        form.action = btn.dataset.url;
+        text.textContent = `"${btn.dataset.question}"`;
+        modal.classList.add("show");
+    };
+});
+
+document.getElementById("closeDelete").onclick = ()=>{
+    modal.classList.remove("show");
+};
+
+modal.onclick = e=>{
+    if(e.target===modal){
+        modal.classList.remove("show");
+    }
+};
+
+document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"){
+        modal.classList.remove("show");
+    }
+});
+</script>
+{% endblock %}

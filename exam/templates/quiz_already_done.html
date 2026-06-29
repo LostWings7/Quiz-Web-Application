@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Quiz Already Attempted{% endblock %}
+{% block content %}
+<style>
+.warning-page{display:flex;justify-content:center;align-items:center;min-height:70vh;}
+.warning-card{max-width:680px;width:100%;padding:58px;text-align:center;background:var(--glass);border:1px solid rgba(251,191,36,.35);border-radius:32px;backdrop-filter:blur(28px);box-shadow:var(--shadow);}
+.warning-icon{width:108px;height:108px;margin:0 auto 28px;display:grid;place-items:center;font-size:3rem;border-radius:32px;color:#422006;background:linear-gradient(135deg,#fde68a,#f59e0b);box-shadow:0 18px 46px rgba(245,158,11,.28);}
+.warning-card h1{font-size:2.5rem;margin-bottom:16px;}
+.warning-card p{line-height:1.8;color:var(--text-soft);margin-bottom:34px;}
+.action-row{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;}
+.notice{margin-top:24px;padding:14px;border-radius:18px;background:rgba(255,255,255,.08);font-size:.92rem;color:var(--text-soft);}
+</style>
+<div class="warning-page">
+    <div class="warning-card">
+        <div class="warning-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h1>Quiz Already Submitted</h1>
+        <p>Our records show that you have already completed this quiz. To ensure fairness, only one submission is permitted for each participant.</p>
+        <div class="action-row">
+            <a href="/enter-code/" class="btn">Back to Quiz Entry</a>
+            <a href="/home/" class="btn btn-outline">Home</a>
+        </div>
+        <div class="notice">If this looks incorrect, contact your instructor or exam administrator.</div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,242 @@
+/* ==========================================
+   Glass Confirmation Modal
+========================================== */
+
+.modal-overlay{
+
+    position:fixed;
+    inset:0;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+
+    background:rgba(10,18,35,.35);
+    backdrop-filter:blur(12px);
+
+    opacity:0;
+    visibility:hidden;
+
+    transition:
+        opacity .28s ease,
+        visibility .28s ease;
+
+    z-index:9999;
+
+}
+
+.modal-overlay.show{
+
+    opacity:1;
+    visibility:visible;
+
+}
+
+.glass-modal{
+
+    width:100%;
+    max-width:460px;
+
+    padding:38px;
+
+    background:rgba(255,255,255,.13);
+
+    border:1px solid rgba(255,255,255,.18);
+
+    border-radius:30px;
+
+    backdrop-filter:blur(28px);
+
+    box-shadow:
+        0 25px 70px rgba(0,0,0,.35),
+        inset 0 1px 0 rgba(255,255,255,.20);
+
+    text-align:center;
+
+    transform:
+        translateY(25px)
+        scale(.95);
+
+    opacity:0;
+
+    transition:
+        transform .28s cubic-bezier(.22,1,.36,1),
+        opacity .28s ease;
+
+}
+
+.modal-overlay.show .glass-modal{
+
+    transform:
+        translateY(0)
+        scale(1);
+
+    opacity:1;
+
+}
+
+.modal-icon{
+
+    width:82px;
+    height:82px;
+
+    margin:auto;
+    margin-bottom:24px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    border-radius:50%;
+
+    font-size:2.2rem;
+
+    color:white;
+
+    background:
+        linear-gradient(
+            135deg,
+            #6d5dfc,
+            #4f8cff
+        );
+
+    box-shadow:
+        0 10px 30px rgba(79,140,255,.35);
+
+}
+
+.glass-modal h2{
+
+    font-size:2rem;
+    margin-bottom:14px;
+
+}
+
+.glass-modal p{
+
+    line-height:1.8;
+
+    color:rgba(255,255,255,.75);
+
+    margin-bottom:34px;
+
+}
+
+.modal-actions{
+
+    display:flex;
+    justify-content:center;
+    gap:16px;
+
+}
+
+.modal-btn{
+
+    min-width:150px;
+
+    height:48px;
+
+    border:none;
+
+    border-radius:15px;
+
+    cursor:pointer;
+
+    font-size:.95rem;
+
+    font-weight:600;
+
+    transition:
+        transform .18s,
+        background .18s,
+        box-shadow .18s;
+
+}
+
+.modal-btn:hover{
+
+    transform:translateY(-2px);
+
+}
+
+.modal-btn.secondary{
+
+    background:rgba(255,255,255,.10);
+
+    color:white;
+
+    border:1px solid rgba(255,255,255,.15);
+
+}
+
+.modal-btn.secondary:hover{
+
+    background:rgba(255,255,255,.16);
+
+}
+
+.modal-btn.primary{
+
+    color:white;
+
+    background:linear-gradient(
+        135deg,
+        #6d5dfc,
+        #4f8cff
+    );
+
+    box-shadow:
+        0 10px 25px rgba(79,140,255,.30);
+
+}
+
+.modal-btn.primary:hover{
+
+    box-shadow:
+        0 15px 35px rgba(79,140,255,.45);
+
+}
+
+.modal-btn:focus{
+
+    outline:none;
+
+}
+
+.modal-btn:active{
+
+    transform:scale(.98);
+
+}
+
+.glass-modal{
+
+    user-select:none;
+
+}
+
+.modal-icon.success{
+
+    background:linear-gradient(
+        135deg,
+        #22c55e,
+        #16a34a
+    );
+
+    box-shadow:
+        0 12px 35px rgba(34,197,94,.35);
+
+}
+
+.modal-icon.warning{
+
+    background:linear-gradient(
+        135deg,
+        #f59e0b,
+        #ea580c
+    );
+
+    box-shadow:
+        0 12px 35px rgba(245,158,11,.35);
+
+}

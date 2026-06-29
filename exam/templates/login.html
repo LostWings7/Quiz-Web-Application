@@ -1,0 +1,51 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | QuizX</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/variables.css' %}">
+    <link rel="stylesheet" href="{% static 'css/global.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+    <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
+    <style>
+    body{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:24px;}
+    .login-wrapper{width:100%;max-width:460px;z-index:2;}
+    .login-card{background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(28px);border-radius:32px;padding:46px;box-shadow:var(--shadow);}
+    .brand{text-align:center;margin-bottom:34px;}
+    .brand-icon{width:72px;height:72px;margin:0 auto 20px;display:grid;place-items:center;border-radius:24px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#06201c;font-size:1.8rem;box-shadow:0 18px 42px rgba(45,212,191,.28);}
+    .brand h1{font-family:'Outfit',sans-serif;font-size:2.6rem;margin-bottom:8px;}
+    .brand p{color:var(--text-soft);line-height:1.6;}
+    .form-group{position:relative;margin-bottom:20px;}
+    .form-group i{position:absolute;left:18px;top:50%;transform:translateY(-50%);opacity:.8;}
+    .form-group input{padding-left:52px;}
+    .login-btn{width:100%;margin-top:8px;}
+    .error{text-align:center;margin-top:18px;color:#fecdd3;background:rgba(251,113,133,.16);border:1px solid rgba(251,113,133,.28);padding:12px;border-radius:16px;}
+    .footer-note{margin-top:24px;text-align:center;font-size:.9rem;color:var(--text-soft);}
+    </style>
+</head>
+<body>
+<div class="background"><div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div><div class="noise"></div></div>
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="brand">
+            <div class="brand-icon"><i class="fa-solid fa-layer-group"></i></div>
+            <h1>QuizX</h1>
+            <p>Welcome back.<br>Sign in to continue to your examination workspace.</p>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group"><i class="fa-solid fa-user"></i>{{ form.username }}</div>
+            <div class="form-group"><i class="fa-solid fa-lock"></i>{{ form.password }}</div>
+            <button type="submit" class="login-btn">Sign In</button>
+            {% if form.errors %}<div class="error">Invalid username or password.</div>{% endif %}
+        </form>
+        <div class="footer-note">Secure examination access</div>
+    </div>
+</div>
+</body>
+</html>

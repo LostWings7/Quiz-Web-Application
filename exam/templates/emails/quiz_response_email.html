@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+.card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    padding: 20px;
+    margin-bottom: 20px;
+    border-left: 6px solid transparent;
+}
+.card.correct{border-left-color: #16a34a;}
+.card.incorrect{border-left-color: #dc2626;}
+.option {
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 6px 0;
+    display: block;
+    color: black;
+}
+.option.correct {background-color: #dcfce7;color: #15803d;font-weight: bold;}
+.option.incorrect {background-color: #fee2e2;color: #b91c1c;font-weight: bold;}
+.option.selected {border: 2px solid #1d4ed8;}
+</style>
+</head>
+<body>
+<div class="container mx-auto max-w-4xl p-6">
+    <h2>{{ user.username }}'s Answers for "{{ quiz.title }}"</h2>
+
+    {% for entry in response_data %}
+    <div class="card {% if entry.is_correct %}correct{% else %}incorrect{% endif %}">
+        <p style="color: black;"><strong>Q{{ forloop.counter }}. {{ entry.question }}</strong></p>
+        {% for option in entry.options %}
+            {% if option.selected and entry.is_correct %}
+                <span class="option selected correct">({{ option.label }}) {{ option.text|safe }}</span>
+            {% elif option.selected and not entry.is_correct %}
+                <span class="option selected incorrect">({{ option.label }}) {{ option.text|safe }}</span>
+            {% elif option.value == entry.correct and not entry.is_correct %}
+                <span class="option correct">({{ option.label }}) {{ option.text|safe }}</span>
+            {% else %}
+                <span class="option">({{ option.label }}) {{ option.text|safe }}</span>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+</body>
+</html>

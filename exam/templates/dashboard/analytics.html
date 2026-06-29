@@ -1,0 +1,230 @@
+﻿{% extends 'dashboard/base.html' %}
+
+{% block heading %}Analytics{% endblock %}
+{% block subtitle %}Detailed performance metrics for your quizzes.{% endblock %}
+
+{% block content %}
+<div class="dash-form" style="margin-bottom: 24px; animation: fadeUp 0.6s ease backwards;">
+    <form method="get">
+        <select name="quiz" onchange="this.form.submit()">
+            {% for quiz in quizzes %}
+            <option value="{{ quiz.id }}" {% if quiz.id == selected_quiz.id %}selected{% endif %}>{{ quiz.title }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+{% if not selected_quiz %}
+<div class="empty-state">
+    <i class="fa-solid fa-chart-pie fa-3x" style="margin-bottom:14px; opacity:0.5;"></i>
+    <h2>No quizzes found.</h2>
+</div>
+{% else %}
+<section class="metric-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+    <div class="metric-card" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.1s;"><span>Average Score</span><strong>{{ average_score }}%</strong></div>
+    <div class="metric-card" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.2s;"><span>Pass Rate</span><strong>{{ pass_rate }}%</strong></div>
+    <div class="metric-card" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.3s;"><span>Attempts</span><strong>{{ attempt_count }}</strong></div>
+</section>
+
+<section class="chart-grid" style="margin-bottom: 40px;">
+    <div class="dashboard-card chart-box" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.4s; cursor: pointer;" onclick="window.location.href='/dashboard/analytics/score/?quiz={{ selected_quiz.id }}'">
+        <div class="section-heading" style="margin-bottom:12px;"><h2>Score Distribution</h2></div>
+        <div class="canvas-container"><canvas id="scoreChart"></canvas></div>
+    </div>
+    
+    <div class="dashboard-card chart-box" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.5s; cursor: pointer;" onclick="window.location.href='/dashboard/analytics/overall/?quiz={{ selected_quiz.id }}'">
+        <div class="section-heading" style="margin-bottom:12px;"><h2>Overall Score</h2></div>
+        <div class="canvas-container"><canvas id="overallChart"></canvas></div>
+    </div>
+    
+    <div class="dashboard-card chart-box" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.6s; cursor: pointer;" onclick="window.location.href='/dashboard/analytics/cro/?quiz={{ selected_quiz.id }}'">
+        <div class="section-heading" style="margin-bottom:12px;"><h2>CRO Chart</h2></div>
+        <div class="canvas-container"><canvas id="croChart"></canvas></div>
+    </div>
+
+    <div class="dashboard-card chart-box" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.7s; cursor: pointer;" onclick="window.location.href='/dashboard/analytics/subtopic/?quiz={{ selected_quiz.id }}'">
+        <div class="section-heading" style="margin-bottom:12px;"><h2>Subtopic Accuracy</h2></div>
+        <div class="canvas-container"><canvas id="subtopicChart"></canvas></div>
+    </div>
+    
+    <div class="dashboard-card chart-box" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.8s; cursor: pointer;" onclick="window.location.href='/dashboard/analytics/ranking/?quiz={{ selected_quiz.id }}'">
+        <div class="section-heading" style="margin-bottom:12px;"><h2>Student Rankings</h2></div>
+        <div class="canvas-container"><canvas id="rankingChart"></canvas></div>
+    </div>
+    
+    <div class="dashboard-card chart-box" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.85s; cursor: pointer; overflow: auto; padding-bottom: 24px;" onclick="window.location.href='/dashboard/analytics/scorecard/?quiz={{ selected_quiz.id }}'">
+        <div class="section-heading">
+            <h2>Class Scorecard</h2>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Student Name</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in scorecard|slice:":3" %}
+                <tr>
+                    <td>#{{ forloop.counter }}</td>
+                    <td><div class="table-title">{{ item.name }}</div></td>
+                    <td>
+                        <span class="status-badge {% if item.percentage >= 40 %}active{% else %}draft{% endif %}">
+                            {{ item.percentage }}%
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="empty-state">No attempts recorded.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if scorecard|length > 3 %}
+        <div style="text-align: center; padding-top: 12px; color: rgba(248,251,255,0.6); font-size: 14px;">
+            <i class="fa-solid fa-ellipsis"></i> Click to view all {{ scorecard|length }} students
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="dashboard-card chart-box" style="grid-column: 1 / -1; animation: fadeUp 0.6s ease backwards; animation-delay: 0.9s; cursor: pointer;" onclick="window.location.href='/dashboard/analytics/difficulty/?quiz={{ selected_quiz.id }}'">
+        <div class="section-heading" style="margin-bottom:12px;"><h2>Question Difficulty</h2></div>
+        <div class="canvas-container"><canvas id="difficultyChart"></canvas></div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if selected_quiz %}
+{{ chart_data|json_script:"chart-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const chartData = JSON.parse(document.getElementById("chart-data").textContent);
+const glassGrid = { color: "rgba(255,255,255,.12)" };
+const glassTicks = { color: "rgba(248,251,255,.72)" };
+
+const speedDialNeedle = {
+    id: 'speedDialNeedle',
+    afterDatasetDraw(chart, args, options) {
+        const { ctx, config, data, chartArea: { top, bottom, left, right, width, height } } = chart;
+        if(config.options.plugins.speedDialNeedle && data.datasets[0].type === 'doughnut') {
+            ctx.save();
+            const value = data.datasets[0].data[0];
+            const max = data.datasets[0].data[0] + data.datasets[0].data[1];
+            
+            // Animation logic for needle
+            let animatedValue = value;
+            if (chart._activeAnimationProgress !== undefined) {
+                animatedValue = value * chart._activeAnimationProgress;
+            }
+            
+            const angle = Math.PI + (1 / max * animatedValue * Math.PI);
+            const cx = width / 2;
+            const cy = chart._metasets[0].data[0].y;
+            
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+            
+            // Draw Needle
+            ctx.beginPath();
+            ctx.moveTo(0, -5);
+            ctx.lineTo(chart.outerRadius - 15, 0);
+            ctx.lineTo(0, 5);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            
+            // Draw Dot
+            ctx.beginPath();
+            ctx.arc(0, 0, 10, 0, 2 * Math.PI);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            
+            ctx.restore();
+        }
+    }
+};
+Chart.register(speedDialNeedle);
+
+function makeChart(id, type, labels, values, label, customOptions = {}){
+    const ctx = document.getElementById(id);
+    if(!ctx || !window.Chart) return;
+    
+    let backgroundColor = ["rgba(45,212,191,.72)","rgba(96,165,250,.72)","rgba(167,139,250,.72)","rgba(251,191,36,.72)"];
+    if (id === 'croChart') {
+        backgroundColor = ["rgba(239,68,68,.72)", "rgba(245,158,11,.72)", "rgba(16,185,129,.72)"];
+    } else if (id === 'overallChart') {
+        backgroundColor = ["rgba(45,212,191,.8)", "rgba(255,255,255,.05)"];
+    }
+
+    new Chart(ctx, {
+        type,
+        data: {
+            labels,
+            datasets: [{
+                label,
+                data: values,
+                borderColor: type === "doughnut" || type === "pie" ? "rgba(255,255,255,0.2)" : "#67e8f9",
+                backgroundColor: backgroundColor,
+                borderWidth: 2,
+                tension: .42,
+                fill: type === "line"
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { 
+                duration: 1500, 
+                easing: "easeOutQuart",
+                onProgress: function(animation) {
+                    if (id === 'overallChart') {
+                        animation.chart._activeAnimationProgress = animation.currentStep / animation.numSteps;
+                    }
+                },
+                onComplete: (animation) => {
+                    animation.chart.alreadyAnimated = true;
+                    if (id === 'overallChart') {
+                        animation.chart._activeAnimationProgress = 1;
+                    }
+                }
+            },
+            plugins: { 
+                speedDialNeedle: id === 'overallChart',
+                legend: { 
+                    display: type === "pie" || type === "doughnut",
+                    labels: { color: "rgba(248,251,255,.82)" } 
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            if (id === 'overallChart' && context.dataIndex === 1) return null;
+                            return context.formattedValue + (id === 'scoreChart' || id === 'croChart' ? ' Students' : (id === 'overallChart' || id === 'difficultyChart' || id === 'subtopicChart' || id === 'rankingChart' ? '%' : ''));
+                        }
+                    }
+                }
+            },
+            scales: type === "doughnut" || type === "pie" ? {} : {
+                x: { grid: glassGrid, ticks: glassTicks },
+                y: { beginAtZero: true, grid: glassGrid, ticks: glassTicks }
+            },
+            ...customOptions
+        }
+    });
+}
+
+makeChart("scoreChart", "doughnut", chartData.scoreLabels, chartData.scoreValues, "Students");
+makeChart("overallChart", "doughnut", ["Score", "Remaining"], [chartData.averageScore, 100 - chartData.averageScore], "Average", {
+    circumference: 180,
+    rotation: 270,
+    cutout: "80%"
+});
+makeChart("croChart", "pie", chartData.croLabels, chartData.croValues, "Questions");
+makeChart("subtopicChart", "bar", chartData.subtopicLabels, chartData.subtopicValues, "Accuracy");
+makeChart("rankingChart", "bar", chartData.rankingLabels, chartData.rankingValues, "Percentage");
+makeChart("difficultyChart", "line", chartData.difficultyLabels, chartData.difficultyValues, "Accuracy");
+</script>
+{% endif %}
+{% endblock %}

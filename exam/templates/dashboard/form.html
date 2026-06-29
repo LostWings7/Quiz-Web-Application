@@ -1,0 +1,212 @@
+{% extends 'dashboard/base.html' %}
+
+{% block heading %}{{ title }}{% endblock %}
+{% block subtitle %}Complete the fields below and save your changes.{% endblock %}
+
+{% block content %}
+<div class="dashboard-card">
+    <form class="dash-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% if title == "Edit Question" or title == "Create Question" %}
+
+            {% if form.quiz %}
+            {% if form.quiz.is_hidden %}
+                {{ form.quiz }}
+            {% else %}
+            <p>
+                {{ form.quiz.label_tag }}
+                {{ form.quiz }}
+            </p>
+            {% endif %}
+            {% endif %}
+
+            <p>
+                {{ form.text.label_tag }}
+                {{ form.text }}
+            </p>
+
+            <div class="question-row">
+
+                <div class="field-half">
+                    {{ form.image.label_tag }}
+                    {{ form.image }}
+                </div>
+
+                <div class="field-half">
+                    {{ form.subtopic.label_tag }}
+                    {{ form.subtopic }}
+                </div>
+
+            </div>
+
+            <div class="section-heading" style="margin-top:10px;">
+                <h2>Options</h2>
+                <button class="btn-small secondary" id="addOption" type="button">
+                    <i class="fa-solid fa-plus"></i>
+                    Add Option
+                </button>
+            </div>
+
+            <div id="optionList" class="option-editor">
+                {% for option in option_rows %}
+                <div class="option-edit-row">
+                    <span class="option-letter">{% cycle 'A' 'B' 'C' 'D' 'E' 'F' 'G' 'H' 'I' 'J' 'K' 'L' 'M' 'N' 'O' 'P' 'Q' 'R' 'S' 'T' 'U' 'V' 'W' 'X' 'Y' 'Z' %}</span>
+                    <label class="option-correct">
+                        <input type="radio" name="correct_option" value="{{ forloop.counter0 }}" {% if option.is_correct %}checked{% endif %}>
+                        Correct
+                    </label>
+                    <textarea name="option_text" rows="2" placeholder="Option text" required>{{ option.text }}</textarea>
+                    <button class="btn-small danger remove-option" type="button" aria-label="Remove option">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% else %}
+
+            {{ form.as_p }}
+
+            {% endif %}
+        <div class="dashboard-actions" style="justify-content:flex-start;">
+            <button class="dash-btn" type="submit">
+                <i class="fa-solid fa-check"></i>{{ submit_label }}
+            </button>
+
+            <a class="dash-btn secondary"
+            href="{{ request.META.HTTP_REFERER|default:'/dashboard/' }}">
+                Cancel
+            </a>
+        </div>
+
+        {% if title == "Edit Quiz" %}
+
+        <hr style="margin:35px 0;border:0;border-top:1px solid rgba(255,255,255,.12);">
+
+        <div class="section-heading">
+            <h2>Question Management</h2>
+        </div>
+
+        <p class="dashboard-subtitle" style="margin-bottom:20px;">
+            Manage all questions that belong to this quiz.
+        </p>
+
+        <a class="dash-btn"
+        href="{% url 'dashboard_quiz_questions' form.instance.id %}">
+            <i class="fa-solid fa-list"></i>
+            Edit Questions
+        </a>
+
+        {% endif %}
+    </form>
+</div>
+{% endblock %}
+
+{% block modals %}
+<div id="deleteOptionModal" class="modal-overlay">
+    <div class="glass-modal">
+        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h2>Delete Option</h2>
+        <p>Are you sure you want to remove this option?</p>
+        <div class="modal-actions">
+            <button type="button" class="modal-btn secondary" id="cancelOptionDelete">Cancel</button>
+            <button type="button" class="modal-btn primary" id="confirmOptionDelete">Delete</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if title == "Edit Question" or title == "Create Question" %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+const optionList = document.getElementById("optionList");
+const addOption = document.getElementById("addOption");
+
+function initTinyMCE(target) {
+    tinymce.init({
+        target: target,
+        menubar: false,
+        height: target.name === 'option_text' ? 120 : 300,
+        resize: true,
+        plugins: 'lists link code',
+        toolbar: 'undo redo | bold italic underline strikethrough | numlist bullist | link code',
+        skin: 'oxide-dark',
+        content_css: 'dark',
+        setup: function (editor) {
+            editor.on('change', function () {
+                editor.save();
+            });
+        }
+    });
+}
+
+function renumberOptions(){
+    optionList.querySelectorAll(".option-edit-row").forEach((row, index) => {
+        const radio = row.querySelector('input[type="radio"]');
+        radio.value = index;
+        const letter = row.querySelector(".option-letter");
+        if (letter) letter.textContent = index < 26 ? String.fromCharCode(65 + index) : String(index + 1);
+        row.querySelector(".remove-option").disabled = optionList.children.length === 1;
+    });
+    if(!optionList.querySelector('input[type="radio"]:checked')){
+        optionList.querySelector('input[type="radio"]').checked = true;
+    }
+}
+
+function addOptionRow(text = ""){
+    const row = document.createElement("div");
+    row.className = "option-edit-row";
+    row.innerHTML = `
+        <span class="option-letter"></span>
+        <label class="option-correct">
+            <input type="radio" name="correct_option">
+            Correct
+        </label>
+        <textarea name="option_text" rows="2" placeholder="Option text" required></textarea>
+        <button class="btn-small danger remove-option" type="button" aria-label="Remove option">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+    `;
+    row.querySelector("textarea").value = text;
+    optionList.appendChild(row);
+    renumberOptions();
+    initTinyMCE(row.querySelector("textarea"));
+}
+
+addOption.addEventListener("click", () => addOptionRow());
+
+let rowToDelete = null;
+let wasChecked = false;
+
+optionList.addEventListener("click", event => {
+    const button = event.target.closest(".remove-option");
+    if(!button || optionList.children.length === 1){
+        return;
+    }
+    rowToDelete = button.closest(".option-edit-row");
+    wasChecked = rowToDelete.querySelector('input[type="radio"]').checked;
+    document.getElementById("deleteOptionModal").classList.add("show");
+});
+
+document.getElementById("cancelOptionDelete").addEventListener("click", () => {
+    document.getElementById("deleteOptionModal").classList.remove("show");
+    rowToDelete = null;
+});
+
+document.getElementById("confirmOptionDelete").addEventListener("click", () => {
+    if(rowToDelete) {
+        rowToDelete.remove();
+        renumberOptions();
+        if(wasChecked){
+            optionList.querySelector('input[type="radio"]').checked = true;
+        }
+    }
+    document.getElementById("deleteOptionModal").classList.remove("show");
+});
+
+renumberOptions();
+document.querySelectorAll('textarea').forEach(el => initTinyMCE(el));
+</script>
+{% endif %}
+{% endblock %}

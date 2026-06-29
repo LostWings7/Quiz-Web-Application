@@ -1,0 +1,301 @@
+{% extends 'admin/base_site.html' %}
+{% load static %}
+
+{% block extrahead %}
+<style>
+.container {
+    max-width: 1000px;
+    margin: 30px auto;
+    padding: 20px;
+    background: #f3f4f6;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    font-family: 'Segoe UI', sans-serif;
+}
+h2 {
+    font-size: 28px;
+    text-align: center;
+    color: #1f2937;
+    margin-bottom: 25px;
+}
+.score-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+.score-table th {
+    background-color: #111827;
+    color: #ffffff;
+    text-align: left;
+    padding: 14px;
+}
+.score-table td {
+    padding: 14px;
+    border-bottom: 1px solid #e5e7eb;
+}
+.score-table tr:nth-child(odd) {
+    background-color: #f9fafb;
+}
+.score-table tr:nth-child(even) {
+    background-color: #f1f5f9;
+}
+.score-table:hover{
+    color: black;
+}
+.rank {
+    font-weight: bold;
+    color: #6b7280;
+    padding: 10px;
+    transition: all 0.3s ease-in-out;
+}
+
+.username {
+    font-weight: 500;
+    color: #2563eb;
+}
+.score {
+    font-weight: bold;
+}
+.score-high { color: #16a34a; }
+.score-mid { color: #facc15; }
+.score-low { color: #dc2626; }
+
+.rank-1{
+    background-color: #ffd700;
+    color: black;
+}
+
+.rank-2{
+    background-color: #cfd2cd;
+    color: black;
+}
+
+.rank-3{
+    background-color: #ce8946;
+    color: black;
+}
+
+.special-row {
+  background-color: #1e40af;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 rgba(30, 64, 175, 0.7);
+}
+
+.special-row:hover {
+  background-color: #2563eb;
+  z-index: 1;
+  transform: scale(1.01);
+  color: black;
+}
+
+.rank-1:hover{
+    box-shadow: 0 0px 12px #ffd700, 0 0px 24px #ffd700;
+}
+
+.rank-2:hover{
+    box-shadow: 0 0px 12px #cfd2cd,  0 0px 24px #cfd2cd;
+}
+
+.rank-3:hover{
+    box-shadow: 0 0px 12px #ce8946,  0 0px 24px #ce8946;
+}
+
+tr:hover{
+    color: black;
+}
+
+.special-row::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 20%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: skewX(-20deg);
+  transition: left 1s ease;
+}
+
+.special-row:hover::after {
+  left: 125%;
+}
+
+.export-button-csv {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: #1e40af;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 red;
+}
+
+.export-button-csv:hover {
+  background-color: rgba(0, 128, 0, 1.0);
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(0, 128, 0, 0.7), 0 0 24px rgba(0, 128, 0, 0.4);
+}
+
+.export-button-csv::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  transform: skewX(-20deg);
+  transition: left 0.5s ease;
+}
+
+.export-button-csv:hover::after {
+  left: 125%;
+}
+
+.export-button-pdf {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: rgba(255, 0, 0, 1.0);
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 red;
+}
+
+.export-button-pdf:hover {
+  background-color: #2563eb;
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(255, 0, 0, 0.7), 0 0 24px rgba(255, 0, 0, 0.4);
+}
+
+.export-button-pdf::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  transform: skewX(-20deg);
+  transition: left 0.5s ease;
+}
+
+.export-button-pdf:hover::after {
+  left: 125%;
+}
+
+
+.back-button {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: #1e40af;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 rgba(30, 64, 175, 0.7);
+}
+
+.back-button:hover {
+  background-color: #2563eb;
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.7), 0 0 24px rgba(37, 99, 235, 0.4);
+}
+
+.back-button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  transform: skewX(-20deg);
+  transition: left 0.5s ease;
+}
+
+.back-button:hover::after {
+  left: 125%;
+}
+
+.medal-icon{
+    width: 24px;
+    height: 24px;
+    vertical-align: middle;
+    background-color: white;
+    border-radius: 999px;
+    padding: 4px;
+}
+
+.row:hover{
+    transform: scale(1.01);
+    transition: all 0.3s ease;
+    background: darkgrey;
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center;">
+<a href="{% url 'overall_analysis' quiz.id %}" class="back-button" style="margin-top: 20px; text-align: center;">← Back to Analysis</a>
+</div>
+<div class="container">
+    <h2>Full Class Scorecard for <strong>{{ quiz.title }}</strong></h2>
+    <table class="score-table">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Student</th>
+                <th>Score</th>
+                <th>Submitted At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in results %}
+            <tr class="row {% if entry.rank <= 3 %}special-row{% endif %} {% if entry.rank == 1 %}rank-1 {% elif entry.rank == 2 %}rank-2 {% elif entry.rank == 3 %}rank-3 {% endif %};" style="cursor: pointer;" onclick="window.location.href='{% url 'view_student_response' quiz.id entry.user.id %}'">          
+                <td class="rank {% if entry.rank == 1 %}rank-1 {% elif entry.rank == 2 %}rank-2 {% elif entry.rank == 3 %}rank-3 {%endif%}">
+                {% if entry.rank == 1 %}
+                <img src="{%static 'images/gold-medal.png'%}" alt="1" class="medal-icon">
+                {% elif entry.rank == 2 %}
+                <img src="{%static 'images/silver-medal.png'%}" alt="2" class="medal-icon">
+                {% elif entry.rank == 3 %}
+                <img src="{%static 'images/bronze-medal.png'%}" alt="3" class="medal-icon">
+                {% else %}
+                {{ entry.rank }}
+                {%endif%}
+                </td>
+                <td class="username {% if entry.rank == 1 %}rank-1 {% elif entry.rank == 2 %}rank-2 {% elif entry.rank == 3 %}rank-3 {%endif%}">{{ entry.user.username }}</td>
+                <td class="score
+                    {% if entry.score > 7 %}score-high{% elif entry.score >= 5 %}score-mid{% else %}score-low{% endif %}  {% if entry.rank == 1 %}rank-1 {% elif entry.rank == 2 %}rank-2 {% elif entry.rank == 3 %}rank-3 {%endif%}">
+                    {{ entry.score }}
+                </td>
+                <td class=" {% if entry.rank == 1 %}rank-1 {% elif entry.rank == 2 %}rank-2 {% elif entry.rank == 3 %}rank-3 {%endif%}" style="color: black;">{{ entry.submitted_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+     <div style="margin-bottom: 10px; color: white; margin-top: 30px; justify-content: space-between;">
+    <a href="{% url 'export_overall_analysis_csv' quiz.id %}" style="background-color: green; border-radius:10px; left: 0px; padding: 10px; color: white;" class="export-button-csv">Export as CSV</a>
+    <a href="{% url 'export_overall_analysis_pdf' quiz.id %}" style="background-color: red; border-radius:10px; padding: 10px; color: white;" class="export-button-pdf">Export as PDF</a>
+    </div>
+</div>
+{% endblock %}

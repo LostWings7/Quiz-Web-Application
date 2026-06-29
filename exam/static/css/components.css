@@ -1,0 +1,178 @@
+
+/* ---------- Glass Cards ---------- */
+
+.glass-card,
+.info-box,
+.question-box,
+.code-container,
+.result-card{
+    background:var(--glass);
+    border:1px solid var(--glass-border);
+    backdrop-filter:blur(22px);
+    border-radius:30px;
+    box-shadow:var(--shadow);
+    padding:28px;
+    transition:var(--transition);
+}
+
+.glass-card:hover,
+.result-card:hover{
+    transform:translateY(-6px);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn,
+.submit-button,
+button[type="submit"]{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    padding:14px 24px;
+    border:none;
+    border-radius:999px;
+    cursor:pointer;
+    color:#06201c;
+    font-weight:600;
+    background:linear-gradient(135deg,var(--primary),var(--secondary));
+    transition:var(--transition);
+    box-shadow:0 14px 34px rgba(45,212,191,.24);
+}
+
+.btn:hover,
+.submit-button:hover,
+button[type="submit"]:hover{
+    transform:translateY(-3px) scale(1.02);
+    box-shadow:0 20px 42px rgba(45,212,191,.32);
+}
+
+.btn-outline{
+    color:#fff;
+    background:rgba(255,255,255,.08);
+    border:1px solid var(--glass-border);
+    box-shadow:none;
+}
+
+/* ---------- Inputs ---------- */
+
+input[type=text],
+input[type=password],
+input[type=email],
+textarea,
+select{
+    width:100%;
+    padding:15px 18px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    outline:none;
+    transition:var(--transition);
+}
+
+input::placeholder,
+textarea::placeholder{
+    color:rgba(255,255,255,.55);
+}
+
+input:focus,
+textarea:focus,
+select:focus{
+    border-color:rgba(255,255,255,.45);
+    background:rgba(255,255,255,.12);
+}
+
+option {
+    background-color: #1a1e23;
+    color: #fff;
+}
+/* ---------- Sidebar ---------- */
+
+.sidebar{
+    background:var(--glass);
+    border:1px solid var(--glass-border);
+    border-radius:24px;
+    backdrop-filter:blur(20px);
+    padding:22px;
+    box-shadow:var(--shadow);
+}
+
+.question-grid{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:12px;
+}
+
+.question-number{
+    width:46px;
+    height:46px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    color:#fff;
+    background:rgba(255,255,255,.08);
+    transition:var(--transition);
+}
+
+.question-number:hover{
+    transform:scale(1.08);
+}
+
+.current-question{
+    background:linear-gradient(135deg,var(--primary),var(--secondary));
+}
+
+.attended-question{
+    background:rgba(52,211,153,.35);
+}
+
+/* ---------- Tables ---------- */
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    overflow:hidden;
+    border-radius:20px;
+    background:rgba(255,255,255,.06);
+}
+
+th{
+    text-align:left;
+    padding:16px;
+    font-family:'Outfit',sans-serif;
+}
+
+td{
+    padding:16px;
+    border-top:1px solid rgba(255,255,255,.08);
+}
+
+/* ---------- Badges ---------- */
+
+.badge{
+    display:inline-block;
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:.85rem;
+    background:rgba(255,255,255,.12);
+}
+
+.badge-success{background:rgba(52,211,153,.25);}
+.badge-warning{background:rgba(251,191,36,.25);}
+.badge-danger{background:rgba(251,113,133,.25);}
+
+/* ---------- Utility ---------- */
+
+.center{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.stack{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+}

@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Quiz Results{% endblock %}
+{% block content %}
+<style>
+.results-page{max-width:980px;margin:auto;padding-top:26px;}
+.page-title{font-size:3rem;text-align:center;margin-bottom:10px;}
+.page-subtitle{text-align:center;color:var(--text-soft);margin-bottom:36px;}
+.results-grid{display:grid;gap:18px;}
+.result-card{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;padding:28px 30px;border-radius:30px;}
+.result-left h3{margin-bottom:10px;font-size:1.35rem;}
+.result-left p{color:var(--text-soft);line-height:1.8;}
+.score-circle{width:96px;height:96px;border-radius:30px;display:grid;place-items:center;font-size:1.45rem;font-weight:800;color:#06201c;background:linear-gradient(135deg,var(--primary),var(--secondary));box-shadow:0 18px 42px rgba(45,212,191,.28);}
+.empty-card{padding:60px;text-align:center;}
+.empty-icon{width:76px;height:76px;margin:0 auto 20px;display:grid;place-items:center;border-radius:24px;color:#06201c;background:linear-gradient(135deg,var(--primary),var(--secondary));}
+.back-home{margin-top:32px;display:flex;justify-content:center;}
+@media(max-width:700px){.result-card{grid-template-columns:1fr;text-align:center}.score-circle{margin:auto;}}
+</style>
+
+<div class="results-page">
+    <h1 class="page-title">Your Results</h1>
+    <p class="page-subtitle">Completed quiz attempts are shown below.</p>
+    <div class="results-grid">
+        {% for result in results %}
+        {% if result.quiz.show_detailed_results %}
+        <a href="{% url 'student_result_detail' result.id %}" style="text-decoration: none; color: inherit;">
+        {% endif %}
+        <div class="result-card glass-card" style="{% if result.quiz.show_detailed_results %}cursor: pointer; transition: transform 0.2s;{% endif %}" {% if result.quiz.show_detailed_results %}onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'"{% endif %}>
+            <div class="result-left">
+                <h3>{{ result.quiz.title }}</h3>
+                <p><strong>Score:</strong> {{ result.score }} / {{ result.quiz.questions.count }}<br><strong>Submitted:</strong> {{ result.submitted_at|date:"F j, Y g:i A" }}</p>
+                {% if result.quiz.show_detailed_results %}
+                <p style="margin-top: 10px; color: var(--primary); font-weight: bold;"><i class="fa-solid fa-arrow-right"></i> View Detailed Feedback</p>
+                {% endif %}
+            </div>
+            <div class="score-circle">{{ result.score }}</div>
+        </div>
+        {% if result.quiz.show_detailed_results %}
+        </a>
+        {% endif %}
+        {% empty %}
+        <div class="glass-card empty-card">
+            <div class="empty-icon"><i class="fa-solid fa-chart-simple"></i></div>
+            <h2>No Results Yet</h2>
+            <p style="margin-top:14px;color:var(--text-soft);">Complete your first quiz and your results will appear here.</p>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="back-home"><a href="/home/" class="btn">Return Home</a></div>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends 'dashboard/base.html' %}
+
+{% block heading %}{{ quiz.title }} Results{% endblock %}
+{% block subtitle %}View, manage and export results specifically for this quiz.{% endblock %}
+{% block actions %}
+<a class="dash-btn secondary" href="{% url 'dashboard_quiz_report_pdf' quiz.id %}"><i class="fa-solid fa-file-pdf"></i>Detailed Report</a>
+<a class="dash-btn secondary" href="{% url 'dashboard_quizzes' %}">Back to Quizzes</a>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-card">
+    <form class="search-row" method="get">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search by student">
+        <button class="dash-btn secondary" type="submit">Search</button>
+    </form>
+    <table class="glass-table">
+        <thead><tr><th>Student</th><th>Username</th><th>Score</th><th>Submitted</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for result in results %}
+        <tr>
+            <td>{% if result.user.first_name %}{{ result.user.first_name }} {{ result.user.last_name }}{% else %}{{ result.user.username }}{% endif %}</td>
+            <td>{{ result.user.username }}</td>
+            <td>{{ result.score }} / {{ quiz.questions.count }}</td>
+            <td>{{ result.submitted_at|date:"M j, Y g:i A" }}</td>
+            <td>
+                <a class="btn-small secondary" href="{% url 'student_result_detail' result.id %}">View</a>
+                <button class="btn-small danger" onclick="showModal('deleteModal-{{ result.id }}')">Delete</button>
+            </td>
+        </tr>
+        
+
+        {% empty %}
+        <tr><td colspan="5"><div class="empty-state">No results found for this quiz.</div></td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block modals %}
+{% for result in results %}
+<!-- Delete Modal -->
+<div id="deleteModal-{{ result.id }}" class="modal-overlay">
+    <div class="glass-modal">
+        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h2>Delete Attempt</h2>
+        <p>Are you sure you want to delete this attempt by {{ result.user.username }}?</p>
+        <form method="post" action="{% url 'dashboard_result_delete' result.id %}">
+            {% csrf_token %}
+            <div class="modal-actions">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('deleteModal-{{ result.id }}')">Cancel</button>
+                <button type="submit" class="modal-btn primary">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

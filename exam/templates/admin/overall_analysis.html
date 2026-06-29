@@ -1,0 +1,498 @@
+{% extends 'admin/base_site.html' %}
+
+{% load static %}
+
+
+
+{% block title %}Overall Analysis{% endblock %}
+
+
+
+{% block extrahead %}
+
+  <style>
+
+    .dashboard-container {
+
+      padding: 2rem;
+
+      display: grid;
+
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+
+      gap: 2rem;
+
+    }
+
+    .card {
+
+      background-color: #fff;
+
+      padding: 1.5rem;
+
+      border-radius: 12px;
+
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+
+      text-align: center;
+
+      min-height: 380px;
+
+    }
+
+    .card h3 {
+
+      margin-bottom: 1rem;
+
+      font-size: 1.2rem;
+
+      color: #333;
+
+    }
+
+    canvas {
+
+      max-width: 100%;
+
+    }
+
+    .clickable {
+
+      cursor: pointer;
+
+      transition: transform 0.2s ease;
+
+    }
+
+    .clickable:hover {
+
+      transform: scale(1.02);
+
+    }
+
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #f9fafb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.result-table th {
+  background-color: #111827;
+  color: #fefefe;
+  padding: 12px;
+  text-align: left;
+}
+
+.result-table td {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.result-table tr:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+.result-table tr:nth-child(even) {
+  background-color: #d4d4d4;
+}
+
+.username {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.score-high {
+  color: #16a34a;
+  font-weight: bold;
+}
+
+  </style>
+
+{% endblock %}
+
+
+
+{% block content %}
+<h1 style="display: flex; margin-bottom: 20px; justify-content: center; text-align: center; font-weight: bolder; font-size: 34px">{{quiz.title}}</h1>
+
+<div class="dashboard-container">
+
+  <!-- Overall Score Gauge -->
+<div class="card clickable" onclick="showDetails('overall-score')">
+  <h3>Overall Score</h3>
+  <div style="position: relative; width: 320px; height: 180px; margin: 0 auto;">
+    <canvas id="overallScoreGauge" style="height: 100%; width: 100%;"></canvas>
+    <div id="gaugeText"
+         style="position: absolute; top: 65%; left: 50%; transform: translate(-50%, -50%);
+                font-size: 22px; font-weight: bold; color: black;">
+      <a style="background-color: whitesmoke; padding: 5px; border-radius: 10px">{{ overall_score }}%</a>
+    </div>
+  </div>
+  <p style="color: black; font-size: 24px;">Average Score<br><strong style="font-size: 28px; color: green;">{{avg_score}}</strong><br><strong style="font-size: 15px; color: black;">out of 10</strong></p>
+</div>
+
+
+
+  <!-- Score Distribution -->
+<div class="card clickable" onclick="showDetails('score-distribution')">
+    <h3>Score Distribution</h3>
+    <canvas id="scoreDistributionChart" style="height: 250px;"></canvas>
+</div>
+
+  <!-- Topic-wise Accuracy -->
+
+  <div class="card clickable" onclick="showDetails('topic-performance')">
+
+    <h3>Topic-wise Performance</h3>
+
+    <canvas id="topicAccuracyChart" style="height: 320px;"></canvas>
+
+  </div>
+
+  <!-- Question-wise Analysis -->
+
+<div class="card clickable" onclick="window.location.href='{% url 'question_analysis' quiz.id %}'">
+    <h3>Question-wise Analysis</h3>
+    <canvas id="questionAccuracyChart" style="height: 320px;"></canvas>
+</div>
+
+ <!-- CRO chart -->
+
+<div class="card clickable">
+    <h3>CRO Chart</h3>
+    <canvas id="croPieChart" width="300" height="300"></canvas>
+</div>
+
+  <!-- Class Scorecard -->
+
+<div class="card clickable" onclick="window.location.href='{% url 'full_scorecard' quiz.id %}'">
+    <h3>Class Scorecard</h3>
+    <div class="table-container">
+        <table class="result-table">
+            <thead>
+                <tr style="justify-content: center;">
+                    <th>Rank</th>
+                    <th>Student</th>
+                    <th>Score</th>
+                    <th>Submitted At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in student_scores|slice:":5" %}
+                <tr>
+                    <td style="color: black; font-weight:bold;">{{ entry.rank }}</td>
+                    <td class="username">{{ entry.user__username }}</td>
+                    <td class="score-high">{{ entry.score }}</td>
+                    <td style="color: black;">{{ entry.submitted_at|date:"Y-m-d H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+
+
+
+<!-- Hidden detailed info logic (can be modal or new section) -->
+
+<script>
+
+  function showDetails(section) {
+
+    alert("Show more info about " + section);
+
+  }
+
+</script>
+
+
+
+<!-- Chart.js + render logic -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+
+<script>
+
+  // Gauge for overall score
+const canvas = document.getElementById("overallScoreGauge");
+const ctx = canvas.getContext("2d");
+
+const width = canvas.width;
+const height = canvas.height;
+const centerX = width / 2;
+const centerY = height;
+const radius = 120;
+
+const targetScore = {{ overall_score }}; // Already out of 100
+let currentScore = 0;
+
+function drawGauge(score) {
+  ctx.clearRect(0, 0, width, height);
+
+  // Background arc
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, Math.PI, 0);
+  ctx.lineWidth = 24;
+  ctx.strokeStyle = "#e0e0e0";
+  ctx.stroke();
+
+  // Filled arc
+  ctx.beginPath();
+  const endAngle = Math.PI + (score / 100) * Math.PI;
+  ctx.arc(centerX, centerY, radius, Math.PI, endAngle);
+  ctx.lineWidth = 24;
+  ctx.strokeStyle = "#4caf50";
+  ctx.stroke();
+
+
+const needleLength = 130;
+const baseWidth = 10;  // Width of the triangle base (at the pivot)
+const tipWidth = 2;    // Optional for smoother shape, not used in triangle here
+
+const angle = (-Math.PI / 2) + (score / 100) * Math.PI;
+
+ctx.save();
+ctx.translate(centerX, centerY);  // Move to gauge center
+ctx.rotate(angle);  // Rotate to the correct angle
+
+ctx.beginPath();
+// Draw triangle with base centered at (0,0) and pointing outward
+ctx.moveTo(-baseWidth / 2, 0); // Left base point
+ctx.lineTo(baseWidth / 2, 0);  // Right base point
+ctx.lineTo(0, -needleLength);  // Tip of needle
+ctx.closePath();
+
+ctx.fillStyle = "red";
+ctx.fill();
+ctx.restore();
+
+
+// Draw center circle (pivot)
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI);
+  ctx.fillStyle = "red";
+  ctx.fill();
+}
+
+// Animate needle
+function animate() {
+  if (currentScore < targetScore) {
+    currentScore += 1;
+    drawGauge(currentScore);
+    requestAnimationFrame(animate);
+  } else {
+    drawGauge(targetScore);
+  }
+}
+
+animate();
+
+  // Score distribution chart data from Django context
+const scoreData = {{ score_bins|safe }};  // e.g., {"0-4": 3, "4-7": 4, "7-10": 3}
+
+  const ctx1 = document.getElementById("scoreDistributionChart").getContext("2d");
+
+  const chart = new Chart(ctx1, {
+    type: "bar",
+    data: {
+      labels: Object.keys(scoreData),
+      datasets: [{
+        label: "Number of Students",
+        data: Object.values(scoreData),
+        backgroundColor: "#00ff95",  // Light green
+        borderRadius: 6,             // Rounded corners
+        barThickness: 40             // Optional: control width of bars
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return `${context.parsed.y} students`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1,
+            precision: 0
+          },
+          title: {
+            display: true,
+            text: 'Student Count'
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: 'Score Ranges'
+          }
+        }
+      }
+    }
+  });
+
+  //CRO Chart
+
+    const rawData = [
+        { label: 'Critical', value: {{ cro_counts.critical }}, color: '#dc3545' },
+        { label: 'Recommended', value: {{ cro_counts.recommended }}, color: '#ffc107' },
+        { label: 'Optional', value: {{ cro_counts.optional }}, color: '#28a745' }
+    ];
+
+    const filtered = rawData.filter(item => item.value > 0);
+
+    const croData = {
+        labels: filtered.map(item => item.label),
+        datasets: [{
+            data: filtered.map(item => item.value),
+            backgroundColor: filtered.map(item => item.color),
+            borderColor: '#000',
+            borderWidth: 2
+        }]
+    };
+
+    const config = {
+        type: 'pie',
+        data: croData,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.raw} questions`;
+                        }
+                    }
+                },
+                datalabels: {
+                    color: '#000',
+                    font: {
+                        weight: 'bold',
+                        size: 30
+                    },
+                    formatter: (value) => `${value}`
+                }
+            }
+        },
+        plugins: [ChartDataLabels]
+    };
+
+    new Chart(document.getElementById('croPieChart'), config);
+
+  // Topic-wise accuracy
+
+  const topicLabels = {{ subtopic_labels|safe }};
+
+  const topicData = {{ subtopic_values|safe }};
+
+  new Chart(document.getElementById("topicAccuracyChart"), {
+
+    type: 'bar',
+
+    data: {
+
+      labels: topicLabels,
+
+      datasets: [{
+
+        label: 'Accuracy (%)',
+
+        data: topicData,
+
+        backgroundColor: '#ffb300',
+
+        borderRadius: 6
+
+      }]
+
+    },
+
+    options: {
+
+      scales: {
+
+        y: { beginAtZero: true, max: 100 }
+
+      }
+
+    }
+
+  });
+
+//Question-wise Accuracy Chart
+
+  const ctx2 = document.getElementById('questionAccuracyChart').getContext('2d');
+  new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: {{ question_labels|safe }},
+      datasets: [{
+        label: 'Accuracy (%)',
+        data: {{ question_accuracies|safe }},
+        backgroundColor: 'rgba(34,197,94,0.8)',
+        borderRadius: 8,
+        barThickness: 24,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      scales: {
+        x: {
+          max: 100,
+          ticks: {
+            callback: function(value) {
+              return value + '%';
+            }
+          },
+          title: {
+            display: true,
+            text: 'Accuracy'
+          }
+        },
+        y: {
+          ticks: {
+            color: '#1f2937',
+            font: { weight: 'bold' }
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.raw + '% answered correctly';
+            }
+          }
+        }
+      }
+    }
+  });
+
+</script>
+
+{% endblock %}

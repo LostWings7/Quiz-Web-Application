@@ -1,0 +1,148 @@
+/* ==========================================
+   ANIMATIONS.CSS
+   QuizX Glass UI
+==========================================*/
+
+/* ========= KEYFRAMES ========= */
+
+@keyframes gradientMove {
+    0%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+    100%{background-position:0% 50%;}
+}
+
+@keyframes floatBlob{
+    0%{transform:translate(0,0) scale(1);}
+    25%{transform:translate(40px,-35px) scale(1.08);}
+    50%{transform:translate(10px,30px) scale(.94);}
+    75%{transform:translate(-30px,-20px) scale(1.05);}
+    100%{transform:translate(0,0) scale(1);}
+}
+
+@keyframes fadeUp{
+    from{opacity:0;transform:translateY(35px);}
+    to{opacity:1;transform:translateY(0);}
+}
+
+@keyframes fadeLeft{
+    from{opacity:0;transform:translateX(-40px);}
+    to{opacity:1;transform:translateX(0);}
+}
+
+@keyframes fadeRight{
+    from{opacity:0;transform:translateX(40px);}
+    to{opacity:1;transform:translateX(0);}
+}
+
+@keyframes pop{
+    0%{transform:scale(.8);opacity:0;}
+    70%{transform:scale(1.05);}
+    100%{transform:scale(1);opacity:1;}
+}
+
+@keyframes shimmer{
+    from{transform:translateX(-120%);}
+    to{transform:translateX(120%);}
+}
+
+@keyframes pulse{
+    0%{transform:scale(1);}
+    50%{transform:scale(1.04);}
+    100%{transform:scale(1);}
+}
+
+/* ===== Default ===== */
+
+.page-wrapper{animation:fadeUp .8s ease;}
+.hero-card{animation:fadeLeft .8s ease;}
+.info-card{animation:fadeRight .8s ease;}
+.question-panel{animation:fadeLeft .6s ease;}
+.progress-panel{animation:fadeRight .6s ease;}
+.login-card{animation:pop .65s ease;}
+.result-card{animation:fadeUp .5s ease;}
+.blob{animation:floatBlob 14s ease-in-out infinite;}
+
+/* ===== Buttons ===== */
+
+.btn,
+.submit-button{
+    position:relative;
+    overflow:hidden;
+}
+
+.btn::before,
+.submit-button::before{
+    content:"";
+    position:absolute;
+    top:0;
+    left:-130%;
+    width:60%;
+    height:100%;
+    background:linear-gradient(
+        120deg,
+        transparent,
+        rgba(255,255,255,.45),
+        transparent
+    );
+    transform:skewX(-25deg);
+}
+
+.btn:hover::before,
+.submit-button:hover::before{
+    animation:shimmer .9s ease;
+}
+
+.btn:hover,
+.submit-button:hover{
+    animation:pulse .4s ease;
+}
+
+/* ===== Glass Cards ===== */
+
+.glass-card,
+.question-panel,
+.progress-panel,
+.info-card,
+.result-card{
+    transition:
+    transform .35s ease,
+    box-shadow .35s ease,
+    border-color .35s ease;
+}
+
+.glass-card:hover,
+.question-panel:hover,
+.progress-panel:hover,
+.info-card:hover,
+.result-card:hover{
+    transform:translateY(-6px);
+}
+
+/* ===== Inputs ===== */
+
+input{
+    transition:border-color .3s,box-shadow .3s,background .3s;
+}
+
+input:focus{
+    box-shadow:0 0 0 4px rgba(255,255,255,.08);
+}
+
+/* ===== Scrollbar ===== */
+
+::-webkit-scrollbar{
+    width:10px;
+}
+
+::-webkit-scrollbar-track{
+    background:transparent;
+}
+
+::-webkit-scrollbar-thumb{
+    background:rgba(255,255,255,.18);
+    border-radius:50px;
+}
+
+::-webkit-scrollbar-thumb:hover{
+    background:rgba(255,255,255,.35);
+}

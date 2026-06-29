@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Detailed Feedback: {{ quiz.title }}{% endblock %}
+
+{% block content %}
+<style>
+.detail-page { max-width: 900px; margin: auto; padding-top: 26px; }
+.detail-header { text-align: center; margin-bottom: 32px; }
+.detail-header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+.score-badge { display: inline-block; padding: 12px 24px; background: rgba(255,255,255,0.05); border-radius: 9999px; font-size: 1.25rem; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 24px; }
+.question-card { background: rgba(255,255,255,0.03); border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.05); }
+.question-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.question-icon { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; }
+.question-icon.correct { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+.question-icon.incorrect { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.question-text { font-size: 1.15rem; font-weight: 500; }
+.options-list { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+.option-item { padding: 16px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.2); }
+.option-item.selected { border-color: rgba(255,255,255,0.3); }
+.option-item.correct { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
+.option-item.incorrect-selected { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); }
+.option-marker { width: 24px; font-weight: bold; color: rgba(255,255,255,0.5); }
+.option-text { flex: 1; }
+.option-badge { font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
+.option-badge.correct { background: #10b981; color: #000; }
+.option-badge.your-answer { background: rgba(255,255,255,0.2); color: #fff; }
+</style>
+
+<div class="back-button-container" style="position: sticky; top: 100px; z-index: 50; padding: 0 24px; margin-bottom: -40px;">
+    <a href="javascript:history.back()" class="btn btn-secondary" style="border-radius: 9999px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); backdrop-filter: blur(8px);"><i class="fa-solid fa-arrow-left"></i> Back</a>
+</div>
+
+<div class="detail-page">
+    <div class="detail-header">
+        <h1>{{ quiz.title }}</h1>
+        <div class="score-badge">Your Score: <span style="color: var(--primary);">{{ result.score }} / {{ quiz.questions.count }}</span></div>
+        <p style="color: var(--text-soft);">Submitted on {{ result.submitted_at|date:"F j, Y g:i A" }}</p>
+    </div>
+
+    {% for item in response_data %}
+    <div class="question-card">
+        <div class="question-header">
+            <div class="question-icon {% if item.is_correct %}correct{% else %}incorrect{% endif %}">
+                <i class="fa-solid {% if item.is_correct %}fa-check{% else %}fa-xmark{% endif %}"></i>
+            </div>
+            <div class="question-text">
+                {{ forloop.counter }}. {{ item.question.text|striptags }}
+            </div>
+        </div>
+        
+        <div class="options-list">
+            {% for opt in item.options %}
+            <div class="option-item {% if opt.is_correct %}correct{% elif opt.is_selected %}incorrect-selected{% endif %} {% if opt.is_selected %}selected{% endif %}">
+                <div class="option-marker">{{ opt.value }}</div>
+                <div class="option-text">{{ opt.text|striptags }}</div>
+                
+                {% if opt.is_correct %}
+                <div class="option-badge correct"><i class="fa-solid fa-check"></i> Correct Answer</div>
+                {% endif %}
+                
+                {% if opt.is_selected %}
+                <div class="option-badge your-answer">Your Answer</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

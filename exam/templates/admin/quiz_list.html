@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quiz List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .quiz-list {
+            list-style: none;
+            padding: 0;
+        }
+        .quiz-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+        }
+        .quiz-item:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Select a Quiz to View User Performance</h1>
+    <ul class="quiz-list">
+        {% for quiz in quizzes %}
+            <li class="quiz-item">
+                <a href="{% url 'user_performance_list' quiz.id %}">{{ quiz.title }}</a>
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,195 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}Question Analysis - {{ quiz.title }}{% endblock %}
+
+{% block extrahead %}
+<style>
+    .title {
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .question-container {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        padding: 20px;
+    }
+
+    .question-card {
+      position: relative;
+        background: #f4f4f8;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        transition: transform 0.3s ease;
+    }
+
+    .question-card:hover {
+        transform: scale(1.01);
+    }
+
+    .question-text {
+        font-size: 18px;
+        margin-bottom: 18px;
+    }
+
+    .option {
+        margin-bottom: 16px;
+    }
+
+    .correct .option-text {
+        color: #28a745;
+        font-weight: bold;
+    }
+
+    .option-text {
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    .bar-bg {
+        background: #e0e0e0;
+        height: 22px;
+        border-radius: 10px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .bar-fill {
+        height: 100%;
+        width: 0%;
+        background-color: #3b82f6;
+        transition: width 1.5s ease;
+        border-radius: 10px;
+    }
+
+    .correct .bar-fill {
+        background-color: #28a745;
+    }
+
+    .incorrect .bar-fill{
+      background-color: red;
+    }
+
+    .percent-label {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 14px;
+        font-weight: 500;
+        color: white;
+    }
+
+    .back-button {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: #1e40af;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 rgba(30, 64, 175, 0.7);
+}
+
+.back-button:hover {
+  background-color: #2563eb;
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.7), 0 0 24px rgba(37, 99, 235, 0.4);
+}
+
+.back-button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  transform: skewX(-20deg);
+  transition: left 0.5s ease;
+}
+
+.back-button:hover::after {
+  left: 125%;
+}
+
+.label {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    color: white;
+    text-transform: uppercase;
+}
+.label.red {
+  background-color: #ffa8a8;
+  color: #dc3545;
+}
+.label.orange {
+  background-color: #ffe999;
+  color: #ffc107;
+}
+.label.green {
+  background-color: #9effb4;
+  color: #28a745;
+}
+
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".bar-fill").forEach(bar => {
+            const percent = bar.getAttribute("data-percent");
+            bar.style.width = percent + "%";
+        });
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; margin-bottom: 10px;">
+<a href="{% url 'overall_analysis' quiz.id %}" class="back-button" style="margin-top: 20px; text-align: center;">← Back to Analysis</a>
+</div>
+<h1 class="title">Question-wise Analysis for "{{ quiz.title }}"</h1>
+
+<div class="question-container" style="color: black;">
+    {% for question in questions %}
+    <div class="question-card">
+      {% for option in question.options %}
+        {% if option.is_correct %}
+          {% if option.percent < 50 %}
+             <div class="label red"><img src="{%static 'images/critical.png'%}" style="position: absolute; top: 5px; right:70px; width: 15px; height: 15px;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Critical</div>
+          {% elif option.percent < 75 %}
+            <div class="label orange"><img src="{%static 'images/recommended.png'%}" style="position: absolute; top: 5px; right:115px; width: 15px; height: 15px;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Recommended</div>
+          {% else %}
+            <div class="label green"><img src="{%static 'images/optional.png'%}" style="position: absolute; top: 5px; right:80px; width: 15px; height: 15px;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Optional</div>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+        <h3 class="question-text" style="color: black;">{{ forloop.counter }}. {{ question.text|safe }}</h3>
+        <div class="options">
+            {% for option in question.options %}
+            <div class="option {% if option.is_correct %}correct {% else %}incorrect {% endif %}">
+                <span class="option-text">{{option.label}}. {{ option.text|safe }}</span>
+                <div class="bar-bg">
+                    <div class="bar-fill" data-percent="{{ option.percent }}"></div>
+                    <span class="percent-label" style="color: black;">{{ option.percent }}%</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

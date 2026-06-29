@@ -1,0 +1,108 @@
+{% extends 'admin/base_site.html' %}
+{% block extrahead %}
+<style>
+.card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+    border-left: 6px solid transparent;
+}
+
+.card.correct{
+    border-left-color: #16a34a;
+}
+
+.card.incorrect{
+    border-left-color: #dc2626;
+}
+
+.option {
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 6px 0;
+    display: block;
+    color: black;
+}
+.option.correct {
+    background-color: #dcfce7;
+    color: #15803d;
+    font-weight: bold;
+}
+.option.incorrect {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    font-weight: bold;
+}
+.option.selected {
+    border: 2px solid #1d4ed8;
+}
+
+.back-button {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: #1e40af;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 0 rgba(30, 64, 175, 0.7);
+}
+
+.back-button:hover {
+  background-color: #2563eb;
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.7), 0 0 24px rgba(37, 99, 235, 0.4);
+}
+
+.back-button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  transform: skewX(-20deg);
+  transition: left 0.5s ease;
+}
+
+.back-button:hover::after {
+  left: 125%;
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center;">
+<a href="{% url 'full_scorecard' quiz.id %}" class="back-button" style="margin-top: 20px; text-align: center;">← Back to Analysis</a>
+</div>
+<div class="container mx-auto max-w-4xl p-6">
+    <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">
+        {{ user.username }}'s Answers for "{{ quiz.title }}"
+    </h2>
+
+    {% for entry in response_data %}
+    <div class="card {% if entry.is_correct %}correct {% else %}incorrect {% endif %}">
+        <p style="color: black;" class="font-semibold text-gray-800 mb-2"><strong>Q{{ forloop.counter }}. {{ entry.question }}</strong></p>
+        {% for option in entry.options %}
+            {% if option.selected and entry.is_correct %}
+                <span class="option selected correct">({{ option.label }}) {{ option.text|safe }}</span>
+            {% elif option.selected and not entry.is_correct %}
+                <span class="option selected incorrect">({{ option.label }}) {{ option.text|safe }}</span>
+            {% elif option.value == entry.correct and not entry.is_correct %}
+                <span class="option correct">({{ option.label }}) {{ option.text|safe }}</span>
+            {% else %}
+                <span class="option">({{ option.label }}) {{ option.text|safe }}</span>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

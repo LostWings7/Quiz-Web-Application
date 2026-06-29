@@ -1,0 +1,74 @@
+{% extends 'dashboard/base.html' %}
+
+{% block heading %}Dashboard{% endblock %}
+{% block subtitle %}A live overview of quizzes, students, attempts, and recent activity.{% endblock %}
+{% block actions %}
+<a class="dash-btn" href="{% url 'dashboard_quiz_create' %}"><i class="fa-solid fa-plus"></i>Create Quiz</a>
+<a class="dash-btn secondary" href="{% url 'dashboard_student_create' %}"><i class="fa-solid fa-user-plus"></i>Create Student</a>
+{% endblock %}
+
+{% block content %}
+<section class="metric-grid">
+    <div class="metric-card"><span>Total quizzes</span><strong>{{ total_quizzes }}</strong></div>
+    <div class="metric-card"><span>Total students</span><strong>{{ total_students }}</strong></div>
+    <div class="metric-card"><span>Total questions</span><strong>{{ total_questions }}</strong></div>
+    <div class="metric-card"><span>Total attempts</span><strong>{{ total_attempts }}</strong></div>
+    <div class="metric-card"><span>Average score</span><strong>{{ average_score }}</strong></div>
+</section>
+
+<section class="content-grid">
+    <div class="dashboard-card">
+        <div class="section-heading">
+            <h2>Recent Quiz Attempts</h2>
+            <a class="btn-small secondary" href="{% url 'dashboard_results' %}">View all</a>
+        </div>
+        <table class="glass-table">
+            <thead><tr><th>Student</th><th>Quiz</th><th>Score</th><th>Submitted</th></tr></thead>
+            <tbody>
+            {% for attempt in recent_attempts %}
+            <tr>
+                <td>{% if attempt.user.first_name %}{{ attempt.user.first_name }} {{ attempt.user.last_name }}{% else %}{{ attempt.user.username }}{% endif %}</td>
+                <td>{{ attempt.quiz.title }}</td>
+                <td>{{ attempt.score }}</td>
+                <td>{{ attempt.submitted_at|date:"M j, Y g:i A" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4"><div class="empty-state">No quiz attempts yet.</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div>
+        <div class="dashboard-card">
+            <div class="section-heading">
+                <h2>Recent Users</h2>
+                <a class="btn-small secondary" href="{% url 'dashboard_students' %}">Manage</a>
+            </div>
+            <table class="glass-table">
+                <thead><tr><th>Name</th><th>Status</th></tr></thead>
+                <tbody>
+                {% for student in recent_users %}
+                <tr>
+                    <td>{% if student.first_name %}{{ student.first_name }} {{ student.last_name }}{% else %}{{ student.username }}{% endif %}</td>
+                    <td><span class="pill {% if student.is_active %}success{% else %}warning{% endif %}">{% if student.is_active %}Active{% else %}Disabled{% endif %}</span></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2"><div class="empty-state">No students yet.</div></td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="section-heading"><h2>Quick Actions</h2></div>
+            <div class="dashboard-actions" style="justify-content:flex-start;">
+                <a class="dash-btn" href="{% url 'dashboard_question_create' %}"><i class="fa-solid fa-plus"></i>Add Question</a>
+                <a class="dash-btn secondary" href="{% url 'dashboard_question_import' %}"><i class="fa-solid fa-file-import"></i>Import Questions</a>
+                <a class="dash-btn secondary" href="{% url 'dashboard_student_import' %}"><i class="fa-solid fa-file-csv"></i>Import Students</a>
+                <a class="dash-btn secondary" href="/admin/"><i class="fa-solid fa-screwdriver-wrench"></i>Django Admin</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'dashboard/base.html' %}
+
+{% block heading %}Quiz Management{% endblock %}
+{% block subtitle %}Create, edit, duplicate, activate, and analyze quizzes.{% endblock %}
+{% block actions %}
+<a class="dash-btn" href="{% url 'dashboard_quiz_create' %}"><i class="fa-solid fa-plus"></i>Create Quiz</a>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-card">
+    <table class="glass-table">
+        <thead>
+            <tr>
+                <th>Name</th><th>Quiz Code</th><th>Participants</th><th>Status</th><th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in quiz_rows %}
+        <tr>
+            <td>{{ row.quiz.title }}</td>
+            <td><span class="pill">{{ row.quiz.code }}</span></td>
+            <td>{{ row.participants }}</td>
+            <td><span class="pill {% if row.quiz.is_active %}success{% else %}warning{% endif %}">{% if row.quiz.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+            <td style="display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap; height: 100%;">
+                <a class="btn-small secondary" href="{% url 'dashboard_quiz_edit' row.quiz.id %}" title="Edit Quiz"><i class="fa-solid fa-pen"></i></a>
+                <a class="btn-small {% if row.quiz.is_active %}warning{% else %}success{% endif %}" href="{% url 'dashboard_quiz_toggle' row.quiz.id %}" title="{% if row.quiz.is_active %}Disable Quiz{% else %}Enable Quiz{% endif %}">
+                    <i class="fa-solid fa-power-off"></i>
+                </a>
+                <button class="btn-small {% if row.quiz.show_detailed_results %}warning{% else %}success{% endif %}" onclick="showModal('detailsModal-{{ row.quiz.id }}')" title="{% if row.quiz.show_detailed_results %}Hide Detailed Results{% else %}Show Detailed Results{% endif %}">
+                    <i class="fa-solid {% if row.quiz.show_detailed_results %}fa-eye-slash{% else %}fa-eye{% endif %}"></i>
+                </button>
+                <a class="btn-small secondary" href="{% url 'dashboard_quiz_duplicate' row.quiz.id %}" title="Duplicate Quiz"><i class="fa-solid fa-copy"></i></a>
+                <a class="btn-small secondary" href="{% url 'dashboard_quiz_results' row.quiz.id %}" title="View Results"><i class="fa-solid fa-chart-bar"></i></a>
+                <button class="btn-small danger" onclick="showModal('deleteModal-{{ row.quiz.id }}')" title="Delete Quiz"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>
+        
+
+        {% empty %}
+        <tr><td colspan="5"><div class="empty-state">No quizzes yet. Create the first one.</div></td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block modals %}
+{% for row in quiz_rows %}
+<!-- Delete Modal -->
+<div id="deleteModal-{{ row.quiz.id }}" class="modal-overlay">
+    <div class="glass-modal">
+        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h2>Delete Quiz</h2>
+        <p>Are you sure you want to delete "{{ row.quiz.title }}"?</p>
+        <form method="post" action="{% url 'dashboard_quiz_delete' row.quiz.id %}">
+            {% csrf_token %}
+            <div class="modal-actions">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('deleteModal-{{ row.quiz.id }}')">Cancel</button>
+                <button type="submit" class="modal-btn primary">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% for row in quiz_rows %}
+<!-- Details Toggle Modal -->
+<div id="detailsModal-{{ row.quiz.id }}" class="modal-overlay">
+    <div class="glass-modal">
+        <div class="modal-icon {% if row.quiz.show_detailed_results %}warning{% else %}success{% endif %}"><i class="fa-solid fa-eye"></i></div>
+        <h2>{% if row.quiz.show_detailed_results %}Hide Detailed Results?{% else %}Show Detailed Results?{% endif %}</h2>
+        <p style="text-align: center; margin-bottom: 24px; color: var(--text-soft); line-height: 1.6;">
+            {% if row.quiz.show_detailed_results %}
+                This will revoke students' access to view a detailed breakdown of their results. They will only see their final score on their results page.
+            {% else %}
+                This will grant students the ability to click their score on the results page and view a full question-by-question breakdown, including exactly what they answered and what the correct answers were. 
+                <br><br><b>Make sure all students have finished the quiz before enabling this!</b>
+            {% endif %}
+        </p>
+        <form method="get" action="{% url 'dashboard_quiz_toggle_review' row.quiz.id %}">
+            <div class="modal-actions">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('detailsModal-{{ row.quiz.id }}')">Cancel</button>
+                <button type="submit" class="modal-btn primary">{% if row.quiz.show_detailed_results %}Hide Details{% else %}Enable Details{% endif %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

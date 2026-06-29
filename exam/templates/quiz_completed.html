@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Quiz Submitted{% endblock %}
+{% block content %}
+<style>
+.complete-page{display:flex;justify-content:center;align-items:center;min-height:70vh;}
+.complete-card{max-width:680px;width:100%;text-align:center;padding:58px;background:var(--glass);border:1px solid var(--glass-border);border-radius:32px;backdrop-filter:blur(28px);box-shadow:var(--shadow);}
+.success-icon{width:108px;height:108px;margin:0 auto 28px;border-radius:32px;display:grid;place-items:center;font-size:3rem;color:#052e22;background:linear-gradient(135deg,#86efac,#2dd4bf);box-shadow:0 18px 46px rgba(45,212,191,.3);}
+.complete-card h1{font-size:2.6rem;margin-bottom:16px;}
+.complete-card p{line-height:1.8;color:var(--text-soft);margin-bottom:34px;}
+.actions{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;}
+</style>
+<div class="complete-page">
+    <div class="complete-card">
+        <div class="success-icon"><i class="fa-solid fa-check"></i></div>
+        <h1>Quiz Submitted Successfully</h1>
+        <p>Thank you for completing <strong>{{ quiz.title }}</strong>. Your responses have been securely recorded.</p>
+        <div class="actions">
+            <a href="/home/" class="btn">Return Home</a>
+            <a href="/quiz-results/" class="btn btn-outline">View Results</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

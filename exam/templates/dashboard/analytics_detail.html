@@ -1,0 +1,402 @@
+﻿{% extends 'dashboard/base.html' %}
+
+{% block heading %}Analytics Details{% endblock %}
+{% block subtitle %}Detailed view of {{ chart_data.title }} for {{ selected_quiz.title }}{% endblock %}
+
+{% block content %}
+<style>
+.accordion-row { cursor: pointer; transition: background-color 0.2s; }
+.accordion-row:hover { background-color: rgba(255,255,255,0.05); }
+.accordion-content { display: none; }
+.accordion-content.expanded { display: table-row; }
+.option-stats { padding: 16px 32px; background: rgba(0,0,0,0.2); border-radius: 8px; margin: 8px 0; }
+.option-bar { display: flex; align-items: center; margin-bottom: 8px; }
+.option-icon { width: 24px; text-align: center; margin-right: 8px; font-size: 14px; }
+.option-icon.correct { color: #10b981; }
+.option-icon.incorrect { color: rgba(255,255,255,0.3); } /* Dim X icon */
+.option-bar-label { width: 40%; padding-right: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.option-bar-track { flex: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-right: 16px; }
+.option-bar-fill { height: 100%; border-radius: 4px; }
+.option-bar-fill.correct { background: #10b981; }
+.option-bar-fill.incorrect { background: #ef4444; }
+.option-bar-value { width: 50px; text-align: right; font-weight: bold; }
+.question-breakdown { padding: 24px; background: rgba(255,255,255,0.03); border-radius: 12px; margin-top: 16px; border: 1px solid rgba(255,255,255,0.05); }
+.question-breakdown h4 { margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; }
+.question-breakdown h4 { margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; }
+.question-breakdown.easiest h4 { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); color: #10b981; }
+.question-breakdown.hardest h4 { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; }
+.cro-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 9999px; font-size: 0.85rem; font-weight: 500; border: 1px solid transparent; }
+</style>
+
+<div style="margin-bottom: 24px; animation: fadeRight 0.5s ease backwards;">
+    <a href="{% url 'dashboard_analytics' %}?quiz={{ selected_quiz.id }}" class="btn btn-secondary">
+        <i class="fa-solid fa-arrow-left"></i> Back to Analytics
+    </a>
+</div>
+
+{% if chart_data.type != 'none' %}
+<section class="chart-grid" style="grid-template-columns: 1fr; margin-bottom: 32px; animation: fadeUp 0.6s ease backwards; animation-delay: 0.1s;">
+    <div class="dashboard-card chart-box" style="height: 500px; min-height: 500px;">
+        <div class="section-heading" style="margin-bottom:12px;"><h2>{{ chart_data.title }}</h2></div>
+        <div class="canvas-container">
+            <canvas id="detailChart"></canvas>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<section class="metric-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); margin-bottom: 32px;">
+    {% for label, value in text_metrics.items %}
+    <div class="metric-card" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.{{ forloop.counter|add:'1' }}s;">
+        <span>{{ label }}</span>
+        <strong>{{ value }}</strong>
+    </div>
+    {% endfor %}
+</section>
+
+{% if chart_type == 'scorecard' %}
+<section class="dashboard-card" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.5s;">
+    <div class="section-heading" style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Class Scorecard</h2>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-small secondary" onclick="openExportModal('csv')"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+            <button class="btn-small secondary" onclick="openExportModal('pdf')"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Student Name</th>
+                    <th>Score</th>
+                    <th>Submitted At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in table_data %}
+                <tr>
+                    <td>#{{ forloop.counter }}</td>
+                    <td><div class="table-title">{{ item.name }}</div></td>
+                    <td>
+                        <span class="status-badge {% if item.percentage >= 40 %}active{% else %}draft{% endif %}">
+                            {{ item.percentage }}%
+                        </span>
+                    </td>
+                    <td><span class="text-subtle">{{ item.submitted_at|date:"M d, Y h:i A" }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="empty-state">No attempts recorded.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+
+
+<script>
+let currentExportFormat = 'csv';
+function openExportModal(format) {
+    currentExportFormat = format;
+    showModal('exportSortModal');
+}
+
+function executeExport(sortParam) {
+    hideModal('exportSortModal');
+    let url = '';
+    if (currentExportFormat === 'csv') {
+        url = "{% url 'export_overall_analysis_csv' selected_quiz.id %}";
+    } else {
+        url = "{% url 'export_overall_analysis_pdf' selected_quiz.id %}";
+    }
+    url += "?sort=" + sortParam;
+    window.location.href = url;
+}
+</script>
+{% endif %}
+
+{% if chart_type == 'difficulty' %}
+    {% if table_data.easiest %}
+    <section class="dashboard-card" style="margin-bottom: 32px; animation: fadeUp 0.6s ease backwards; animation-delay: 0.5s;">
+        <div class="section-heading">
+            <h2>Easiest Questions</h2>
+        </div>
+        {% for q in table_data.easiest %}
+        <div class="question-breakdown easiest">
+            <h4><i class="fa-solid fa-check-circle"></i> {{ q.label }}: {{ q.question_text|striptags }}</h4>
+            <div class="option-stats">
+                {% for opt in q.options %}
+                <div class="option-bar">
+                    <div class="option-icon {% if opt.is_correct %}correct{% else %}incorrect{% endif %}">
+                        <i class="fa-solid {% if opt.is_correct %}fa-check{% else %}fa-times{% endif %}"></i>
+                    </div>
+                    <div class="option-bar-label">{{ opt.text|striptags }}</div>
+                    <div class="option-bar-track">
+                        <div class="option-bar-fill {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" style="width: {{ opt.percentage }}%;"></div>
+                    </div>
+                    <div class="option-bar-value {% if opt.is_correct %}text-success{% endif %}">{{ opt.percentage }}%</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
+    
+    {% if table_data.hardest %}
+    <section class="dashboard-card" style="margin-bottom: 32px; animation: fadeUp 0.6s ease backwards; animation-delay: 0.6s;">
+        <div class="section-heading">
+            <h2>Hardest Questions</h2>
+        </div>
+        {% for q in table_data.hardest %}
+        <div class="question-breakdown hardest">
+            <h4><i class="fa-solid fa-times-circle"></i> {{ q.label }}: {{ q.question_text|striptags }}</h4>
+            <div class="option-stats">
+                {% for opt in q.options %}
+                <div class="option-bar">
+                    <div class="option-icon {% if opt.is_correct %}correct{% else %}incorrect{% endif %}">
+                        <i class="fa-solid {% if opt.is_correct %}fa-check{% else %}fa-times{% endif %}"></i>
+                    </div>
+                    <div class="option-bar-label">{{ opt.text|striptags }}</div>
+                    <div class="option-bar-track">
+                        <div class="option-bar-fill {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" style="width: {{ opt.percentage }}%;"></div>
+                    </div>
+                    <div class="option-bar-value {% if opt.is_correct %}text-success{% endif %}">{{ opt.percentage }}%</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
+{% endif %}
+
+{% if chart_type == 'cro' %}
+<section class="dashboard-card" style="animation: fadeUp 0.6s ease backwards; animation-delay: 0.5s;">
+    <div class="section-heading">
+        <h2>CRO Tagged Questions (Click to expand)</h2>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table" style="table-layout: fixed;">
+            <colgroup>
+                <col style="width: 10%;">
+                <col style="width: 50%;">
+                <col style="width: 15%;">
+                <col style="width: 20%;">
+                <col style="width: 5%;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Q#</th>
+                    <th>Question Text</th>
+                    <th>Accuracy</th>
+                    <th>Category</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in table_data %}
+                <tr class="accordion-row" onclick="toggleAccordion('acc-{{ item.id }}', this)">
+                    <td>Q{{ item.id }}</td>
+                    <td><div class="table-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ item.text|striptags }}</div></td>
+                    <td>{{ item.accuracy }}%</td>
+                    <td>
+                        <span class="cro-badge" style="background: {{ item.color }}; border-color: {{ item.color }}; color: {{ item.text_color }};">
+                            <i class="{{ item.icon }}"></i> {{ item.category }}
+                        </span>
+                    </td>
+                    <td><i class="fa-solid fa-chevron-down" style="transition: transform 0.3s; opacity: 0.5;"></i></td>
+                </tr>
+                <tr id="acc-{{ item.id }}" class="accordion-content">
+                    <td colspan="5" style="padding: 0; border: none;">
+                        <div class="accordion-inner" style="max-height: 0; overflow: hidden; transition: max-height 0.4s ease-in-out;">
+                            <div class="option-stats" style="margin: 0 24px 24px 24px;">
+                                {% for opt in item.options %}
+                                <div class="option-bar">
+                                    <div class="option-icon {% if opt.is_correct %}correct{% else %}incorrect{% endif %}">
+                                        <i class="fa-solid {% if opt.is_correct %}fa-check{% else %}fa-times{% endif %}"></i>
+                                    </div>
+                                    <div class="option-bar-label">{{ opt.text|striptags }}</div>
+                                    <div class="option-bar-track">
+                                        <div class="option-bar-fill {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" style="width: {{ opt.percentage }}%;"></div>
+                                    </div>
+                                    <div class="option-bar-value {% if opt.is_correct %}text-success{% endif %}">{{ opt.percentage }}%</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="empty-state">No questions found for this quiz.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+<script>
+function toggleAccordion(id, rowElement) {
+    const contentRow = document.getElementById(id);
+    const inner = contentRow.querySelector('.accordion-inner');
+    const icon = rowElement.querySelector('.fa-chevron-down');
+    
+    if (contentRow.classList.contains('expanded')) {
+        inner.style.maxHeight = '0px';
+        icon.style.transform = 'rotate(0deg)';
+        setTimeout(() => {
+            contentRow.classList.remove('expanded');
+        }, 400);
+    } else {
+        contentRow.classList.add('expanded');
+        inner.style.maxHeight = inner.scrollHeight + 'px';
+        icon.style.transform = 'rotate(180deg)';
+    }
+}
+</script>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if chart_data.type != 'none' %}
+{{ chart_data|json_script:"chart-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const chartData = JSON.parse(document.getElementById("chart-data").textContent);
+const glassGrid = { color: "rgba(255,255,255,.12)" };
+const glassTicks = { color: "rgba(248,251,255,.72)" };
+
+const speedDialNeedle = {
+    id: 'speedDialNeedle',
+    afterDatasetDraw(chart, args, options) {
+        const { ctx, config, data, chartArea: { top, bottom, left, right, width, height } } = chart;
+        if(config.options.plugins.speedDialNeedle && data.datasets[0].type === 'doughnut') {
+            ctx.save();
+            const value = data.datasets[0].data[0];
+            const max = data.datasets[0].data[0] + data.datasets[0].data[1];
+            
+            // Animation logic for needle
+            let animatedValue = value;
+            if (chart._activeAnimationProgress !== undefined) {
+                animatedValue = value * chart._activeAnimationProgress;
+            }
+            
+            const angle = Math.PI + (1 / max * animatedValue * Math.PI);
+            const cx = width / 2;
+            const cy = chart._metasets[0].data[0].y;
+            
+            ctx.translate(cx, cy);
+            ctx.rotate(angle);
+            
+            // Draw Needle
+            ctx.beginPath();
+            ctx.moveTo(0, -5);
+            ctx.lineTo(chart.outerRadius - 15, 0);
+            ctx.lineTo(0, 5);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            
+            // Draw Dot
+            ctx.beginPath();
+            ctx.arc(0, 0, 10, 0, 2 * Math.PI);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            
+            ctx.restore();
+        }
+    }
+};
+Chart.register(speedDialNeedle);
+
+const ctx = document.getElementById('detailChart');
+if(ctx && window.Chart) {
+    let backgroundColor = ["rgba(45,212,191,.72)","rgba(96,165,250,.72)","rgba(167,139,250,.72)","rgba(251,191,36,.72)"];
+    
+    if (chartData.title === 'CRO Chart') {
+        backgroundColor = ["rgba(239,68,68,.72)", "rgba(245,158,11,.72)", "rgba(16,185,129,.72)"];
+    } else if (chartData.isSpeedDial) {
+        backgroundColor = ["rgba(45,212,191,.8)", "rgba(255,255,255,.05)"];
+    }
+
+    let customOptions = {};
+    if (chartData.isSpeedDial) {
+        customOptions = {
+            circumference: 180,
+            rotation: 270,
+            cutout: "75%"
+        };
+    }
+
+    new Chart(ctx, {
+        type: chartData.type,
+        data: {
+            labels: chartData.labels,
+            datasets: [{
+                label: 'Data',
+                data: chartData.values,
+                borderColor: chartData.type === "doughnut" || chartData.type === "pie" ? "rgba(255,255,255,0.2)" : "#67e8f9",
+                backgroundColor: backgroundColor,
+                borderWidth: 2,
+                tension: .42,
+                fill: chartData.type === "line"
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { 
+                duration: 1500, 
+                easing: "easeOutQuart",
+                onProgress: function(animation) {
+                    if (chartData.title === 'Overall Score') {
+                        animation.chart._activeAnimationProgress = animation.currentStep / animation.numSteps;
+                    }
+                },
+                onComplete: (animation) => {
+                    animation.chart.alreadyAnimated = true;
+                    if (chartData.title === 'Overall Score') {
+                        animation.chart._activeAnimationProgress = 1;
+                    }
+                }
+            },
+            plugins: { 
+                speedDialNeedle: chartData.title === 'Overall Score',
+                legend: { 
+                    display: chartData.type === "pie" || chartData.type === "doughnut",
+                    labels: { color: "rgba(248,251,255,.82)", font: { size: 14 } } 
+                },
+            },
+            scales: chartData.type === "doughnut" || chartData.type === "pie" ? {} : {
+                x: { grid: glassGrid, ticks: { ...glassTicks, font: { size: 14 } } },
+                y: { beginAtZero: true, grid: glassGrid, ticks: { ...glassTicks, font: { size: 14 } } }
+            },
+            ...customOptions
+        }
+    });
+}
+</script>
+{% endif %}
+{% endblock %}
+{% block modals %}
+{% if chart_type == 'scorecard' %}
+<!-- Export Sorting Modal -->
+<div id="exportSortModal" class="modal-overlay">
+    <div class="glass-modal">
+        <div class="modal-icon"><i class="fa-solid fa-sort"></i></div>
+        <h2>Export Sorting Preference</h2>
+        <p style="text-align: center; margin-bottom: 24px; color: var(--text-soft); line-height: 1.6;">
+            How would you like to order the students in this export?
+        </p>
+        <div class="modal-actions" style="flex-direction: column; gap: 12px;">
+            <button type="button" class="modal-btn primary" style="width: 100%;" onclick="executeExport('marks')">Marking-wise (Highest Score First)</button>
+            <button type="button" class="modal-btn primary" style="width: 100%;" onclick="executeExport('alpha')">Alphabetically (A-Z)</button>
+            <button type="button" class="modal-btn secondary" style="width: 100%; margin-top: 10px;" onclick="hideModal('exportSortModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

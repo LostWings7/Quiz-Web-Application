@@ -1,0 +1,106 @@
+{% extends 'dashboard/base.html' %}
+
+{% block heading %}Map Student Columns{% endblock %}
+{% block subtitle %}Match spreadsheet columns to student account fields.{% endblock %}
+
+{% block content %}
+<div class="dashboard-card">
+    <p class="dashboard-subtitle" style="margin-bottom:16px;">
+        File: <strong>{{ filename }}</strong> &middot; {{ row_count }} data row{{ row_count|pluralize }}
+    </p>
+
+    <form class="dash-form" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="import">
+
+        <div class="import-mapping-grid">
+            <div class="mapping-row required">
+                <label>Username</label>
+                <select name="map_username" required>
+                    <option value="">— Select column —</option>
+                    {% for col in columns %}
+                    <option value="{{ col.index }}">{{ col.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mapping-row">
+                <label>First name <span class="optional">optional</span></label>
+                <select name="map_first_name">
+                    <option value="">— None —</option>
+                    {% for col in columns %}
+                    <option value="{{ col.index }}">{{ col.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mapping-row">
+                <label>Last name <span class="optional">optional</span></label>
+                <select name="map_last_name">
+                    <option value="">— None —</option>
+                    {% for col in columns %}
+                    <option value="{{ col.index }}">{{ col.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mapping-row">
+                <label>Email <span class="optional">optional</span></label>
+                <select name="map_email">
+                    <option value="">— None —</option>
+                    {% for col in columns %}
+                    <option value="{{ col.index }}">{{ col.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mapping-row">
+                <label>Password <span class="optional">optional</span></label>
+                <select name="map_password">
+                    <option value="">— None —</option>
+                    {% for col in columns %}
+                    <option value="{{ col.index }}">{{ col.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        {% if preview %}
+        <div class="section-heading" style="margin-top:28px;">
+            <h2>Preview</h2>
+        </div>
+        <div class="import-preview-wrap">
+            <table class="glass-table import-preview-table">
+                <thead>
+                    <tr>
+                        {% if preview_headers %}
+                            {% for cell in preview_headers %}
+                            <th>{{ cell|default:"—" }}</th>
+                            {% endfor %}
+                        {% else %}
+                            {% for col in columns %}
+                            <th>{{ col.label }}</th>
+                            {% endfor %}
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in preview %}
+                    <tr>
+                        {% for cell in row %}
+                        <td>{{ cell|truncatechars:40|default:"—" }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <div class="dashboard-actions" style="justify-content:flex-start;margin-top:24px;">
+            <button class="dash-btn" type="submit"><i class="fa-solid fa-file-import"></i> Import Students</button>
+            <a class="dash-btn secondary" href="{% url 'dashboard_student_import' %}?cancel=1">Start Over</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
