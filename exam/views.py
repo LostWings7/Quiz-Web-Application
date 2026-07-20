@@ -31,6 +31,7 @@ def question_options_for_template(question):
             'value': option_value(option),
             'legacy_value': option.label,
             'is_correct': option.is_correct,
+            'image_urls': [img.url for img in option.get_all_images()],
         }
         for option in question.get_options()
     ]
@@ -107,7 +108,8 @@ def student_result_detail(request, result_id):
                 'value': opt_dict['legacy_value'] or opt_val,
                 'text': opt_text,
                 'is_correct': opt_dict['is_correct'],
-                'is_selected': str(opt_val) == str(user_answer)
+                'is_selected': str(opt_val) == str(user_answer),
+                'image_url': opt_dict['image_url'],
             })
             
         is_correct = answer_is_correct(question, user_answer)
@@ -129,6 +131,33 @@ def student_result_detail(request, result_id):
     }
     return render(request, 'student_result_detail.html', context)
 
+def is_eligible_for_quiz(user, quiz):
+    if user.is_staff or user.is_superuser:
+        return True
+    
+    # Check if quiz is restricted to classes
+    if not quiz.assigned_classes.exists():
+        return True
+    
+    from .models import StudentProfile
+    profile, _ = StudentProfile.objects.get_or_create(user=user)
+    if not profile.class_group:
+        return False
+        
+    # Check if student's class is in the assigned classes
+    if not quiz.assigned_classes.filter(id=profile.class_group.id).exists():
+        return False
+        
+    # Check if sections are restricted for this class
+    assigned_sections_for_class = quiz.assigned_sections.filter(class_group=profile.class_group)
+    if not assigned_sections_for_class.exists():
+        return True
+        
+    if profile.section and assigned_sections_for_class.filter(id=profile.section.id).exists():
+        return True
+        
+    return False
+
 @login_required
 def enter_code_view(request):
 
@@ -145,6 +174,9 @@ def enter_code_view(request):
             try:
 
                 quiz = Quiz.objects.get(code=code, is_active=True)
+
+                if not is_eligible_for_quiz(request.user, quiz):
+                    return render(request, "quiz_not_assigned.html")
 
                 # Store the quiz temporarily
                 request.session["pending_quiz"] = quiz.id
@@ -187,6 +219,10 @@ def start_quiz_view(request):
 
         return redirect("enter-code")
 
+    quiz = get_object_or_404(Quiz, id=quiz_id)
+    if not is_eligible_for_quiz(request.user, quiz):
+        return render(request, "quiz_not_assigned.html")
+
     # Remove temporary session value
     del request.session["pending_quiz"]
 
@@ -203,6 +239,9 @@ def start_quiz_view(request):
 @login_required 
 def quiz_question_view(request, quiz_id, question_num):
     quiz = get_object_or_404(Quiz, id=quiz_id)
+
+    if not is_eligible_for_quiz(request.user, quiz):
+        return render(request, "quiz_not_assigned.html")
 
     if QuizResult.objects.filter(quiz=quiz, user=request.user).exists():
         return render(request, 'quiz_already_done.html')
@@ -337,6 +376,9 @@ def save_answer_ajax(request, quiz_id, question_num):
         return JsonResponse({"success": False}, status=400)
 
     quiz = get_object_or_404(Quiz, id=quiz_id)
+
+    if not is_eligible_for_quiz(request.user, quiz):
+        return JsonResponse({"success": False, "error": "Unauthorized"}, status=403)
 
     question_ids = request.session.get(f'quiz_{quiz_id}_order')
 
@@ -586,6 +628,7 @@ def question_analysis_view(request, quiz_id):
                     'text': option['text'],
                     'percent': option_percentages[option['value']],
                     'is_correct': option['is_correct'],
+                    'image_url': option['image_url'],
                 }
                 for option in options
             ],
@@ -599,37 +642,127 @@ def question_analysis_view(request, quiz_id):
 
 def export_overall_analysis_csv(request, quiz_id):
     quiz = Quiz.objects.get(id=quiz_id)
+    total_questions = quiz.questions.count() or 1
     
     sort_param = request.GET.get('sort', 'marks')
     if sort_param == 'alpha':
-        results = QuizResult.objects.filter(quiz=quiz).select_related('user').order_by('user__first_name', 'user__username')
+        results = QuizResult.objects.filter(quiz=quiz).select_related('user', 'user__profile', 'user__profile__class_group', 'user__profile__section').order_by('user__first_name', 'user__username')
     else:
-        results = QuizResult.objects.filter(quiz=quiz).select_related('user').order_by('-score', 'submitted_at')
+        results = QuizResult.objects.filter(quiz=quiz).select_related('user', 'user__profile', 'user__profile__class_group', 'user__profile__section').order_by('-score', 'submitted_at')
 
+    col_params = request.GET.get('cols', '')
+    if col_params:
+        selected_cols = [c.strip() for c in col_params.split(',') if c.strip()]
+    else:
+        selected_cols = ['sno', 'name', 'marks', 'date']
+
+    col_mapping = {
+        'sno': 'S.No',
+        'name': 'Student Name',
+        'marks': 'Marks',
+        'pct': 'Percentage',
+        'date': 'Date Submitted',
+        'class': 'Class',
+        'section': 'Section'
+    }
+
+    headers = [col_mapping[c] for c in selected_cols if c in col_mapping]
+    
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="{quiz.title}_scorecard.csv"'
 
     writer = csv.writer(response)
-    writer.writerow(['Name', 'Score', 'Submitted At'])
+    writer.writerow(headers)
 
-    for result in results:
-        name = f"{result.user.first_name} {result.user.last_name}".strip() or result.user.username
-        writer.writerow([name, result.score, result.submitted_at.strftime('%Y-%m-%d %H:%M')])
+    for index, result in enumerate(results):
+        row = []
+        for c in selected_cols:
+            if c == 'sno':
+                row.append(index + 1)
+            elif c == 'name':
+                row.append(f"{result.user.first_name} {result.user.last_name}".strip() or result.user.username)
+            elif c == 'marks':
+                row.append(f'="{result.score}/{total_questions}"')
+            elif c == 'pct':
+                row.append(f"{round(result.score * 100 / total_questions, 1)}%")
+            elif c == 'date':
+                row.append(result.submitted_at.strftime('%Y-%m-%d %H:%M'))
+            elif c == 'class':
+                try:
+                    c_name = result.user.profile.class_group.name if result.user.profile.class_group else 'N/A'
+                except:
+                    c_name = 'N/A'
+                row.append(c_name)
+            elif c == 'section':
+                try:
+                    s_name = result.user.profile.section.name if result.user.profile.section else 'N/A'
+                except:
+                    s_name = 'N/A'
+                row.append(s_name)
+        writer.writerow(row)
 
     return response
 
 def export_overall_analysis_pdf(request, quiz_id):
     quiz = Quiz.objects.get(id=quiz_id)
+    total_questions = quiz.questions.count() or 1
     
     sort_param = request.GET.get('sort', 'marks')
     if sort_param == 'alpha':
-        results = QuizResult.objects.filter(quiz=quiz).select_related('user').order_by('user__first_name', 'user__username')
+        results = QuizResult.objects.filter(quiz=quiz).select_related('user', 'user__profile', 'user__profile__class_group', 'user__profile__section').order_by('user__first_name', 'user__username')
     else:
-        results = QuizResult.objects.filter(quiz=quiz).select_related('user').order_by('-score', 'submitted_at')
+        results = QuizResult.objects.filter(quiz=quiz).select_related('user', 'user__profile', 'user__profile__class_group', 'user__profile__section').order_by('-score', 'submitted_at')
+
+    col_params = request.GET.get('cols', '')
+    if col_params:
+        selected_cols = [c.strip() for c in col_params.split(',') if c.strip()]
+    else:
+        selected_cols = ['sno', 'name', 'marks', 'date']
+
+    col_mapping = {
+        'sno': 'S.No',
+        'name': 'Student Name',
+        'marks': 'Marks',
+        'pct': 'Percentage',
+        'date': 'Date Submitted',
+        'class': 'Class',
+        'section': 'Section'
+    }
+
+    headers = [col_mapping[c] for c in selected_cols if c in col_mapping]
+    rows = []
+
+    for index, result in enumerate(results):
+        row = []
+        for c in selected_cols:
+            if c == 'sno':
+                row.append(index + 1)
+            elif c == 'name':
+                row.append(f"{result.user.first_name} {result.user.last_name}".strip() or result.user.username)
+            elif c == 'marks':
+                row.append(f"{result.score}/{total_questions}")
+            elif c == 'pct':
+                row.append(f"{round(result.score * 100 / total_questions, 1)}%")
+            elif c == 'date':
+                row.append(result.submitted_at.strftime('%Y-%m-%d %H:%M'))
+            elif c == 'class':
+                try:
+                    c_name = result.user.profile.class_group.name if result.user.profile.class_group else 'N/A'
+                except:
+                    c_name = 'N/A'
+                row.append(c_name)
+            elif c == 'section':
+                try:
+                    s_name = result.user.profile.section.name if result.user.profile.section else 'N/A'
+                except:
+                    s_name = 'N/A'
+                row.append(s_name)
+        rows.append(row)
 
     html = render_to_string('admin/analysis_pdf_template.html', {
         'quiz': quiz,
-        'results': results,
+        'headers': headers,
+        'rows': rows,
     })
 
     response = HttpResponse(content_type='application/pdf')

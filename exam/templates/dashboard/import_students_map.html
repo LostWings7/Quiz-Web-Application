@@ -1,5 +1,5 @@
 {% extends 'dashboard/base.html' %}
-
+{% load static %}
 {% block heading %}Map Student Columns{% endblock %}
 {% block subtitle %}Match spreadsheet columns to student account fields.{% endblock %}
 
@@ -63,6 +63,26 @@
                     {% endfor %}
                 </select>
             </div>
+
+            <div class="mapping-row">
+                <label>Class <span class="optional">optional</span></label>
+                <select name="map_class">
+                    <option value="">— None —</option>
+                    {% for col in columns %}
+                    <option value="{{ col.index }}">{{ col.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mapping-row">
+                <label>Section <span class="optional">optional</span></label>
+                <select name="map_section">
+                    <option value="">— None —</option>
+                    {% for col in columns %}
+                    <option value="{{ col.index }}">{{ col.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
 
         {% if preview %}
@@ -104,3 +124,4 @@
     </form>
 </div>
 {% endblock %}
+

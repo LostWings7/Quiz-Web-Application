@@ -1,7 +1,90 @@
 {% extends 'dashboard/base.html' %}
+{% load static %}
 
 {% block heading %}{{ title }}{% endblock %}
 {% block subtitle %}Complete the fields below and save your changes.{% endblock %}
+
+{% block extra_css %}
+<style>
+.custom-quiz-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(0, 255, 200, 0.35);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    outline: none;
+}
+.custom-quiz-checkbox:hover {
+    border-color: #00ffc8;
+    background: rgba(0, 255, 200, 0.1);
+    box-shadow: 0 0 10px rgba(0, 255, 200, 0.2);
+}
+.custom-quiz-checkbox:checked {
+    background: #00ffc8;
+    border-color: #00ffc8;
+    box-shadow: 0 0 12px rgba(0, 255, 200, 0.4);
+}
+.custom-quiz-checkbox:checked::after {
+    content: '✓';
+    color: #050c18;
+    font-size: 13px;
+    font-weight: 900;
+}
+.section-checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    align-items: center;
+    justify-content: center;
+}
+.section-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.18s ease;
+    user-select: none;
+}
+.section-checkbox-label:hover {
+    background: rgba(0, 255, 200, 0.08);
+    border-color: rgba(0, 255, 200, 0.3);
+}
+.quiz-section-select:focus {
+    border-color: rgba(0, 255, 200, 0.4);
+}
+.quiz-section-select:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+.drop-zone {
+    border: 2px dashed rgba(255, 255, 255, 0.22);
+    border-radius: 16px;
+    padding: 22px 18px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: all 0.22s ease-in-out;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+    border-color: #67e8f9;
+    background: rgba(103, 232, 249, 0.08);
+    box-shadow: 0 0 15px rgba(103, 232, 249, 0.15);
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="dashboard-card">
@@ -25,21 +108,36 @@
                 {{ form.text }}
             </p>
 
-            <div class="question-row">
-
-                <div class="field-half">
-                    {{ form.image.label_tag }}
-                    {{ form.image }}
+            <!-- Drag & Drop Question Images (directly below Question Text) -->
+            <div class="drop-zone" id="questionImageDropZone" style="margin-top:10px; margin-bottom:20px;">
+                <div class="drop-zone-content">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.8rem; color:#67e8f9; margin-bottom:6px;"></i>
+                    <p style="font-size:0.88rem; font-weight:600; margin-bottom:4px; color:rgba(255,255,255,0.9);">Drag &amp; Drop Question Images here, or <span style="color:#67e8f9; text-decoration:underline;">Browse</span></p>
+                    <span style="font-size:0.75rem; color:rgba(255,255,255,0.45);">Supported Formats: PNG, JPG, JPEG, WEBP, GIF (Select or drop multiple files)</span>
                 </div>
+                <input type="file" name="extra_question_images" id="extraQuestionImagesInput" multiple accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" style="display:none;">
+                <div class="file-list-preview" id="questionFilesPreview" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; justify-content:center;"></div>
 
-                <div class="field-half">
-                    {{ form.subtopic.label_tag }}
-                    {{ form.subtopic }}
+                {% if question_images %}
+                <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:12px; justify-content:center;" onclick="event.stopPropagation();">
+                    {% for img in question_images %}
+                    <div class="image-manage-card" id="questionImgCard_{{ img.id_val }}" style="display:flex; flex-direction:column; align-items:center; gap:6px; background:rgba(0,0,0,0.35); padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12);">
+                        <img src="{{ img.url }}" style="height:70px; object-fit:contain; border-radius:6px;">
+                        <button type="button" class="btn-small danger" style="padding:4px 10px; font-size:0.75rem; margin-top:4px;" onclick="promptDeleteExistingQuestionImage('{{ img.id_val }}')">
+                            <i class="fa-solid fa-trash-can"></i> Delete
+                        </button>
+                    </div>
+                    {% endfor %}
                 </div>
-
+                {% endif %}
             </div>
 
-            <div class="section-heading" style="margin-top:10px;">
+            <p style="margin-top:16px;">
+                {{ form.subtopic.label_tag }}
+                {{ form.subtopic }}
+            </p>
+
+            <div class="section-heading" style="margin-top:20px;">
                 <h2>Options</h2>
                 <button class="btn-small secondary" id="addOption" type="button">
                     <i class="fa-solid fa-plus"></i>
@@ -55,8 +153,37 @@
                         <input type="radio" name="correct_option" value="{{ forloop.counter0 }}" {% if option.is_correct %}checked{% endif %}>
                         Correct
                     </label>
-                    <textarea name="option_text" rows="2" placeholder="Option text" required>{{ option.text }}</textarea>
-                    <button class="btn-small danger remove-option" type="button" aria-label="Remove option">
+                    
+                    <div class="option-content-col" style="display:flex; flex-direction:column; gap:10px; min-width:0; width:100%;">
+                        <textarea name="option_text" rows="2" placeholder="Option text">{{ option.text }}</textarea>
+                        
+                        <div class="option-media-container drop-zone option-drop-zone" id="optionDropZone_{{ forloop.counter0 }}" style="padding:10px 14px; background:rgba(0,0,0,0.25); border:1px dashed rgba(255,255,255,0.18); border-radius:12px; cursor:pointer;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                    <i class="fa-solid fa-cloud-arrow-up" style="color:#00ffc8; font-size:1.1rem;"></i>
+                                    <span style="font-size:0.82rem; font-weight:600; color:rgba(255,255,255,0.9);">Drag &amp; Drop Option Images here, or <span style="color:#00ffc8; text-decoration:underline;">Browse</span></span>
+                                    <small style="color:rgba(255,255,255,0.4); font-size:0.75rem;">Formats: PNG, JPG, JPEG, WEBP, GIF</small>
+                                </div>
+                                <input type="file" name="option_images_{{ forloop.counter0 }}" id="optionImagesInput_{{ forloop.counter0 }}" class="option-image-input" multiple accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" style="display:none;">
+                            </div>
+                            <div class="file-list-preview option-file-preview" id="optionFilePreview_{{ forloop.counter0 }}" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;" onclick="event.stopPropagation();"></div>
+
+                            {% if option.images %}
+                            <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:8px;" onclick="event.stopPropagation();">
+                                {% for img in option.images %}
+                                <div class="current-option-image-preview" id="optionImgCard_{{ forloop.parentloop.counter0 }}_{{ img.id_val }}" style="display:flex; flex-direction:column; align-items:center; gap:4px; background:rgba(0,0,0,0.35); padding:6px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.12);">
+                                    <img src="{{ img.url }}" style="max-height:50px; border-radius:4px; object-fit:contain;">
+                                    <button type="button" class="btn-small danger" style="padding:2px 8px; font-size:0.72rem; margin-top:2px;" onclick="promptDeleteExistingOptionImage({{ forloop.parentloop.counter0 }}, '{{ img.id_val }}')">
+                                        <i class="fa-solid fa-trash-can"></i> Delete
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <button class="btn-small danger remove-option" type="button" aria-label="Remove option" style="align-self:center;">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
@@ -66,6 +193,72 @@
             {% else %}
 
             {{ form.as_p }}
+
+            {% if title == "Create Quiz" or title == "Edit Quiz" %}
+            <hr style="margin:30px 0;border:0;border-top:1px solid rgba(255,255,255,.12);">
+
+            <div class="section-heading" style="margin-bottom:10px;">
+                <h2>Class &amp; Section Visibility Assignment</h2>
+            </div>
+            <p class="dashboard-subtitle" style="margin-bottom:20px;">
+                Check the classes to assign this quiz to, and optionally select specific sections. Leave section options unselected to grant access to all sections in that class.
+            </p>
+
+            <table class="glass-table" style="margin-bottom:24px;">
+                <thead>
+                    <tr>
+                        <th style="width:70px; text-align:center;">Assign</th>
+                        <th>Class Name</th>
+                        <th style="text-align:center;">Section Assignment</th>
+                        <th>Enrolled Students</th>
+                        <th style="width:140px; text-align:center;">Access Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in all_classes %}
+                    {% with cid=c.id|stringformat:"s" %}
+                    <tr id="classAssignRow-{{ c.id }}">
+                        <td style="text-align:center;">
+                            <input type="checkbox" name="assigned_classes" value="{{ c.id }}" class="custom-quiz-checkbox" id="classChk-{{ c.id }}" {% if cid in selected_class_ids %}checked{% endif %} onchange="toggleQuizClassRow({{ c.id }})">
+                        </td>
+                        <td>
+                            <label for="classChk-{{ c.id }}" style="font-weight:600; cursor:pointer; color:#fff; font-size:0.95rem;">
+                                {{ c.name }}
+                            </label>
+                        </td>
+                        <td style="text-align:center;">
+                            {% if c.sections.all %}
+                            <div class="section-checkbox-group" id="sectionGroup-{{ c.id }}">
+                                {% for sec in c.sections.all %}
+                                {% with sid=sec.id|stringformat:"s" %}
+                                <label class="section-checkbox-label" for="secChk-{{ sec.id }}">
+                                    <input type="checkbox" name="assigned_sections" value="{{ sec.id }}" class="custom-quiz-checkbox section-chk-{{ c.id }}" id="secChk-{{ sec.id }}" {% if sid in selected_section_ids %}checked{% endif %} {% if cid not in selected_class_ids %}disabled{% endif %} onchange="onSectionCheckboxChange({{ c.id }})">
+                                    <span>Section {{ sec.name }}</span>
+                                </label>
+                                {% endwith %}
+                                {% endfor %}
+                            </div>
+                            <small style="display:block; color:rgba(255,255,255,0.4); font-size:0.75rem; margin-top:6px;">Select specific sections, or leave unselected to grant access to All Sections.</small>
+                            {% else %}
+                            <span style="color:rgba(255,255,255,0.4); font-size:0.85rem;">No sections (All students in {{ c.name }})</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span style="font-size:0.88rem; color:rgba(255,255,255,0.8);"><i class="fa-solid fa-users" style="margin-right:6px; color:#00ffc8;"></i>{{ c.student_count }} Student{{ c.student_count|pluralize }}</span>
+                        </td>
+                        <td style="text-align:center;">
+                            <span id="accessBadge-{{ c.id }}" class="pill {% if cid in selected_class_ids %}success{% else %}warning{% endif %}" style="white-space:nowrap;">
+                                {% if cid in selected_class_ids %}Assigned{% else %}Not Assigned{% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% empty %}
+                    <tr><td colspan="5"><div class="empty-state">No classes available. Create classes first.</div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
 
             {% endif %}
         <div class="dashboard-actions" style="justify-content:flex-start;">
@@ -114,14 +307,264 @@
         </div>
     </div>
 </div>
+<div id="deleteImageModal" class="modal-overlay">
+    <div class="glass-modal">
+        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h2>Delete Image?</h2>
+        <p id="deleteImageModalText">Are you sure you want to remove this image?</p>
+        <div class="modal-actions">
+            <button type="button" class="modal-btn secondary" id="cancelImageDelete">Cancel</button>
+            <button type="button" class="modal-btn primary" id="confirmImageDelete">Delete</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 {% if title == "Edit Question" or title == "Create Question" %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="{% static 'js/vendor/tinymce/js/tinymce/tinymce.min.js' %}" referrerpolicy="origin"></script>
 <script>
 const optionList = document.getElementById("optionList");
 const addOption = document.getElementById("addOption");
+
+let imageDeleteCallback = null;
+
+function showDeleteImageModal(msg, onConfirm) {
+    const modal = document.getElementById("deleteImageModal");
+    const textEl = document.getElementById("deleteImageModalText");
+    if (textEl) textEl.textContent = msg || "Are you sure you want to remove this image?";
+    imageDeleteCallback = onConfirm;
+    if (modal) modal.classList.add("show");
+}
+
+document.getElementById("cancelImageDelete").addEventListener("click", () => {
+    const modal = document.getElementById("deleteImageModal");
+    if (modal) modal.classList.remove("show");
+    imageDeleteCallback = null;
+});
+
+document.getElementById("confirmImageDelete").addEventListener("click", () => {
+    if (typeof imageDeleteCallback === "function") {
+        imageDeleteCallback();
+    }
+    const modal = document.getElementById("deleteImageModal");
+    if (modal) modal.classList.remove("show");
+    imageDeleteCallback = null;
+});
+
+function promptDeleteExistingQuestionImage(idVal) {
+    showDeleteImageModal("Are you sure you want to delete this question image?", function() {
+        const card = document.getElementById("questionImgCard_" + idVal);
+        if (card) {
+            const hiddenInput = document.createElement("input");
+            hiddenInput.type = "hidden";
+            hiddenInput.name = "delete_question_image_ids";
+            hiddenInput.value = idVal;
+            document.querySelector(".dash-form").appendChild(hiddenInput);
+            card.remove();
+        }
+    });
+}
+
+function promptDeleteExistingOptionImage(optIdx, idVal) {
+    showDeleteImageModal("Are you sure you want to delete this option image?", function() {
+        const card = document.getElementById(`optionImgCard_${optIdx}_${idVal}`);
+        if (card) {
+            const hiddenInput = document.createElement("input");
+            hiddenInput.type = "hidden";
+            hiddenInput.name = `delete_option_image_ids_${optIdx}`;
+            hiddenInput.value = idVal;
+            const optionRow = card.closest(".option-edit-row");
+            if (optionRow) {
+                optionRow.appendChild(hiddenInput);
+            }
+            card.remove();
+        }
+    });
+}
+
+const questionFilesDT = new DataTransfer();
+
+function setupQuestionImagesDropZone() {
+    const dropZone = document.getElementById("questionImageDropZone");
+    const fileInput = document.getElementById("extraQuestionImagesInput");
+    if (!dropZone || !fileInput) return;
+
+    dropZone.addEventListener("click", (e) => {
+        if (e.target.tagName !== "INPUT" && !e.target.closest(".image-manage-card") && !e.target.closest("button")) {
+            fileInput.click();
+        }
+    });
+
+    ["dragenter", "dragover"].forEach(evt => {
+        dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add("drag-over");
+        }, false);
+    });
+
+    ["dragleave", "drop"].forEach(evt => {
+        dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove("drag-over");
+        }, false);
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            addQuestionFiles(files);
+        }
+    });
+
+    fileInput.addEventListener("change", () => {
+        if (fileInput.files && fileInput.files.length > 0) {
+            addQuestionFiles(fileInput.files);
+        }
+    });
+}
+
+function addQuestionFiles(files) {
+    const fileInput = document.getElementById("extraQuestionImagesInput");
+    Array.from(files).forEach(file => {
+        questionFilesDT.items.add(file);
+    });
+    if (fileInput) fileInput.files = questionFilesDT.files;
+    renderQuestionFilesPreview();
+}
+
+function renderQuestionFilesPreview() {
+    const previewContainer = document.getElementById("questionFilesPreview");
+    if (!previewContainer) return;
+    previewContainer.innerHTML = "";
+    
+    Array.from(questionFilesDT.files).forEach((file, index) => {
+        const blobUrl = URL.createObjectURL(file);
+        const card = document.createElement("div");
+        card.className = "image-manage-card";
+        card.style.cssText = "display:flex; flex-direction:column; align-items:center; gap:6px; background:rgba(0,0,0,0.35); padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12);";
+        card.innerHTML = `
+            <img src="${blobUrl}" style="height:70px; max-width:110px; object-fit:contain; border-radius:6px;">
+            <span style="font-size:0.72rem; color:rgba(255,255,255,0.7); max-width:100px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${file.name}</span>
+            <button type="button" class="btn-small danger" style="padding:4px 10px; font-size:0.75rem; margin-top:4px;" onclick="promptDeleteNewQuestionFile(${index})">
+                <i class="fa-solid fa-trash-can"></i> Delete
+            </button>
+        `;
+        previewContainer.appendChild(card);
+    });
+}
+
+function promptDeleteNewQuestionFile(index) {
+    showDeleteImageModal("Are you sure you want to delete this pending question image?", function() {
+        const fileInput = document.getElementById("extraQuestionImagesInput");
+        const newDT = new DataTransfer();
+        Array.from(questionFilesDT.files).forEach((f, i) => {
+            if (i !== index) newDT.items.add(f);
+        });
+        questionFilesDT.items.clear();
+        Array.from(newDT.files).forEach(f => questionFilesDT.items.add(f));
+        if (fileInput) fileInput.files = questionFilesDT.files;
+        renderQuestionFilesPreview();
+    });
+}
+
+const optionFilesDTMap = {};
+
+function setupOptionDropZone(optIdx) {
+    const dropZone = document.getElementById(`optionDropZone_${optIdx}`);
+    const fileInput = document.getElementById(`optionImagesInput_${optIdx}`);
+    if (!dropZone || !fileInput) return;
+
+    if (!optionFilesDTMap[optIdx]) {
+        optionFilesDTMap[optIdx] = new DataTransfer();
+    }
+
+    dropZone.onclick = function(e) {
+        if (e.target.tagName !== "INPUT" && !e.target.closest(".current-option-image-preview") && !e.target.closest(".image-manage-card") && !e.target.closest("button")) {
+            fileInput.click();
+        }
+    };
+
+    ["dragenter", "dragover"].forEach(evt => {
+        dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add("drag-over");
+        }, false);
+    });
+
+    ["dragleave", "drop"].forEach(evt => {
+        dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove("drag-over");
+        }, false);
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            addOptionFiles(optIdx, files);
+        }
+    });
+
+    fileInput.onchange = function() {
+        if (fileInput.files && fileInput.files.length > 0) {
+            addOptionFiles(optIdx, fileInput.files);
+        }
+    };
+}
+
+function addOptionFiles(optIdx, files) {
+    const fileInput = document.getElementById(`optionImagesInput_${optIdx}`);
+    if (!optionFilesDTMap[optIdx]) {
+        optionFilesDTMap[optIdx] = new DataTransfer();
+    }
+    Array.from(files).forEach(file => {
+        optionFilesDTMap[optIdx].items.add(file);
+    });
+    if (fileInput) fileInput.files = optionFilesDTMap[optIdx].files;
+    renderOptionFilesPreview(optIdx);
+}
+
+function renderOptionFilesPreview(optIdx) {
+    const previewContainer = document.getElementById(`optionFilePreview_${optIdx}`);
+    if (!previewContainer) return;
+    previewContainer.innerHTML = "";
+    
+    if (!optionFilesDTMap[optIdx]) return;
+
+    Array.from(optionFilesDTMap[optIdx].files).forEach((file, fileIdx) => {
+        const blobUrl = URL.createObjectURL(file);
+        const card = document.createElement("div");
+        card.className = "image-manage-card";
+        card.style.cssText = "display:flex; flex-direction:column; align-items:center; gap:4px; background:rgba(0,0,0,0.35); padding:6px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.12);";
+        card.innerHTML = `
+            <img src="${blobUrl}" style="max-height:50px; border-radius:4px; object-fit:contain;">
+            <button type="button" class="btn-small danger" style="padding:2px 8px; font-size:0.72rem; margin-top:2px;" onclick="promptDeleteNewOptionFile(${optIdx}, ${fileIdx})">
+                <i class="fa-solid fa-trash-can"></i> Delete
+            </button>
+        `;
+        previewContainer.appendChild(card);
+    });
+}
+
+function promptDeleteNewOptionFile(optIdx, fileIdx) {
+    showDeleteImageModal("Are you sure you want to delete this pending option image?", function() {
+        const fileInput = document.getElementById(`optionImagesInput_${optIdx}`);
+        const currentDT = optionFilesDTMap[optIdx];
+        if (!currentDT) return;
+        const newDT = new DataTransfer();
+        Array.from(currentDT.files).forEach((f, i) => {
+            if (i !== fileIdx) newDT.items.add(f);
+        });
+        optionFilesDTMap[optIdx] = newDT;
+        if (fileInput) fileInput.files = newDT.files;
+        renderOptionFilesPreview(optIdx);
+    });
+}
 
 function initTinyMCE(target) {
     tinymce.init({
@@ -130,7 +573,7 @@ function initTinyMCE(target) {
         height: target.name === 'option_text' ? 120 : 300,
         resize: true,
         plugins: 'lists link code',
-        toolbar: 'undo redo | bold italic underline strikethrough | numlist bullist | link code',
+        toolbar: 'undo redo | bold italic underline strikethrough | numlist bullist | link code | subscript superscript',
         skin: 'oxide-dark',
         content_css: 'dark',
         setup: function (editor) {
@@ -141,12 +584,39 @@ function initTinyMCE(target) {
     });
 }
 
+function clearOptionImage(btn, index) {
+    const container = btn.closest('.current-option-image-preview');
+    if (container) {
+        const hiddenInput = container.querySelector('input[type="hidden"]');
+        if (hiddenInput) hiddenInput.value = '';
+        container.style.display = 'none';
+    }
+}
+
 function renumberOptions(){
     optionList.querySelectorAll(".option-edit-row").forEach((row, index) => {
         const radio = row.querySelector('input[type="radio"]');
         radio.value = index;
         const letter = row.querySelector(".option-letter");
         if (letter) letter.textContent = index < 26 ? String.fromCharCode(65 + index) : String(index + 1);
+        
+        const dropZone = row.querySelector('.option-drop-zone');
+        const fileInput = row.querySelector('.option-image-input');
+        const previewContainer = row.querySelector('.option-file-preview');
+        
+        if (fileInput) {
+            fileInput.name = 'option_images_' + index;
+            fileInput.id = 'optionImagesInput_' + index;
+        }
+        if (dropZone) {
+            dropZone.id = 'optionDropZone_' + index;
+            setupOptionDropZone(index);
+        }
+
+        row.querySelectorAll('input[name^="delete_option_image_ids_"]').forEach(chk => {
+            chk.name = `delete_option_image_ids_${index}`;
+        });
+        
         row.querySelector(".remove-option").disabled = optionList.children.length === 1;
     });
     if(!optionList.querySelector('input[type="radio"]:checked')){
@@ -163,8 +633,24 @@ function addOptionRow(text = ""){
             <input type="radio" name="correct_option">
             Correct
         </label>
-        <textarea name="option_text" rows="2" placeholder="Option text" required></textarea>
-        <button class="btn-small danger remove-option" type="button" aria-label="Remove option">
+        
+        <div class="option-content-col" style="display:flex; flex-direction:column; gap:10px; min-width:0; width:100%;">
+            <textarea name="option_text" rows="2" placeholder="Option text"></textarea>
+            
+            <div class="option-media-container drop-zone option-drop-zone" style="padding:10px 14px; background:rgba(0,0,0,0.25); border:1px dashed rgba(255,255,255,0.18); border-radius:12px; cursor:pointer;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <i class="fa-solid fa-cloud-arrow-up" style="color:#00ffc8; font-size:1.1rem;"></i>
+                        <span style="font-size:0.82rem; font-weight:600; color:rgba(255,255,255,0.9);">Drag &amp; Drop Option Images here, or <span style="color:#00ffc8; text-decoration:underline;">Browse</span></span>
+                        <small style="color:rgba(255,255,255,0.4); font-size:0.75rem;">Formats: PNG, JPG, JPEG, WEBP, GIF</small>
+                    </div>
+                    <input type="file" name="option_images" class="option-image-input" multiple accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" style="display:none;">
+                </div>
+                <div class="file-list-preview option-file-preview" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;"></div>
+            </div>
+        </div>
+        
+        <button class="btn-small danger remove-option" type="button" aria-label="Remove option" style="align-self:center;">
             <i class="fa-solid fa-trash"></i>
         </button>
     `;
@@ -207,6 +693,97 @@ document.getElementById("confirmOptionDelete").addEventListener("click", () => {
 
 renumberOptions();
 document.querySelectorAll('textarea').forEach(el => initTinyMCE(el));
+setupQuestionImagesDropZone();
+</script>
+{% endif %}
+
+{% if title == "Create Student" or title == "Edit Student" %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const classSelect = document.getElementById("id_class_group");
+    const sectionSelect = document.getElementById("id_section");
+    
+    if (classSelect && sectionSelect) {
+        function updateSections(selectedClassId, initialSectionId = null) {
+            if (!selectedClassId) {
+                sectionSelect.innerHTML = '<option value="">---------</option>';
+                sectionSelect.disabled = true;
+                return;
+            }
+            
+            fetch(`/dashboard/classes/get-sections-ajax/?class_id=${selectedClassId}`)
+                .then(response => response.json())
+                .then(data => {
+                    sectionSelect.innerHTML = '<option value="">---------</option>';
+                    sectionSelect.disabled = false;
+                    data.forEach(sec => {
+                        const opt = document.createElement("option");
+                        opt.value = sec.id;
+                        opt.textContent = sec.name;
+                        if (initialSectionId && String(sec.id) === String(initialSectionId)) {
+                            opt.selected = true;
+                        }
+                        sectionSelect.appendChild(opt);
+                    });
+                });
+        }
+        
+        classSelect.addEventListener("change", function() {
+            updateSections(this.value);
+        });
+        
+        if (classSelect.value) {
+            const initialSectionId = sectionSelect.value;
+            updateSections(classSelect.value, initialSectionId);
+        } else {
+            sectionSelect.disabled = true;
+        }
+    }
+});
+</script>
+{% endif %}
+
+{% if title == "Create Quiz" or title == "Edit Quiz" %}
+<script>
+function toggleQuizClassRow(classId) {
+    const chk = document.getElementById(`classChk-${classId}`);
+    const secCheckboxes = document.querySelectorAll(`.section-chk-${classId}`);
+    const badge = document.getElementById(`accessBadge-${classId}`);
+    
+    if (chk && chk.checked) {
+        secCheckboxes.forEach(sc => sc.disabled = false);
+        if (badge) {
+            badge.className = 'pill success';
+            badge.textContent = 'Assigned';
+        }
+    } else {
+        secCheckboxes.forEach(sc => {
+            sc.disabled = true;
+            sc.checked = false;
+        });
+        if (badge) {
+            badge.className = 'pill warning';
+            badge.textContent = 'Not Assigned';
+        }
+    }
+}
+
+function onSectionCheckboxChange(classId) {
+    const classChk = document.getElementById(`classChk-${classId}`);
+    const secCheckboxes = document.querySelectorAll(`.section-chk-${classId}`);
+    const badge = document.getElementById(`accessBadge-${classId}`);
+    
+    const anySecChecked = Array.from(secCheckboxes).some(sc => sc.checked);
+    if (anySecChecked && classChk && !classChk.checked) {
+        classChk.checked = true;
+        secCheckboxes.forEach(sc => sc.disabled = false);
+        if (badge) {
+            badge.className = 'pill success';
+            badge.textContent = 'Assigned';
+        }
+    }
+}
 </script>
 {% endif %}
 {% endblock %}
+

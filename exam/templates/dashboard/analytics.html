@@ -1,4 +1,5 @@
-﻿{% extends 'dashboard/base.html' %}
+{% extends 'dashboard/base.html' %}
+{% load static %}
 
 {% block heading %}Analytics{% endblock %}
 {% block subtitle %}Detailed performance metrics for your quizzes.{% endblock %}
@@ -100,7 +101,7 @@
 {% block extra_js %}
 {% if selected_quiz %}
 {{ chart_data|json_script:"chart-data" }}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/vendor/chart.min.js' %}"></script>
 <script>
 const chartData = JSON.parse(document.getElementById("chart-data").textContent);
 const glassGrid = { color: "rgba(255,255,255,.12)" };
@@ -228,3 +229,4 @@ makeChart("difficultyChart", "line", chartData.difficultyLabels, chartData.diffi
 </script>
 {% endif %}
 {% endblock %}
+

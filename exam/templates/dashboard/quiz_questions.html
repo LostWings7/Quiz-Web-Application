@@ -1,5 +1,5 @@
 {% extends "dashboard/base.html" %}
-
+{% load static %}
 {% block heading %}
 {{ quiz.title }}
 {% endblock %}
@@ -135,7 +135,7 @@ No questions in this quiz.
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script src="{% static 'js/vendor/Sortable.min.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var el = document.querySelector('.glass-table tbody');
@@ -200,3 +200,4 @@ document.addEventListener("keydown",e=>{
 });
 </script>
 {% endblock %}
+

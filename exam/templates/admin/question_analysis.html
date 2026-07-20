@@ -159,7 +159,7 @@
 
 {% block content %}
 <div style="display: flex; justify-content: center; margin-bottom: 10px;">
-<a href="{% url 'overall_analysis' quiz.id %}" class="back-button" style="margin-top: 20px; text-align: center;">← Back to Analysis</a>
+<a href="{% url 'overall_analysis' quiz.id %}" class="back-button" style="margin-top: 20px; text-align: center;">&larr; Back to Analysis</a>
 </div>
 <h1 class="title">Question-wise Analysis for "{{ quiz.title }}"</h1>
 
@@ -181,7 +181,12 @@
         <div class="options">
             {% for option in question.options %}
             <div class="option {% if option.is_correct %}correct {% else %}incorrect {% endif %}">
-                <span class="option-text">{{option.label}}. {{ option.text|safe }}</span>
+                <span class="option-text" style="display:flex; flex-direction:column; gap:6px;">
+                    <span>{{option.label}}. {{ option.text|safe }}</span>
+                    {% if option.image_url %}
+                    <img src="{{ option.image_url }}" alt="Option {{ option.label }}" style="max-height: 80px; max-width: 100%; border-radius: 4px; object-fit: contain; margin-top: 4px; align-self: flex-start;">
+                    {% endif %}
+                </span>
                 <div class="bar-bg">
                     <div class="bar-fill" data-percent="{{ option.percent }}"></div>
                     <span class="percent-label" style="color: black;">{{ option.percent }}%</span>

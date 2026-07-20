@@ -3,66 +3,47 @@
 ========================================== */
 
 .modal-overlay{
-
     position:fixed;
     inset:0;
-
     display:flex;
     justify-content:center;
     align-items:center;
-
-    background:rgba(10,18,35,.35);
-    backdrop-filter:blur(12px);
-
+    background:rgba(5, 12, 24, 0.78);
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
     opacity:0;
     visibility:hidden;
-
     transition:
         opacity .28s ease,
         visibility .28s ease;
-
-    z-index:9999;
-
+    z-index:99999;
 }
 
 .modal-overlay.show{
-
     opacity:1;
     visibility:visible;
-
 }
 
 .glass-modal{
-
     width:100%;
-    max-width:460px;
-
-    padding:38px;
-
-    background:rgba(255,255,255,.13);
-
-    border:1px solid rgba(255,255,255,.18);
-
-    border-radius:30px;
-
+    max-width:540px;
+    padding:34px;
+    background:rgba(12, 22, 38, 0.92);
+    border:1px solid rgba(0, 255, 200, 0.25);
+    border-radius:24px;
     backdrop-filter:blur(28px);
-
+    -webkit-backdrop-filter:blur(28px);
     box-shadow:
-        0 25px 70px rgba(0,0,0,.35),
-        inset 0 1px 0 rgba(255,255,255,.20);
-
+        0 25px 70px rgba(0,0,0,.6),
+        inset 0 1px 0 rgba(255,255,255,.15);
     text-align:center;
-
     transform:
         translateY(25px)
         scale(.95);
-
     opacity:0;
-
     transition:
         transform .28s cubic-bezier(.22,1,.36,1),
         opacity .28s ease;
-
 }
 
 .modal-overlay.show .glass-modal{

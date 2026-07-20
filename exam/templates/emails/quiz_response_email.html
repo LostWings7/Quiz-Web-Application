@@ -33,13 +33,33 @@
         <p style="color: black;"><strong>Q{{ forloop.counter }}. {{ entry.question }}</strong></p>
         {% for option in entry.options %}
             {% if option.selected and entry.is_correct %}
-                <span class="option selected correct">({{ option.label }}) {{ option.text|safe }}</span>
+                <span class="option selected correct" style="display:block; margin-bottom:6px;">
+                    <span>({{ option.label }}) {{ option.text|safe }}</span>
+                    {% if option.image_url %}
+                    <img src="{{ option.image_url }}" alt="Option {{ option.label }}" style="max-height: 80px; max-width: 100%; border-radius: 4px; display: block; margin-top: 4px;">
+                    {% endif %}
+                </span>
             {% elif option.selected and not entry.is_correct %}
-                <span class="option selected incorrect">({{ option.label }}) {{ option.text|safe }}</span>
+                <span class="option selected incorrect" style="display:block; margin-bottom:6px;">
+                    <span>({{ option.label }}) {{ option.text|safe }}</span>
+                    {% if option.image_url %}
+                    <img src="{{ option.image_url }}" alt="Option {{ option.label }}" style="max-height: 80px; max-width: 100%; border-radius: 4px; display: block; margin-top: 4px;">
+                    {% endif %}
+                </span>
             {% elif option.value == entry.correct and not entry.is_correct %}
-                <span class="option correct">({{ option.label }}) {{ option.text|safe }}</span>
+                <span class="option correct" style="display:block; margin-bottom:6px;">
+                    <span>({{ option.label }}) {{ option.text|safe }}</span>
+                    {% if option.image_url %}
+                    <img src="{{ option.image_url }}" alt="Option {{ option.label }}" style="max-height: 80px; max-width: 100%; border-radius: 4px; display: block; margin-top: 4px;">
+                    {% endif %}
+                </span>
             {% else %}
-                <span class="option">({{ option.label }}) {{ option.text|safe }}</span>
+                <span class="option" style="display:block; margin-bottom:6px;">
+                    <span>({{ option.label }}) {{ option.text|safe }}</span>
+                    {% if option.image_url %}
+                    <img src="{{ option.image_url }}" alt="Option {{ option.label }}" style="max-height: 80px; max-width: 100%; border-radius: 4px; display: block; margin-top: 4px;">
+                    {% endif %}
+                </span>
             {% endif %}
         {% endfor %}
     </div>
@@ -47,3 +67,4 @@
 </div>
 </body>
 </html>
+

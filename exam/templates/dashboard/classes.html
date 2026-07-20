@@ -1,0 +1,819 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Classes & Sections | QuizX{% endblock %}
+{% block heading %}Classes & Sections{% endblock %}
+{% block subtitle %}Organize students into classes and sections.{% endblock %}
+
+{% block actions %}
+<button class="dash-btn" onclick="showModal('createClassModal')"><i class="fa-solid fa-plus"></i>Create Class</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Class Cards */
+.classes-grid { display: grid; gap: 20px; }
+.class-card {
+    background: var(--glass);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+.class-card:hover { border-color: rgba(0,255,200,0.2); }
+.class-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 24px;
+    cursor: pointer;
+    user-select: none;
+}
+.class-card-header:hover .class-name { color: #00ffc8; }
+.class-name { font-size: 1.5rem; font-weight: 700; color: #fff; transition: color 0.2s; margin: 0; }
+.class-meta { display: flex; gap: 16px; margin-top: 4px; color: rgba(255,255,255,0.5); font-size: 0.88rem; }
+.class-meta i { margin-right: 4px; }
+.class-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.chevron-icon { color: rgba(255,255,255,0.4); font-size: 0.85rem; transition: transform 0.28s cubic-bezier(0.4,0,0.2,1); }
+.class-card.open .chevron-icon { transform: rotate(180deg); }
+
+/* Sections panel */
+.sections-panel {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.28s ease;
+    opacity: 0;
+    border-top: 0px solid rgba(255,255,255,0.07);
+}
+.class-card.open .sections-panel {
+    max-height: 1000px;
+    opacity: 1;
+    border-top-width: 1px;
+}
+.sections-inner { padding: 20px 24px; }
+.sections-label { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 14px; }
+.sections-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.section-tile {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: border-color 0.2s, background 0.2s;
+}
+.section-tile:hover { border-color: rgba(0,255,200,0.18); background: rgba(0,255,200,0.03); }
+.section-tile-name { font-weight: 600; font-size: 1.05rem; }
+.section-tile-count { font-size: 0.8rem; color: rgba(255,255,255,0.4); margin-top: 2px; }
+.section-tile-actions { display: flex; gap: 4px; }
+
+/* Edit Class Modal Styles */
+.edit-modal-wide { max-width: 780px !important; width: 92vw !important; }
+.modal-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 24px; gap: 0; }
+.modal-tab { padding: 10px 20px; background: none; border: none; border-bottom: 2px solid transparent; color: rgba(255,255,255,0.5); font-size: 0.9rem; cursor: pointer; transition: color 0.2s, border-color 0.2s; font-weight: 500; }
+.modal-tab.active { color: #00ffc8; border-bottom-color: #00ffc8; }
+
+.modal-tab-pane {
+    display: none;
+    height: 380px;
+    box-sizing: border-box;
+}
+.modal-tab-pane.active {
+    display: flex;
+    flex-direction: column;
+}
+.modal-tab-pane .modal-actions {
+    margin-top: auto;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+
+/* Section management inside edit modal */
+#sectionsList, #classStudentsList {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 6px;
+    margin-bottom: 14px;
+}
+#sectionsList::-webkit-scrollbar,
+#classStudentsList::-webkit-scrollbar,
+.student-search-results::-webkit-scrollbar {
+    width: 6px;
+}
+#sectionsList::-webkit-scrollbar-track,
+#classStudentsList::-webkit-scrollbar-track,
+.student-search-results::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 3px;
+}
+#sectionsList::-webkit-scrollbar-thumb,
+#classStudentsList::-webkit-scrollbar-thumb,
+.student-search-results::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 200, 0.25);
+    border-radius: 3px;
+}
+#sectionsList::-webkit-scrollbar-thumb:hover,
+#classStudentsList::-webkit-scrollbar-thumb:hover,
+.student-search-results::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 200, 0.5);
+}
+
+.modal-toast {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    background: rgba(0, 255, 200, 0.15);
+    border: 1px solid rgba(0, 255, 200, 0.4);
+    color: #00ffc8;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+.modal-toast.error {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+}
+
+
+.section-row {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px; padding: 8px 12px; margin-bottom: 8px;
+}
+.section-row-name {
+    flex: 1; background: none; border: none; color: #fff; font-size: 0.95rem; outline: none;
+    padding: 4px 0;
+}
+.section-row-name:focus { border-bottom: 1px solid rgba(0,255,200,0.4); }
+.add-section-row {
+    display: flex; gap: 8px; align-items: center; margin-top: 12px;
+    padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07);
+}
+.add-section-row input { flex: 1; }
+
+/* Student management inside edit modal */
+.student-row-item {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px; padding: 8px 14px; margin-bottom: 8px;
+    height: 56px; box-sizing: border-box;
+}
+.student-row-name {
+    flex: 1; min-width: 0;
+    font-weight: 500;
+    display: flex; flex-direction: column;
+    justify-content: center;
+}
+.student-row-name-text {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 0.92rem; color: #fff;
+    font-weight: 600;
+}
+.student-row-username {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 0.78rem; color: rgba(255,255,255,0.4);
+    margin-top: 1px;
+}
+.student-row-group {
+    font-size: 0.8rem; color: rgba(0,255,200,0.85); background: rgba(0,255,200,0.08);
+    border: 1px solid rgba(0,255,200,0.22); padding: 3px 8px; border-radius: 6px;
+    white-space: nowrap;
+}
+.student-section-select {
+    padding: 6px 12px; background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px; color: #fff; font-size: 0.85rem; outline: none;
+    cursor: pointer; transition: border-color 0.2s;
+    width: 140px;
+}
+.student-section-select:focus {
+    border-color: rgba(0,255,200,0.4);
+}
+.add-student-search { position: relative; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); }
+.student-search-results {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100;
+    background: rgba(10,20,35,0.97); border: 1px solid rgba(0,255,200,0.2);
+    border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+    max-height: 220px; overflow-y: auto;
+}
+.student-search-result-item { padding: 10px 14px; cursor: pointer; transition: background 0.15s; display: flex; justify-content: space-between; align-items: center; }
+.student-search-result-item:hover { background: rgba(0,255,200,0.06); }
+.ajax-error { color: #ef4444; font-size: 0.85rem; margin-top: 6px; }
+.ajax-success { color: #00ffc8; font-size: 0.85rem; margin-top: 6px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="classes-grid" id="classesGrid" style="animation: fadeUp 0.6s ease backwards;">
+
+{% for class_obj in classes %}
+<div class="class-card" id="classCard-{{ class_obj.id }}">
+    <div class="class-card-header" onclick="toggleClass({{ class_obj.id }})">
+        <div>
+            <h2 class="class-name">{{ class_obj.name }}</h2>
+            <div class="class-meta">
+                <span><i class="fa-solid fa-users"></i>{{ class_obj.student_count }} Student{{ class_obj.student_count|pluralize }}</span>
+                <span><i class="fa-solid fa-folder"></i>{{ class_obj.sections.all|length }} Section{{ class_obj.sections.all|length|pluralize }}</span>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="class-actions" onclick="event.stopPropagation()">
+                <a class="btn-small secondary" href="{% url 'dashboard_class_students' class_id=class_obj.id %}" title="View All Students"><i class="fa-solid fa-users"></i></a>
+                <button class="btn-small secondary" onclick="openEditModal({{ class_obj.id }})" title="Edit Class"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn-small danger" onclick="showModal('deleteClassModal-{{ class_obj.id }}')" title="Delete Class"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <i class="fa-solid fa-chevron-down chevron-icon"></i>
+        </div>
+    </div>
+
+    <div class="sections-panel">
+        <div class="sections-inner">
+            <div class="sections-label">Sections</div>
+            <div class="sections-grid" id="sectionsGrid-{{ class_obj.id }}">
+                {% for section in class_obj.sections.all %}
+                <div class="section-tile" id="sectionTile-{{ section.id }}">
+                    <div>
+                        <div class="section-tile-name">{{ section.name }}</div>
+                        <div class="section-tile-count">{{ section.student_count }} Student{{ section.student_count|pluralize }}</div>
+                    </div>
+                    <div class="section-tile-actions">
+                        <a class="btn-small secondary" href="{% url 'dashboard_section_students' section_id=section.id %}" title="View Students"><i class="fa-solid fa-users"></i></a>
+                    </div>
+                </div>
+                {% empty %}
+                <div id="noSectionsMsg-{{ class_obj.id }}" style="color:rgba(255,255,255,0.35); font-size:0.9rem; padding:8px 0;">No sections yet. Add sections in the Edit panel.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Class Modal -->
+<div id="deleteClassModal-{{ class_obj.id }}" class="modal-overlay">
+    <div class="glass-modal">
+        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h2>Delete Class</h2>
+        <p style="color:#ef4444; font-weight:600; text-align:center;">⚠ This will permanently delete {{ class_obj.name }} and all its sections!</p>
+        <p style="text-align:center; color:var(--text-soft);">Students assigned to this class will be unassigned. This cannot be undone.</p>
+        <form method="post" action="{% url 'dashboard_class_delete' class_obj.id %}">
+            {% csrf_token %}
+            <div class="modal-actions">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('deleteClassModal-{{ class_obj.id }}')">Cancel</button>
+                <button type="submit" class="modal-btn primary">Delete Class</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% empty %}
+<div class="dashboard-card" style="text-align:center; padding:60px 40px;">
+    <i class="fa-solid fa-graduation-cap fa-3x" style="opacity:0.25; margin-bottom:20px; display:block;"></i>
+    <h2>No classes yet</h2>
+    <p style="color:rgba(255,255,255,0.5); margin-bottom:24px;">Create classes to organize your students into groups.</p>
+    <button class="dash-btn" onclick="showModal('createClassModal')"><i class="fa-solid fa-plus"></i>Create First Class</button>
+</div>
+{% endfor %}
+
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Create Class Modal -->
+<div id="createClassModal" class="modal-overlay">
+    <div class="glass-modal">
+        <h2><i class="fa-solid fa-graduation-cap" style="color:#00ffc8; margin-right:10px;"></i>Create Class</h2>
+        <form method="post" action="{% url 'dashboard_class_create' %}">
+            {% csrf_token %}
+            <div class="dash-form">
+                <p>
+                    <label>Class Name</label>
+                    {{ class_form.name }}
+                </p>
+                <p>
+                    <label>Notes <span style="opacity:0.5;">(optional)</span></label>
+                    {{ class_form.notes }}
+                </p>
+            </div>
+            <div class="modal-actions" style="margin-top:20px;">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('createClassModal')">Cancel</button>
+                <button type="submit" class="modal-btn primary">Create Class</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Class Modal (shared, populated by JS) -->
+<div id="editClassModal" class="modal-overlay">
+    <div class="glass-modal edit-modal-wide" style="position: relative;">
+        <!-- Absolute positioned toast inside the modal container -->
+        <div id="modalToast" class="modal-toast" style="display:none;"></div>
+
+        <h2 id="editModalTitle" style="margin-bottom:6px;"></h2>
+
+        <div class="modal-tabs">
+            <button class="modal-tab active" onclick="switchTab('tabDetails')">Details</button>
+            <button class="modal-tab" onclick="switchTab('tabSections')">Sections</button>
+        </div>
+
+        <!-- Tab: Details -->
+        <div id="tabDetails" class="modal-tab-pane active">
+            <div class="dash-form">
+                <p>
+                    <label>Class Name</label>
+                    <input type="text" id="editClassName" placeholder="e.g. Class 10">
+                </p>
+                <p>
+                    <label>Notes <span style="opacity:0.5;">(optional)</span></label>
+                    <textarea id="editClassNotes" rows="2" style="resize:vertical;"></textarea>
+                </p>
+            </div>
+            <div class="modal-actions" style="margin-top:20px;">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('editClassModal')">Close</button>
+                <button type="button" class="modal-btn primary" onclick="saveClassDetails()">Save Changes</button>
+            </div>
+        </div>
+
+        <!-- Tab: Sections -->
+        <div id="tabSections" class="modal-tab-pane">
+            <div id="sectionsList"></div>
+            <div class="add-section-row">
+                <input type="text" id="newSectionInput" placeholder="New section name (e.g. A)">
+                <button class="dash-btn" style="white-space:nowrap;" onclick="addSection()"><i class="fa-solid fa-plus"></i> Add Section</button>
+            </div>
+            <div class="modal-actions" style="margin-top:20px;">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('editClassModal')">Close</button>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentClassId = null;
+let classSections = {};   // { classId: [{id, name, student_count}] }
+let classStudents = {};   // { classId: [{id, name, username, group, section_id}] }
+
+// ---- Toggle expand/collapse ----
+function toggleClass(classId) {
+    const card = document.getElementById('classCard-' + classId);
+    card.classList.toggle('open');
+}
+
+// ---- Tab switching ----
+function switchTab(tabId) {
+    document.querySelectorAll('.modal-tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    // find the button that triggered this
+    const idx = ['tabDetails','tabSections','tabStudents'].indexOf(tabId);
+    document.querySelectorAll('.modal-tab')[idx].classList.add('active');
+
+    if (tabId === 'tabStudents') loadClassStudents(currentClassId);
+}
+
+// ---- Open Edit Modal ----
+function openEditModal(classId) {
+    currentClassId = classId;
+    const card = document.getElementById('classCard-' + classId);
+    const name = card.querySelector('.class-name').textContent.trim();
+    document.getElementById('editModalTitle').textContent = 'Edit Class: ' + name;
+    document.getElementById('editClassName').value = name;
+    document.getElementById('editClassNotes').value = '';
+    const toast = document.getElementById('modalToast');
+    if (toast) toast.style.display = 'none';
+
+    // reset to details tab
+    switchTab('tabDetails');
+    loadSectionsList(classId);
+    showModal('editClassModal');
+}
+
+// ---- Save Class Details ----
+function saveClassDetails() {
+    const name = document.getElementById('editClassName').value.trim();
+    const notes = document.getElementById('editClassNotes').value;
+    const msg = document.getElementById('editDetailsMsg');
+    if (!name) { showMsg(msg, 'Class name cannot be empty.', false); return; }
+
+    const fd = new FormData();
+    fd.append('action', 'rename');
+    fd.append('name', name);
+    fd.append('notes', notes);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch(`/dashboard/classes/${currentClassId}/edit-ajax/`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Update card name in the DOM
+                document.querySelector(`#classCard-${currentClassId} .class-name`).textContent = data.name;
+                document.getElementById('editModalTitle').textContent = 'Edit Class: ' + data.name;
+                showMsg(msg, 'Class name saved.', true);
+            } else {
+                showMsg(msg, data.error || 'An error occurred.', false);
+            }
+        });
+}
+
+// ---- Sections List ----
+function loadSectionsList(classId) {
+    const grid = document.getElementById(`sectionsGrid-${classId}`);
+    const sections = [];
+    grid.querySelectorAll('.section-tile').forEach(tile => {
+        const sId = tile.id.replace('sectionTile-', '');
+        const name = tile.querySelector('.section-tile-name').textContent;
+        const countText = tile.querySelector('.section-tile-count').textContent;
+        const count = parseInt(countText) || 0;
+        sections.push({ id: sId, name, student_count: count });
+    });
+    classSections[classId] = sections;
+    renderSectionsList(classId);
+}
+
+function renderSectionsList(classId) {
+    const container = document.getElementById('sectionsList');
+    const sections = classSections[classId] || [];
+    if (!sections.length) {
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.35); font-size:0.9rem;">No sections yet.</p>';
+        return;
+    }
+    container.innerHTML = sections.map(s => `
+        <div class="section-row" id="sectionRow-${s.id}">
+            <input class="section-row-name" type="text" value="${s.name}" placeholder="Section name" id="sectionNameInput-${s.id}">
+            <span style="font-size:0.8rem; color:rgba(255,255,255,0.35); white-space:nowrap;">${s.student_count} student${s.student_count !== 1 ? 's' : ''}</span>
+            <button class="btn-small secondary" title="Rename" onclick="renameSection(${s.id})"><i class="fa-solid fa-floppy-disk"></i></button>
+            <button class="btn-small danger" title="Delete" onclick="deleteSection(${s.id})"><i class="fa-solid fa-trash"></i></button>
+        </div>
+    `).join('');
+    // Also allow Enter key to save
+    sections.forEach(s => {
+        document.getElementById(`sectionNameInput-${s.id}`).addEventListener('keydown', e => {
+            if (e.key === 'Enter') renameSection(s.id);
+        });
+    });
+}
+
+function addSection() {
+    const input = document.getElementById('newSectionInput');
+    const name = input.value.trim();
+    const msg = document.getElementById('sectionMsg');
+    if (!name) { showMsg(msg, 'Section name cannot be empty.', false); return; }
+
+    const fd = new FormData();
+    fd.append('action', 'add_section');
+    fd.append('name', name);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch(`/dashboard/classes/${currentClassId}/edit-ajax/`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                input.value = '';
+                classSections[currentClassId].push(data.section);
+                renderSectionsList(currentClassId);
+                updateSectionsInCard(currentClassId);
+                updateSectionSelects(currentClassId);
+                document.getElementById(`noSectionsMsg-${currentClassId}`)?.remove();
+                showMsg(msg, `Section "${data.section.name}" added.`, true);
+            } else {
+                showMsg(msg, data.error, false);
+            }
+        });
+}
+
+function renameSection(sectionId) {
+    const input = document.getElementById(`sectionNameInput-${sectionId}`);
+    const name = input.value.trim();
+    const msg = document.getElementById('sectionMsg');
+
+    const fd = new FormData();
+    fd.append('action', 'rename_section');
+    fd.append('section_id', sectionId);
+    fd.append('name', name);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch(`/dashboard/classes/${currentClassId}/edit-ajax/`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Update in sections cache
+                const sec = classSections[currentClassId]?.find(s => String(s.id) === String(sectionId));
+                if (sec) sec.name = data.section.name;
+                updateSectionsInCard(currentClassId);
+                updateSectionSelects(currentClassId);
+                showMsg(msg, `Section renamed to "${data.section.name}".`, true);
+            } else {
+                showMsg(msg, data.error, false);
+            }
+        });
+}
+
+function deleteSection(sectionId) {
+    if (!confirm('Delete this section? Students in it will remain in the class but lose their section.')) return;
+    const msg = document.getElementById('sectionMsg');
+
+    const fd = new FormData();
+    fd.append('action', 'delete_section');
+    fd.append('section_id', sectionId);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch(`/dashboard/classes/${currentClassId}/edit-ajax/`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                classSections[currentClassId] = classSections[currentClassId].filter(s => String(s.id) !== String(sectionId));
+                renderSectionsList(currentClassId);
+                updateSectionsInCard(currentClassId);
+                updateSectionSelects(currentClassId);
+                document.getElementById(`sectionTile-${sectionId}`)?.remove();
+                showMsg(msg, 'Section deleted.', true);
+            } else {
+                showMsg(msg, data.error, false);
+            }
+        });
+}
+
+// Update section tiles in the class card after changes
+function updateSectionsInCard(classId) {
+    const grid = document.getElementById(`sectionsGrid-${classId}`);
+    const sections = classSections[classId] || [];
+    // Rebuild tiles for updated sections
+    const existing = {};
+    grid.querySelectorAll('.section-tile').forEach(t => { existing[t.id.replace('sectionTile-','')] = t; });
+    
+    // Update names in existing tiles
+    sections.forEach(s => {
+        if (existing[s.id]) {
+            existing[s.id].querySelector('.section-tile-name').textContent = s.name;
+        } else {
+            // New section tile
+            const tile = document.createElement('div');
+            tile.className = 'section-tile';
+            tile.id = `sectionTile-${s.id}`;
+            tile.innerHTML = `<div><div class="section-tile-name">${s.name}</div><div class="section-tile-count">${s.student_count} Student${s.student_count !== 1 ? 's' : ''}</div></div>
+                <div class="section-tile-actions"><a class="btn-small secondary" href="/dashboard/sections/${s.id}/students/" title="View Students"><i class="fa-solid fa-users"></i></a></div>`;
+            grid.appendChild(tile);
+        }
+    });
+    
+    // Update count in card header
+    const card = document.getElementById(`classCard-${classId}`);
+    if (card) {
+        const meta = card.querySelectorAll('.class-meta span');
+        if (meta[1]) meta[1].innerHTML = `<i class="fa-solid fa-folder"></i>${sections.length} Section${sections.length !== 1 ? 's' : ''}`;
+    }
+}
+
+// Update section <select> elements in student rows
+function updateSectionSelects(classId) {
+    const sections = classSections[classId] || [];
+    document.querySelectorAll('.student-section-select').forEach(sel => {
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="">No Section</option>' + sections.map(s => `<option value="${s.id}" ${String(s.id) === String(currentVal) ? 'selected' : ''}>${s.name}</option>`).join('');
+    });
+}
+
+// ---- Class Students ----
+function loadClassStudents(classId) {
+    const container = document.getElementById('classStudentsList');
+    container.innerHTML = '<div style="padding:20px; text-align:center; color:rgba(255,255,255,0.4);"><i class="fa-solid fa-spinner fa-spin"></i> Loading…</div>';
+
+    fetch(`/dashboard/classes/${classId}/students/?format=json&page_size=100`)
+        .then(r => r.json())
+        .then(data => {
+            // data is { students: [...], page: {...} } from student_list's JSON path
+            // But class_students doesn't support JSON - use students from student page
+            // We need to pass class filter. Actually let's fetch via student list AJAX
+        })
+        .catch(() => {
+            // Fallback: use dedicated JSON fetch
+        });
+    
+    // Use student_list AJAX with class filter
+    const sections = classSections[classId] || [];
+    fetch(`/dashboard/students/?format=json&classes=${classId}&page_size=200`)
+        .then(r => r.json())
+        .then(data => {
+            classStudents[classId] = data.students;
+            renderClassStudents(classId, sections);
+        })
+        .catch(() => {
+            container.innerHTML = '<p style="color:#ef4444;">Failed to load students.</p>';
+        });
+}
+
+function renderClassStudents(classId, sections) {
+    const container = document.getElementById('classStudentsList');
+    const students = classStudents[classId] || [];
+    const sectionOptions = (classSections[classId] || []).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+    if (!students.length) {
+        container.innerHTML = '<p style="color:rgba(255,255,255,0.4); font-size:0.9rem;">No students assigned to this class yet.</p>';
+        return;
+    }
+
+    container.innerHTML = students.map(s => {
+        // Determine current section id from group badge
+        const secId = s.section_id || '';
+        return `<div class="student-row-item" id="studentRowItem-${s.id}">
+            <div class="student-row-name">
+                <span class="student-row-name-text">${s.name}</span>
+                <span class="student-row-username">@${s.username}</span>
+            </div>
+            <span class="student-row-group">${s.group}</span>
+            <select class="student-section-select" id="sectionSel-${s.id}" onchange="moveStudent(${s.id}, this.value)">
+                <option value="">No Section</option>
+                ${sectionOptions}
+            </select>
+            <button class="btn-small danger" onclick="removeStudent(${s.id})" title="Remove from class"><i class="fa-solid fa-xmark"></i></button>
+        </div>`;
+    }).join('');
+
+    // Set current section values
+    students.forEach(s => {
+        const sel = document.getElementById(`sectionSel-${s.id}`);
+        if (sel && s.section_id) sel.value = s.section_id;
+    });
+}
+
+function moveStudent(studentId, sectionId) {
+    const msg = document.getElementById('studentMsg');
+    const fd = new FormData();
+    fd.append('student_id', studentId);
+    fd.append('section_id', sectionId);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch(`/dashboard/classes/${currentClassId}/move-student/`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Update group badge
+                const row = document.getElementById(`studentRowItem-${studentId}`);
+                if (row) row.querySelector('.student-row-group').textContent = data.group;
+                // Update in cache
+                const s = classStudents[currentClassId]?.find(s => String(s.id) === String(studentId));
+                if (s) { s.group = data.group; s.section_id = data.section_id; }
+                showMsg(msg, 'Section updated.', true);
+            } else {
+                showMsg(msg, data.error || 'Failed to move student.', false);
+            }
+        });
+}
+
+function removeStudent(studentId) {
+    if (!confirm('Remove this student from the class?')) return;
+    const msg = document.getElementById('studentMsg');
+    const fd = new FormData();
+    fd.append('student_id', studentId);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch(`/dashboard/classes/${currentClassId}/remove-student/`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById(`studentRowItem-${studentId}`)?.remove();
+                classStudents[currentClassId] = classStudents[currentClassId]?.filter(s => String(s.id) !== String(studentId)) || [];
+                
+                // Update student count in card
+                const card = document.getElementById(`classCard-${currentClassId}`);
+                const meta = card?.querySelectorAll('.class-meta span');
+                if (meta && meta[0]) {
+                    const count = classStudents[currentClassId].length;
+                    meta[0].innerHTML = `<i class="fa-solid fa-users"></i>${count} Student${count !== 1 ? 's' : ''}`;
+                }
+                showMsg(msg, 'Student removed from class.', true);
+            }
+        });
+}
+
+// ---- Student Search for Add ----
+let searchDebounce;
+function searchStudents(q) {
+    const resultsEl = document.getElementById('studentSearchResults');
+    clearTimeout(searchDebounce);
+    if (!q.trim()) { resultsEl.style.display = 'none'; return; }
+
+    searchDebounce = setTimeout(() => {
+        fetch(`/dashboard/classes/student-search-ajax/?class_id=${currentClassId}&q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.length) { resultsEl.innerHTML = '<div style="padding:12px 14px; color:rgba(255,255,255,0.4);">No students found</div>'; }
+                else {
+                    resultsEl.innerHTML = data.map(s => `
+                        <div class="student-search-result-item" onclick="addStudentToClass(${s.id}, '${escHtml(s.name)}', '${escHtml(s.username)}', '${escHtml(s.group)}')">
+                            <span>${s.name} <small style="color:rgba(255,255,255,0.4);">@${s.username}</small></span>
+                            <small style="color:rgba(255,255,255,0.3);">${s.group}</small>
+                        </div>
+                    `).join('');
+                }
+                resultsEl.style.display = 'block';
+            });
+    }, 300);
+}
+
+function addStudentToClass(studentId, name, username, group) {
+    document.getElementById('studentSearchInput').value = '';
+    document.getElementById('studentSearchResults').style.display = 'none';
+    const msg = document.getElementById('studentMsg');
+
+    // Optionally pick section
+    const sections = classSections[currentClassId] || [];
+    let sectionId = '';
+    if (sections.length) {
+        // Auto-assign no section; user can change from the row
+    }
+
+    const fd = new FormData();
+    fd.append('student_id', studentId);
+    fd.append('section_id', sectionId);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch(`/dashboard/classes/${currentClassId}/add-student/`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const s = data.student;
+                // Add to cache
+                if (!classStudents[currentClassId]) classStudents[currentClassId] = [];
+                classStudents[currentClassId].push({ id: s.id, name: s.name, username: s.username, group: s.group, section_id: s.section_id });
+                
+                // Add row to DOM
+                const container = document.getElementById('classStudentsList');
+                const emptyMsg = container.querySelector('p');
+                if (emptyMsg) emptyMsg.remove();
+                
+                const sectionOptions = sections.map(sec => `<option value="${sec.id}">${sec.name}</option>`).join('');
+                const row = document.createElement('div');
+                row.className = 'student-row-item';
+                row.id = `studentRowItem-${s.id}`;
+                row.innerHTML = `<div class="student-row-name">
+                        <span class="student-row-name-text">${s.name}</span>
+                        <span class="student-row-username">@${s.username}</span>
+                    </div>
+                    <span class="student-row-group">${s.group}</span>
+                    <select class="student-section-select" id="sectionSel-${s.id}" onchange="moveStudent(${s.id}, this.value)">
+                        <option value="">No Section</option>${sectionOptions}
+                    </select>
+                    <button class="btn-small danger" onclick="removeStudent(${s.id})" title="Remove from class"><i class="fa-solid fa-xmark"></i></button>`;
+                container.prepend(row);
+                if (s.section_id) document.getElementById(`sectionSel-${s.id}`).value = s.section_id;
+                
+                // Update student count
+                const card = document.getElementById(`classCard-${currentClassId}`);
+                const meta = card?.querySelectorAll('.class-meta span');
+                if (meta && meta[0]) {
+                    const count = classStudents[currentClassId].length;
+                    meta[0].innerHTML = `<i class="fa-solid fa-users"></i>${count} Student${count !== 1 ? 's' : ''}`;
+                }
+                showMsg(msg, `${s.name} added to this class.`, true);
+            } else {
+                showMsg(msg, data.error || 'Failed to add student.', false);
+            }
+        });
+}
+
+// Hide search results when clicking outside
+document.addEventListener('click', e => {
+    const results = document.getElementById('studentSearchResults');
+    const input = document.getElementById('studentSearchInput');
+    if (results && input && !input.contains(e.target) && !results.contains(e.target)) {
+        results.style.display = 'none';
+    }
+});
+
+// ---- Helpers ----
+function getCsrf() {
+    return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+}
+
+function showMsg(el, text, success) {
+    const toast = document.getElementById('modalToast');
+    if (!toast) return;
+    toast.textContent = text;
+    toast.className = success ? 'modal-toast' : 'modal-toast error';
+    
+    // Reset opacity and make visible
+    toast.style.display = 'block';
+    toast.style.opacity = '1';
+    
+    // Auto-hide after 2.8 seconds
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 250);
+    }, 2500);
+}
+
+function escHtml(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+{% endblock %}

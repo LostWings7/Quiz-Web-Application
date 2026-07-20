@@ -1,5 +1,5 @@
 {% extends 'dashboard/base.html' %}
-
+{% load static %}
 {% block heading %}{{ quiz.title }} Results{% endblock %}
 {% block subtitle %}View, manage and export results specifically for this quiz.{% endblock %}
 {% block actions %}
@@ -56,3 +56,4 @@
 </div>
 {% endfor %}
 {% endblock %}
+

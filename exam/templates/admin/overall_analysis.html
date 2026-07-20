@@ -1,4 +1,4 @@
-{% extends 'admin/base_site.html' %}
+﻿{% extends 'admin/base_site.html' %}
 
 {% load static %}
 
@@ -213,8 +213,8 @@
 
 <!-- Chart.js + render logic -->
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="{% static 'js/vendor/chart.min.js' %}"></script>
+<script src="{% static 'js/vendor/chartjs-plugin-datalabels.min.js' %}"></script>
 
 
 <script>

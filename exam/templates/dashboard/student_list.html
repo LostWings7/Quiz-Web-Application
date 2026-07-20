@@ -1,4 +1,5 @@
 {% extends 'dashboard/base.html' %}
+{% load static %}
 
 {% block heading %}Student Management{% endblock %}
 {% block subtitle %}Manage learners without relying on Django admin.{% endblock %}
@@ -7,44 +8,190 @@
 <a class="dash-btn secondary" href="{% url 'dashboard_student_import' %}"><i class="fa-solid fa-file-csv"></i>Import CSV</a>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.filter-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+}
+.filter-bar input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+.filter-wrapper {
+    position: relative;
+}
+.filter-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 280px;
+    background: rgba(10,20,35,0.92);
+    border: 1px solid rgba(0,255,200,0.2);
+    border-radius: 16px;
+    backdrop-filter: blur(24px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    z-index: 200;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.filter-dropdown.open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+}
+.filter-dropdown-header {
+    padding: 14px 18px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.filter-section-toggle {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 12px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: rgba(255,255,255,0.85);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.filter-section-toggle:hover { background: rgba(255,255,255,0.04); }
+.filter-section-toggle .arrow {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.4);
+    transition: transform 0.2s;
+}
+.filter-section-toggle.expanded .arrow { transform: rotate(180deg); }
+.filter-checkbox-list {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease;
+}
+.filter-checkbox-list.open { max-height: 260px; overflow-y: auto; }
+.filter-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px 8px 28px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.75);
+}
+.filter-checkbox-item:hover { background: rgba(0,255,200,0.05); }
+.filter-checkbox-item input[type="checkbox"] {
+    width: 15px; height: 15px;
+    accent-color: #00ffc8;
+    cursor: pointer;
+}
+.filter-active-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #00ffc8;
+    color: #000;
+    border-radius: 50%;
+    width: 18px; height: 18px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: 6px;
+}
+.filter-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 4px 0; }
+.glass-table tbody tr { transition: background 0.15s; }
+.glass-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+.group-badge {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(0,255,200,0.08);
+    border: 1px solid rgba(0,255,200,0.2);
+    color: #00ffc8;
+    border-radius: 6px;
+    padding: 2px 9px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+.table-skeleton { animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+.pagination-row { display: flex; justify-content: center; gap: 8px; margin-top: 24px; align-items: center; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="dashboard-card">
-    <form class="search-row" method="get">
-        <input type="text" name="q" value="{{ query }}" placeholder="Search by student name, username, or email">
-        <button class="dash-btn secondary" type="submit">Search</button>
-    </form>
-    <table class="glass-table">
-        <thead><tr><th>Name</th><th>Username</th><th>Quiz Count</th><th>Status</th><th>Actions</th></tr></thead>
-        <tbody>
-        {% for student in students %}
-        <tr>
-            <td>{% if student.first_name %}{{ student.first_name }} {{ student.last_name }}{% else %}{{ student.username }}{% endif %}</td>
-            <td>{{ student.username }}</td>
-            <td>{{ student.quiz_count }}</td>
-            <td><span class="pill {% if student.is_active %}success{% else %}warning{% endif %}">{% if student.is_active %}Enabled{% else %}Disabled{% endif %}</span></td>
-            <td>
-                <a class="btn-small secondary" href="{% url 'dashboard_student_edit' student.id %}">Edit</a>
-                <a class="btn-small secondary" href="{% url 'dashboard_student_reset_password' student.id %}">Reset Password</a>
-                <a class="btn-small secondary" href="{% url 'dashboard_student_toggle' student.id %}">{% if student.is_active %}Disable{% else %}Enable{% endif %}</a>
-                <button class="btn-small danger" onclick="showModal('deleteModal-{{ student.id }}')">Delete</button>
-            </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="5"><div class="empty-state">No students found.</div></td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
+<div class="dashboard-card" id="studentCard" style="animation: fadeUp 0.6s ease backwards;">
+    <div class="filter-bar">
+        <input type="text" id="searchInput" value="{{ query }}" placeholder="Search by name, username, or email…" autocomplete="off" style="flex: 1;">
+        <div class="filter-wrapper">
+            <button class="dash-btn secondary" id="filterToggleBtn" type="button">
+                <i class="fa-solid fa-sliders"></i> Filter
+                <span id="filterBadge" class="filter-active-badge" style="display:none;"></span>
+            </button>
+            <div class="filter-dropdown" id="filterDropdown">
+                <div class="filter-dropdown-header">Filter Students</div>
+
+                <!-- Classes -->
+                <button class="filter-section-toggle expanded" id="toggleClasses" type="button">
+                    <span><i class="fa-solid fa-graduation-cap" style="margin-right:8px; color:#00ffc8;"></i>Classes</span>
+                    <i class="fa-solid fa-chevron-down arrow"></i>
+                </button>
+                <div class="filter-checkbox-list open" id="classList">
+                    {% for c in all_classes %}
+                    <label class="filter-checkbox-item">
+                        <input type="checkbox" class="class-filter" value="{{ c.id }}" {% if c.id|stringformat:"s" in selected_class_ids %}checked{% endif %}>
+                        {{ c.name }}
+                    </label>
+                    {% empty %}
+                    <div style="padding: 10px 18px; color: rgba(255,255,255,0.4); font-size: 0.85rem;">No classes yet</div>
+                    {% endfor %}
+                </div>
+
+                <div class="filter-divider"></div>
+
+                <!-- Sections -->
+                <button class="filter-section-toggle expanded" id="toggleSections" type="button">
+                    <span><i class="fa-solid fa-layer-group" style="margin-right:8px; color:#00ffc8;"></i>Sections</span>
+                    <i class="fa-solid fa-chevron-down arrow"></i>
+                </button>
+                <div class="filter-checkbox-list open" id="sectionList">
+                    {% for s in all_sections %}
+                    <label class="filter-checkbox-item">
+                        <input type="checkbox" class="section-filter" value="{{ s.id }}" {% if s.id|stringformat:"s" in selected_section_ids %}checked{% endif %}>
+                        {{ s.class_group.name }} &rsaquo; {{ s.name }}
+                    </label>
+                    {% empty %}
+                    <div style="padding: 10px 18px; color: rgba(255,255,255,0.4); font-size: 0.85rem;">No sections yet</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="studentTableWrap">
+        {% include 'dashboard/partials/student_table.html' %}
+    </div>
 </div>
 {% endblock %}
 
 {% block modals %}
-{% for student in students %}
-<!-- Delete Modal -->
+{% for student in page_obj %}
 <div id="deleteModal-{{ student.id }}" class="modal-overlay">
     <div class="glass-modal">
         <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
         <h2>Delete Student</h2>
-        <p>Are you sure you want to delete student "{{ student.username }}"?</p>
+        <p>Are you sure you want to delete student <strong>{{ student.username }}</strong>? This cannot be undone.</p>
         <form method="post" action="{% url 'dashboard_student_delete' student.id %}">
             {% csrf_token %}
             <div class="modal-actions">
@@ -55,4 +202,151 @@
     </div>
 </div>
 {% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const searchInput = document.getElementById('searchInput');
+    const filterToggleBtn = document.getElementById('filterToggleBtn');
+    const filterDropdown = document.getElementById('filterDropdown');
+    const filterBadge = document.getElementById('filterBadge');
+    const tableWrap = document.getElementById('studentTableWrap');
+
+    // ----- Filter dropdown toggle -----
+    filterToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        filterDropdown.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+        if (!filterDropdown.contains(e.target) && e.target !== filterToggleBtn) {
+            filterDropdown.classList.remove('open');
+        }
+    });
+
+    // ----- Collapsible filter sections -----
+    ['toggleClasses', 'toggleSections'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+            btn.classList.toggle('expanded');
+            const list = btn.nextElementSibling;
+            list.classList.toggle('open');
+        });
+    });
+
+    // ----- Build query params -----
+    function buildParams(page) {
+        const q = searchInput.value.trim();
+        const classIds = [...document.querySelectorAll('.class-filter:checked')].map(el => el.value);
+        const sectionIds = [...document.querySelectorAll('.section-filter:checked')].map(el => el.value);
+        const params = new URLSearchParams();
+        if (q) params.set('q', q);
+        if (classIds.length) params.set('classes', classIds.join(','));
+        if (sectionIds.length) params.set('sections', sectionIds.join(','));
+        if (page && page > 1) params.set('page', page);
+        return params;
+    }
+
+    // ----- Update badge -----
+    function updateBadge() {
+        const count = document.querySelectorAll('.class-filter:checked, .section-filter:checked').length;
+        if (count > 0) {
+            filterBadge.textContent = count;
+            filterBadge.style.display = 'inline-flex';
+            filterToggleBtn.style.borderColor = 'rgba(0,255,200,0.5)';
+        } else {
+            filterBadge.style.display = 'none';
+            filterToggleBtn.style.borderColor = '';
+        }
+    }
+
+    // ----- AJAX fetch table -----
+    let debounceTimer;
+    function fetchStudents(page) {
+        const params = buildParams(page);
+        params.set('format', 'json');
+        history.pushState({}, '', '?' + buildParams(page).toString());
+
+        tableWrap.style.opacity = '0.5';
+        tableWrap.style.transition = 'opacity 0.15s';
+
+        fetch('/dashboard/students/?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                renderTable(data);
+                tableWrap.style.opacity = '1';
+                updateBadge();
+            })
+            .catch(() => { tableWrap.style.opacity = '1'; });
+    }
+
+    function renderTable(data) {
+        const { students, page: pg } = data;
+        let html = '<table class="glass-table"><thead><tr><th>Name</th><th>Username</th><th>Class &amp; Section</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+
+        if (students.length === 0) {
+            html += '<tr><td colspan="5"><div class="empty-state">No students found matching your filters.</div></td></tr>';
+        } else {
+            students.forEach(s => {
+                const groupHtml = s.group !== '—'
+                    ? `<span class="group-badge">${s.group}</span>`
+                    : `<span style="color:rgba(255,255,255,0.3);">—</span>`;
+                const statusClass = s.is_active ? 'success' : 'warning';
+                const statusLabel = s.is_active ? 'Active' : 'Disabled';
+                const toggleLabel = s.is_active ? 'Disable' : 'Enable';
+                html += `<tr>
+                    <td>${s.name}</td>
+                    <td style="color:rgba(255,255,255,0.6); font-family:monospace;">${s.username}</td>
+                    <td>${groupHtml}</td>
+                    <td><span class="pill ${statusClass}">${statusLabel}</span></td>
+                    <td style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+                        <a class="btn-small secondary" href="${s.edit_url}">Edit</a>
+                        <a class="btn-small secondary" href="${s.reset_url}">Reset PW</a>
+                        <a class="btn-small secondary" href="${s.toggle_url}">${toggleLabel}</a>
+                        <button class="btn-small danger" onclick="showModal('deleteModal-${s.id}')">Delete</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        html += '</tbody></table>';
+
+        // Pagination
+        if (pg.total > 1) {
+            html += '<div class="pagination-row">';
+            if (pg.has_previous) {
+                html += `<button class="dash-btn secondary page-btn" data-page="${pg.previous_page}"><i class="fa-solid fa-angle-left"></i> Previous</button>`;
+            }
+            html += `<span style="color:rgba(255,255,255,0.6); font-size:0.9rem;">Page ${pg.current} of ${pg.total}</span>`;
+            if (pg.has_next) {
+                html += `<button class="dash-btn secondary page-btn" data-page="${pg.next_page}">Next <i class="fa-solid fa-angle-right"></i></button>`;
+            }
+            html += '</div>';
+        }
+
+        tableWrap.innerHTML = html;
+
+        // Bind pagination
+        tableWrap.querySelectorAll('.page-btn').forEach(btn => {
+            btn.addEventListener('click', () => fetchStudents(parseInt(btn.dataset.page)));
+        });
+    }
+
+    // ----- Debounced search -----
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => fetchStudents(1), 50);
+    });
+
+    searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') fetchStudents(1); });
+
+    // ----- Immediate checkbox filter -----
+    document.querySelectorAll('.class-filter, .section-filter').forEach(cb => {
+        cb.addEventListener('change', () => { updateBadge(); fetchStudents(1); });
+    });
+
+    updateBadge();
+})();
+</script>
 {% endblock %}

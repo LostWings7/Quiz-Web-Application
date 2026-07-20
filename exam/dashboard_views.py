@@ -7,12 +7,12 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.models import User
 from django.db.models import Avg, Count, Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from xhtml2pdf import pisa
 
-from .forms import QuestionDashboardForm, QuizDashboardForm, StudentForm, StudentEditForm, StudentPasswordForm
+from .forms import QuestionDashboardForm, QuizDashboardForm, StudentForm, StudentEditForm, StudentPasswordForm, ClassForm, SectionForm
 from .import_forms import QuestionImportUploadForm, StudentImportUploadForm
 from .import_utils import (
     build_column_choices,
@@ -22,7 +22,7 @@ from .import_utils import (
     preview_headers,
     preview_rows,
 )
-from .models import Question, QuestionOption, Quiz, QuizResult, Subtopic
+from .models import Question, QuestionOption, Quiz, QuizResult, Subtopic, Class, Section, StudentProfile, QuestionImage, OptionImage
 
 QUESTION_IMPORT_SESSION = 'question_import_payload'
 STUDENT_IMPORT_SESSION = 'student_import_payload'
@@ -61,12 +61,16 @@ def unique_quiz_title(base_title):
 def option_rows_for_question(question=None):
     if question:
         rows = [
-            {'text': option.text, 'is_correct': option.is_correct}
+            {
+                'text': option.text,
+                'is_correct': option.is_correct,
+                'image_url': option.image.url if option.image else None,
+            }
             for option in question.get_options()
         ]
         if rows:
             return rows
-    return [{'text': '', 'is_correct': True}]
+    return [{'text': '', 'is_correct': True, 'image_url': None}]
 
 
 def option_rows_from_post(request):
@@ -80,9 +84,13 @@ def option_rows_from_post(request):
     rows = []
     for index, text in enumerate(texts):
         if text:
+            uploaded_image = request.FILES.get(f'option_image_{index}')
+            keep_image = request.POST.get(f'keep_option_image_{index}', '')
             rows.append({
                 'text': text,
                 'is_correct': index == correct_index,
+                'image': uploaded_image,
+                'keep_image': keep_image,
             })
 
     if rows and not any(row['is_correct'] for row in rows):
@@ -92,14 +100,23 @@ def option_rows_from_post(request):
 
 
 def save_question_options(question, rows):
+    old_options = list(question.options.all().order_by('order'))
     question.options.all().delete()
     for index, row in enumerate(rows):
+        image_to_save = None
+        if row.get('image'):
+            image_to_save = row['image']
+        elif row.get('keep_image'):
+            if index < len(old_options) and old_options[index].image:
+                image_to_save = old_options[index].image
+
         QuestionOption.objects.create(
             question=question,
             text=row['text'],
             label=option_label(index),
             is_correct=row['is_correct'],
             order=index,
+            image=image_to_save,
         )
     correct = question.options.filter(is_correct=True).first()
     question.correct_answer = str(correct.id) if correct else ''
@@ -171,44 +188,146 @@ def quiz_metrics():
 def dashboard_home(request):
     total_questions = Question.objects.count()
     total_attempts = QuizResult.objects.count()
-    average_score = QuizResult.objects.aggregate(avg=Avg('score'))['avg'] or 0
     recent_attempts = QuizResult.objects.select_related('quiz', 'user').order_by('-submitted_at')[:8]
     recent_users = User.objects.filter(is_staff=False).order_by('-date_joined')[:8]
+    
+    # Class stats
+    total_classes = Class.objects.count()
+    
+    class_list = Class.objects.annotate(student_count=Count('students', distinct=True))
+    students_per_class = [{'name': c.name, 'count': c.student_count} for c in class_list]
+
+    section_list = Section.objects.annotate(student_count=Count('students', distinct=True)).select_related('class_group')
+    students_per_section = [{'name': f"{s.class_group.name} - {s.name}", 'count': s.student_count} for s in section_list]
+
     return render(request, 'dashboard/home.html', {
         'total_quizzes': Quiz.objects.count(),
         'total_students': User.objects.filter(is_staff=False).count(),
         'total_questions': total_questions,
         'total_attempts': total_attempts,
-        'average_score': round(average_score, 1),
         'recent_attempts': recent_attempts,
         'recent_users': recent_users,
+        'total_classes': total_classes,
+        'students_per_class': students_per_class,
+        'students_per_section': students_per_section,
     })
 
 
 @staff_member_required
 def quiz_list(request):
-    return render(request, 'dashboard/quiz_list.html', {'quiz_rows': quiz_metrics()})
+    query = request.GET.get('q', '')
+    # Support multi-select: classes=1,2,3 or sections=1,2,3
+    classes_param = request.GET.get('classes', '')
+    sections_param = request.GET.get('sections', '')
+    class_ids = [c for c in classes_param.split(',') if c.strip().isdigit()] if classes_param else []
+    section_ids = [s for s in sections_param.split(',') if s.strip().isdigit()] if sections_param else []
+    
+    quizzes = Quiz.objects.annotate(question_count=Count('questions')).prefetch_related('assigned_classes', 'assigned_sections').order_by('-created_at', 'title')
+    
+    if query:
+        quizzes = quizzes.filter(
+            Q(title__icontains=query) |
+            Q(code__icontains=query)
+        )
+        
+    if class_ids:
+        quizzes = quizzes.filter(Q(assigned_classes__id__in=class_ids)).distinct()
+        if section_ids:
+            quizzes = quizzes.filter(Q(assigned_sections__id__in=section_ids)).distinct()
+
+    quiz_rows = []
+    for quiz in quizzes:
+        results = QuizResult.objects.filter(quiz=quiz)
+        participants = results.values('user').distinct().count()
+        avg_score = results.aggregate(avg=Avg('score'))['avg'] or 0
+        quiz_rows.append({
+            'quiz': quiz,
+            'question_count': quiz.question_count,
+            'participants': participants,
+            'average_score': round(avg_score, 1),
+        })
+        
+    all_classes = Class.objects.all().order_by('name')
+    all_sections = Section.objects.all().select_related('class_group').order_by('class_group__name', 'name')
+    
+    if request.GET.get('format') == 'json':
+        rows_data = [{
+            'id': r['quiz'].id,
+            'title': r['quiz'].title,
+            'code': r['quiz'].code,
+            'participants': r['participants'],
+            'is_active': r['quiz'].is_active,
+            'show_detailed_results': r['quiz'].show_detailed_results,
+            'visibility': r['quiz'].get_visibility_preview(),
+            'edit_url': f"/dashboard/quizzes/{r['quiz'].id}/edit/",
+            'toggle_url': f"/dashboard/quizzes/{r['quiz'].id}/toggle/",
+            'toggle_review_url': f"/dashboard/quizzes/{r['quiz'].id}/toggle-review/",
+            'duplicate_url': f"/dashboard/quizzes/{r['quiz'].id}/duplicate/",
+            'results_url': f"/dashboard/results/?quiz={r['quiz'].id}",
+            'delete_url': f"/dashboard/quizzes/{r['quiz'].id}/delete/",
+        } for r in quiz_rows]
+        return JsonResponse({'quizzes': rows_data})
+    
+    return render(request, 'dashboard/quiz_list.html', {
+        'quiz_rows': quiz_rows,
+        'classes_param': classes_param,
+        'sections_param': sections_param,
+        'selected_class_ids': class_ids,
+        'selected_section_ids': section_ids,
+        'query': query,
+        'all_classes': all_classes,
+        'all_sections': all_sections,
+    })
+
 
 
 @staff_member_required
 def quiz_create(request):
     form = QuizDashboardForm(request.POST or None)
+    all_classes = Class.objects.prefetch_related('sections').annotate(student_count=Count('students', distinct=True)).order_by('name')
     if request.method == 'POST' and form.is_valid():
         quiz = form.save()
+        assigned_class_ids = request.POST.getlist('assigned_classes')
+        assigned_section_ids = request.POST.getlist('assigned_sections')
+        quiz.assigned_classes.set(assigned_class_ids)
+        quiz.assigned_sections.set(Section.objects.filter(id__in=assigned_section_ids, class_group_id__in=assigned_class_ids))
         messages.success(request, 'Quiz created successfully.')
         return redirect('dashboard_quiz_edit', quiz_id=quiz.id)
-    return render(request, 'dashboard/form.html', {'form': form, 'title': 'Create Quiz', 'submit_label': 'Create Quiz'})
+    return render(request, 'dashboard/form.html', {
+        'form': form,
+        'title': 'Create Quiz',
+        'submit_label': 'Create Quiz',
+        'all_classes': all_classes,
+        'selected_class_ids': [],
+        'selected_section_ids': [],
+    })
 
 
 @staff_member_required
 def quiz_edit(request, quiz_id):
     quiz = get_object_or_404(Quiz, id=quiz_id)
     form = QuizDashboardForm(request.POST or None, instance=quiz)
+    all_classes = Class.objects.prefetch_related('sections').annotate(student_count=Count('students', distinct=True)).order_by('name')
     if request.method == 'POST' and form.is_valid():
-        form.save()
+        quiz = form.save()
+        assigned_class_ids = request.POST.getlist('assigned_classes')
+        assigned_section_ids = request.POST.getlist('assigned_sections')
+        quiz.assigned_classes.set(assigned_class_ids)
+        quiz.assigned_sections.set(Section.objects.filter(id__in=assigned_section_ids, class_group_id__in=assigned_class_ids))
         messages.success(request, 'Quiz updated successfully.')
         return redirect('dashboard_quizzes')
-    return render(request, 'dashboard/form.html', {'form': form, 'title': 'Edit Quiz', 'submit_label': 'Save Changes'})
+    
+    selected_class_ids = [str(c.id) for c in quiz.assigned_classes.all()]
+    selected_section_ids = [str(s.id) for s in quiz.assigned_sections.all()]
+    
+    return render(request, 'dashboard/form.html', {
+        'form': form,
+        'title': 'Edit Quiz',
+        'submit_label': 'Save Changes',
+        'all_classes': all_classes,
+        'selected_class_ids': selected_class_ids,
+        'selected_section_ids': selected_section_ids,
+    })
 
 @staff_member_required
 def quiz_questions(request, quiz_id):
@@ -251,6 +370,12 @@ def quiz_duplicate(request, quiz_id):
         timer_enabled=quiz.timer_enabled,
         duration_minutes=quiz.duration_minutes,
     )
+    
+    # Copy restrictions if copy_restrictions query param is true (default is true)
+    if request.GET.get('copy_restrictions', '1') == '1':
+        copy.assigned_classes.set(quiz.assigned_classes.all())
+        copy.assigned_sections.set(quiz.assigned_sections.all())
+        
     subtopic_map = {}
     for subtopic in Subtopic.objects.filter(quiz=quiz):
         subtopic_map[subtopic.id] = Subtopic.objects.create(quiz=copy, name=subtopic.name)
@@ -285,7 +410,99 @@ def quiz_toggle_review(request, quiz_id):
     return redirect('dashboard_quizzes')
 
 
+def option_rows_for_question(question=None):
+    if question:
+        rows = []
+        for option in question.get_options():
+            imgs = []
+            if option.image:
+                imgs.append({'id_val': 'main', 'url': option.image.url})
+            for extra in option.images.all():
+                imgs.append({'id_val': str(extra.id), 'url': extra.image.url})
+            rows.append({
+                'id': option.id,
+                'text': option.text,
+                'is_correct': option.is_correct,
+                'images': imgs,
+            })
+        if rows:
+            return rows
+    return [{'text': '', 'is_correct': True, 'images': []}]
 
+
+def option_rows_from_post(request):
+    texts = [text.strip() for text in request.POST.getlist('option_text')]
+    correct_index = request.POST.get('correct_option', '0')
+    try:
+        correct_index = int(correct_index)
+    except (TypeError, ValueError):
+        correct_index = 0
+
+    rows = []
+    for index, text in enumerate(texts):
+        if text:
+            uploaded_images = request.FILES.getlist(f'option_images_{index}')
+            delete_image_ids = request.POST.getlist(f'delete_option_image_ids_{index}')
+            rows.append({
+                'index': index,
+                'text': text,
+                'is_correct': index == correct_index,
+                'uploaded_images': uploaded_images,
+                'delete_image_ids': delete_image_ids,
+            })
+
+    if rows and not any(row['is_correct'] for row in rows):
+        rows[0]['is_correct'] = True
+
+    return rows
+
+
+def save_question_options(question, rows):
+    from .models import OptionImage
+    old_options = list(question.options.all().order_by('order'))
+
+    old_option_images_map = {}
+    for index, old_opt in enumerate(old_options):
+        old_option_images_map[index] = {
+            'main': old_opt.image,
+            'extras': list(old_opt.images.all()),
+        }
+
+    question.options.all().delete()
+
+    for new_idx, row in enumerate(rows):
+        orig_idx = row.get('index', new_idx)
+        delete_ids = set(row.get('delete_image_ids', []))
+
+        main_img = None
+        old_extras_to_keep = []
+
+        if orig_idx in old_option_images_map:
+            old_info = old_option_images_map[orig_idx]
+            if 'main' not in delete_ids:
+                main_img = old_info['main']
+            for extra_img in old_info['extras']:
+                if str(extra_img.id) not in delete_ids:
+                    old_extras_to_keep.append(extra_img.image)
+
+        opt_obj = QuestionOption.objects.create(
+            question=question,
+            text=row['text'],
+            label=option_label(new_idx),
+            is_correct=row['is_correct'],
+            order=new_idx,
+            image=main_img,
+        )
+
+        for kept_img in old_extras_to_keep:
+            OptionImage.objects.create(option=opt_obj, image=kept_img)
+
+        for new_file in row.get('uploaded_images', []):
+            if not opt_obj.image:
+                opt_obj.image = new_file
+                opt_obj.save(update_fields=['image'])
+            else:
+                OptionImage.objects.create(option=opt_obj, image=new_file)
 
 
 @staff_member_required
@@ -299,6 +516,10 @@ def question_create(request):
         else:
             question = form.save()
             save_question_options(question, option_rows)
+
+            for f in request.FILES.getlist('extra_question_images'):
+                QuestionImage.objects.create(question=question, image=f)
+
             messages.success(request, 'Question created successfully.')
             if quiz:
                 return redirect('dashboard_quiz_questions', quiz_id=quiz.id)
@@ -326,19 +547,40 @@ def question_edit(request, question_id):
         if not option_rows:
             messages.error(request, 'Add at least one option for the question.')
         else:
-            form.save()
+            question = form.save()
             save_question_options(question, option_rows)
+
+            for f in request.FILES.getlist('extra_question_images'):
+                QuestionImage.objects.create(question=question, image=f)
+
+            for img_id in request.POST.getlist('delete_question_image_ids'):
+                if img_id == 'main':
+                    if question.image:
+                        question.image.delete(save=False)
+                        question.image = None
+                        question.save(update_fields=['image'])
+                else:
+                    QuestionImage.objects.filter(id=img_id, question=question).delete()
+
             messages.success(request, 'Question updated successfully.')
             return redirect(
                 'dashboard_quiz_questions',
                 quiz_id=question.quiz.id
             )
+
+    question_images = []
+    if question.image:
+        question_images.append({'id_val': 'main', 'url': question.image.url})
+    for extra in question.additional_images.all():
+        question_images.append({'id_val': extra.id, 'url': extra.image.url})
+
     return render(request, 'dashboard/form.html', {
         'form': form,
         'title': 'Edit Question',
         'submit_label': 'Save Changes',
         'option_rows': option_rows,
         'quiz': question.quiz,
+        'question_images': question_images,
     })
 
 
@@ -377,7 +619,7 @@ def question_reorder(request):
                 Question.objects.filter(id=question_id.replace('order_', '')).update(order=order or 0)
         messages.success(request, 'Question order updated.')
         if source == 'quiz' and quiz_id:
-            return redirect('dashboard_quiz_questions', pk=quiz_id)
+            return redirect('dashboard_quiz_questions', quiz_id=quiz_id)
         if quiz_id:
             return redirect('dashboard_quiz_questions', quiz_id=quiz_id)
         return redirect('dashboard_quizzes')
@@ -531,10 +773,130 @@ def question_import(request):
 @staff_member_required
 def student_list(request):
     query = request.GET.get('q', '')
-    students = User.objects.filter(is_staff=False).annotate(quiz_count=Count('quizresult')).order_by('first_name', 'username')
+    classes_param = request.GET.get('classes', '')
+    sections_param = request.GET.get('sections', '')
+    class_ids = [c for c in classes_param.split(',') if c.strip().isdigit()] if classes_param else []
+    section_ids = [s for s in sections_param.split(',') if s.strip().isdigit()] if sections_param else []
+    
+    students = User.objects.filter(is_staff=False).select_related('profile__class_group', 'profile__section')
+    
     if query:
-        students = students.filter(Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query) | Q(email__icontains=query))
-    return render(request, 'dashboard/student_list.html', {'students': students, 'query': query})
+        students = students.filter(
+            Q(username__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(email__icontains=query)
+        )
+        
+    if class_ids:
+        students = students.filter(profile__class_group_id__in=class_ids)
+    if section_ids:
+        students = students.filter(profile__section_id__in=section_ids)
+            
+    students = students.order_by('first_name', 'username')
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(students, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    all_classes = Class.objects.all().order_by('name')
+    all_sections = Section.objects.all().select_related('class_group').order_by('class_group__name', 'name')
+    
+    if request.GET.get('format') == 'json':
+        def group_display(student):
+            try:
+                p = student.profile
+                if p.class_group and p.section:
+                    return f"{p.class_group.name}-{p.section.name}"
+                elif p.class_group:
+                    return p.class_group.name
+                return '—'
+            except Exception:
+                return '—'
+        
+        students_data = [{
+            'id': s.id,
+            'name': s.get_full_name() or s.username,
+            'username': s.username,
+            'group': group_display(s),
+            'section_id': s.profile.section_id if hasattr(s, 'profile') and s.profile and s.profile.section_id else None,
+            'is_active': s.is_active,
+            'email': s.email,
+            'edit_url': f"/dashboard/students/{s.id}/edit/",
+            'reset_url': f"/dashboard/students/{s.id}/reset-password/",
+            'toggle_url': f"/dashboard/students/{s.id}/toggle/",
+            'delete_url': f"/dashboard/students/{s.id}/delete/",
+        } for s in page_obj]
+        return JsonResponse({
+            'students': students_data,
+            'page': {
+                'current': page_obj.number,
+                'total': page_obj.paginator.num_pages,
+                'has_previous': page_obj.has_previous(),
+                'has_next': page_obj.has_next(),
+                'previous_page': page_obj.previous_page_number() if page_obj.has_previous() else None,
+                'next_page': page_obj.next_page_number() if page_obj.has_next() else None,
+            }
+        })
+    
+    return render(request, 'dashboard/student_list.html', {
+        'page_obj': page_obj,
+        'query': query,
+        'classes_param': classes_param,
+        'sections_param': sections_param,
+        'selected_class_ids': class_ids,
+        'selected_section_ids': section_ids,
+        'all_classes': all_classes,
+        'all_sections': all_sections,
+    })
+
+@staff_member_required
+def student_bulk_action(request):
+    if request.method == 'POST':
+        student_ids = request.POST.getlist('student_ids')
+        action = request.POST.get('action')
+        
+        if not student_ids:
+            messages.error(request, "No students selected.")
+            return redirect('dashboard_students')
+            
+        if action == 'assign':
+            class_id = request.POST.get('class_group')
+            section_id = request.POST.get('section')
+            
+            class_obj = Class.objects.filter(id=class_id).first() if class_id else None
+            section_obj = Section.objects.filter(id=section_id).first() if section_id else None
+            
+            if section_obj and section_obj.class_group != class_obj:
+                messages.error(request, "Selected section does not belong to the selected class.")
+                return redirect('dashboard_students')
+                
+            # Ensure every user has a profile
+            for uid in student_ids:
+                user = User.objects.filter(id=uid).first()
+                if user:
+                    profile, _ = StudentProfile.objects.get_or_create(user=user)
+                    profile.class_group = class_obj
+                    profile.section = section_obj
+                    profile.save()
+            messages.success(request, f"Successfully updated class/section for selected students.")
+            
+        elif action == 'promote':
+            class_id = request.POST.get('promote_class')
+            class_obj = Class.objects.filter(id=class_id).first() if class_id else None
+            
+            for uid in student_ids:
+                user = User.objects.filter(id=uid).first()
+                if user:
+                    profile, _ = StudentProfile.objects.get_or_create(user=user)
+                    profile.class_group = class_obj
+                    profile.section = None
+                    profile.save()
+            messages.success(request, f"Successfully promoted selected students to {class_obj.name if class_obj else 'No Class'}.")
+            
+    return redirect('dashboard_students')
 
 
 @staff_member_required
@@ -623,12 +985,44 @@ def student_import(request):
             map_last_name = request.POST.get('map_last_name', '')
             map_email = request.POST.get('map_email', '')
             map_password = request.POST.get('map_password', '')
+            map_class = request.POST.get('map_class', '')
+            map_section = request.POST.get('map_section', '')
 
             if map_username == '':
                 messages.error(request, 'Username column is required.')
                 return redirect('dashboard_student_import')
 
             data_rows = rows[1:] if has_header else rows
+            
+            # Validation Step
+            validation_errors = []
+            row_idx = 1
+            for row in data_rows:
+                username = cell_value(row, map_username)
+                if not username:
+                    row_idx += 1
+                    continue
+                class_name = cell_value(row, map_class) if map_class else None
+                section_name = cell_value(row, map_section) if map_section else None
+                
+                if class_name:
+                    try:
+                        c_obj = Class.objects.get(name=class_name)
+                        if section_name:
+                            try:
+                                Section.objects.get(class_group=c_obj, name=section_name)
+                            except Section.DoesNotExist:
+                                validation_errors.append(f"Row {row_idx}: Section '{section_name}' does not exist in Class '{class_name}'.")
+                    except Class.DoesNotExist:
+                        validation_errors.append(f"Row {row_idx}: Class '{class_name}' does not exist.")
+                elif section_name:
+                    validation_errors.append(f"Row {row_idx}: Section '{section_name}' specified without a class.")
+                row_idx += 1
+                
+            if validation_errors:
+                messages.error(request, "Import failed due to validation errors: " + " ".join(validation_errors[:5]))
+                return redirect('dashboard_student_import')
+
             created = 0
             updated = 0
             skipped = 0
@@ -655,6 +1049,24 @@ def student_import(request):
                     user.set_password(password)
                 user.is_staff = False
                 user.save()
+                
+                # Assign class & section
+                class_name = cell_value(row, map_class) if map_class else None
+                section_name = cell_value(row, map_section) if map_section else None
+                
+                profile, _ = StudentProfile.objects.get_or_create(user=user)
+                if class_name:
+                    c_obj = Class.objects.get(name=class_name)
+                    profile.class_group = c_obj
+                    if section_name:
+                        s_obj = Section.objects.get(class_group=c_obj, name=section_name)
+                        profile.section = s_obj
+                    else:
+                        profile.section = None
+                else:
+                    profile.class_group = None
+                    profile.section = None
+                profile.save()
 
                 if was_created:
                     created += 1
@@ -1181,3 +1593,381 @@ def analytics_detail(request, chart_type):
 @staff_member_required
 def settings_view(request):
     return render(request, 'dashboard/settings.html')
+
+@staff_member_required
+def classes_list(request):
+	classes = Class.objects.prefetch_related('sections', 'students').annotate(
+		student_count=Count('students', distinct=True)
+	).order_by('name')
+	
+	# For each class, precompute section student counts
+	for c in classes:
+		for s in c.sections.all():
+			s.student_count = s.students.count()
+
+	# Forms for inline additions
+	class_form = ClassForm()
+	
+	return render(request, 'dashboard/classes.html', {
+		'classes': classes,
+		'class_form': class_form,
+	})
+
+@staff_member_required
+def class_create(request):
+	if request.method == 'POST':
+		form = ClassForm(request.POST)
+		if form.is_valid():
+			form.save()
+			messages.success(request, 'Class created successfully.')
+		else:
+			for field, errors in form.errors.items():
+				for error in errors:
+					messages.error(request, f'Error: {error}')
+	return redirect('dashboard_classes')
+
+@staff_member_required
+def class_edit(request, class_id):
+	class_obj = get_object_or_404(Class, id=class_id)
+	if request.method == 'POST':
+		form = ClassForm(request.POST, instance=class_obj)
+		if form.is_valid():
+			form.save()
+			messages.success(request, 'Class updated successfully.')
+		else:
+			for field, errors in form.errors.items():
+				for error in errors:
+					messages.error(request, f'Error: {error}')
+	return redirect('dashboard_classes')
+
+
+@staff_member_required
+def class_edit_ajax(request, class_id):
+	"""AJAX endpoint for full class editing: rename + section CRUD."""
+	class_obj = get_object_or_404(Class, id=class_id)
+	if request.method != 'POST':
+		return JsonResponse({'error': 'Method not allowed'}, status=405)
+	
+	action = request.POST.get('action', 'rename')
+	
+	if action == 'rename':
+		name = request.POST.get('name', '').strip()
+		if not name:
+			return JsonResponse({'success': False, 'error': 'Class name cannot be empty.'})
+		if Class.objects.filter(name=name).exclude(id=class_id).exists():
+			return JsonResponse({'success': False, 'error': 'A class with this name already exists.'})
+		class_obj.name = name
+		class_obj.notes = request.POST.get('notes', '')
+		class_obj.save()
+		return JsonResponse({'success': True, 'name': class_obj.name})
+	
+	elif action == 'add_section':
+		section_name = request.POST.get('name', '').strip()
+		if not section_name:
+			return JsonResponse({'success': False, 'error': 'Section name cannot be empty.'})
+		if Section.objects.filter(class_group=class_obj, name=section_name).exists():
+			return JsonResponse({'success': False, 'error': f'Section "{section_name}" already exists in this class.'})
+		section = Section.objects.create(class_group=class_obj, name=section_name)
+		return JsonResponse({'success': True, 'section': {'id': section.id, 'name': section.name, 'student_count': 0}})
+	
+	elif action == 'rename_section':
+		section_id = request.POST.get('section_id')
+		new_name = request.POST.get('name', '').strip()
+		section = get_object_or_404(Section, id=section_id, class_group=class_obj)
+		if not new_name:
+			return JsonResponse({'success': False, 'error': 'Section name cannot be empty.'})
+		if Section.objects.filter(class_group=class_obj, name=new_name).exclude(id=section_id).exists():
+			return JsonResponse({'success': False, 'error': f'Section "{new_name}" already exists in this class.'})
+		section.name = new_name
+		section.save()
+		return JsonResponse({'success': True, 'section': {'id': section.id, 'name': section.name}})
+	
+	elif action == 'delete_section':
+		section_id = request.POST.get('section_id')
+		section = get_object_or_404(Section, id=section_id, class_group=class_obj)
+		# Move students in this section to no section (keep them in the class)
+		StudentProfile.objects.filter(section=section).update(section=None)
+		section.delete()
+		return JsonResponse({'success': True})
+	
+	return JsonResponse({'error': 'Unknown action'}, status=400)
+
+
+@staff_member_required
+def class_delete(request, class_id):
+	class_obj = get_object_or_404(Class, id=class_id)
+	if request.method == 'POST':
+		class_obj.delete()
+		if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+			return JsonResponse({'success': True})
+		messages.success(request, 'Class deleted successfully.')
+	return redirect('dashboard_classes')
+
+
+@staff_member_required
+def section_create(request):
+	if request.method == 'POST':
+		class_id = request.POST.get('class_group')
+		name = request.POST.get('name', '').strip()
+		class_obj = get_object_or_404(Class, id=class_id)
+		if not name:
+			return JsonResponse({'success': False, 'error': 'Section name cannot be empty.'})
+		if Section.objects.filter(class_group=class_obj, name=name).exists():
+			return JsonResponse({'success': False, 'error': f'Section "{name}" already exists.'})
+		section = Section.objects.create(class_group=class_obj, name=name)
+		if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+			return JsonResponse({'success': True, 'section': {'id': section.id, 'name': section.name}})
+		messages.success(request, 'Section created successfully.')
+	return redirect('dashboard_classes')
+
+
+@staff_member_required
+def section_edit(request, section_id):
+	section_obj = get_object_or_404(Section, id=section_id)
+	if request.method == 'POST':
+		name = request.POST.get('name', '').strip()
+		if not name:
+			if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+				return JsonResponse({'success': False, 'error': 'Section name cannot be empty.'})
+			messages.error(request, 'Section name cannot be empty.')
+		elif Section.objects.filter(class_group=section_obj.class_group, name=name).exclude(id=section_id).exists():
+			if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+				return JsonResponse({'success': False, 'error': f'Section "{name}" already exists in this class.'})
+			messages.error(request, f'Section "{name}" already exists.')
+		else:
+			section_obj.name = name
+			section_obj.save()
+			if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+				return JsonResponse({'success': True, 'section': {'id': section_obj.id, 'name': section_obj.name}})
+			messages.success(request, 'Section updated successfully.')
+	return redirect('dashboard_classes')
+
+
+@staff_member_required
+def section_delete(request, section_id):
+	section_obj = get_object_or_404(Section, id=section_id)
+	if request.method == 'POST':
+		StudentProfile.objects.filter(section=section_obj).update(section=None)
+		section_obj.delete()
+		if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+			return JsonResponse({'success': True})
+		messages.success(request, 'Section deleted successfully.')
+	return redirect('dashboard_classes')
+
+
+@staff_member_required
+def get_sections_ajax(request):
+	class_id = request.GET.get('class_id')
+	class_ids = request.GET.getlist('class_ids')
+	if class_ids:
+		sections = Section.objects.filter(class_group_id__in=class_ids).select_related('class_group')
+		data = [{'id': s.id, 'name': f"{s.class_group.name} - {s.name}"} for s in sections]
+	elif class_id:
+		sections = Section.objects.filter(class_group_id=class_id)
+		data = [{'id': s.id, 'name': s.name} for s in sections]
+	else:
+		data = []
+	return JsonResponse(data, safe=False)
+
+
+@staff_member_required
+def student_search_ajax(request):
+	"""Search students for the 'Add Existing Student' in class modal. Returns recently-created students first."""
+	class_id = request.GET.get('class_id')
+	q = request.GET.get('q', '').strip()
+	
+	students = User.objects.filter(is_staff=False).select_related('profile__class_group', 'profile__section')
+	
+	# Optionally exclude students already in this class
+	if class_id:
+		students = students.exclude(profile__class_group_id=class_id)
+	
+	if q:
+		students = students.filter(
+			Q(username__icontains=q) |
+			Q(first_name__icontains=q) |
+			Q(last_name__icontains=q) |
+			Q(email__icontains=q)
+		)
+	
+	students = students.order_by('-date_joined')[:20]
+	
+	data = []
+	for s in students:
+		try:
+			p = s.profile
+			if p.class_group and p.section:
+				group = f"{p.class_group.name}-{p.section.name}"
+			elif p.class_group:
+				group = p.class_group.name
+			else:
+				group = 'Unassigned'
+		except Exception:
+			group = 'Unassigned'
+		
+		data.append({
+			'id': s.id,
+			'name': s.get_full_name() or s.username,
+			'username': s.username,
+			'group': group,
+		})
+	
+	return JsonResponse(data, safe=False)
+
+
+@staff_member_required
+def class_add_student_ajax(request, class_id):
+	"""Add an existing student to a class (and optionally a section)."""
+	if request.method != 'POST':
+		return JsonResponse({'error': 'Method not allowed'}, status=405)
+	
+	class_obj = get_object_or_404(Class, id=class_id)
+	student_id = request.POST.get('student_id')
+	section_id = request.POST.get('section_id', '')
+	
+	student = get_object_or_404(User, id=student_id, is_staff=False)
+	profile, _ = StudentProfile.objects.get_or_create(user=student)
+	
+	section_obj = None
+	if section_id:
+		section_obj = get_object_or_404(Section, id=section_id, class_group=class_obj)
+	
+	profile.class_group = class_obj
+	profile.section = section_obj
+	profile.save()
+	
+	name = student.get_full_name() or student.username
+	if section_obj:
+		group = f"{class_obj.name}-{section_obj.name}"
+	else:
+		group = class_obj.name
+	
+	return JsonResponse({
+		'success': True,
+		'student': {
+			'id': student.id,
+			'name': name,
+			'username': student.username,
+			'group': group,
+			'section_id': section_obj.id if section_obj else None,
+			'section_name': section_obj.name if section_obj else '',
+		}
+	})
+
+
+@staff_member_required
+def class_remove_student_ajax(request, class_id):
+	"""Remove a student from a class (set class/section to null)."""
+	if request.method != 'POST':
+		return JsonResponse({'error': 'Method not allowed'}, status=405)
+	
+	get_object_or_404(Class, id=class_id)
+	student_id = request.POST.get('student_id')
+	student = get_object_or_404(User, id=student_id, is_staff=False)
+	
+	try:
+		profile = student.profile
+		profile.class_group = None
+		profile.section = None
+		profile.save()
+	except StudentProfile.DoesNotExist:
+		pass
+	
+	return JsonResponse({'success': True})
+
+
+@staff_member_required
+def class_move_student_ajax(request, class_id):
+	"""Move a student to a different section within the same class."""
+	if request.method != 'POST':
+		return JsonResponse({'error': 'Method not allowed'}, status=405)
+	
+	class_obj = get_object_or_404(Class, id=class_id)
+	student_id = request.POST.get('student_id')
+	section_id = request.POST.get('section_id', '')
+	
+	student = get_object_or_404(User, id=student_id, is_staff=False)
+	profile, _ = StudentProfile.objects.get_or_create(user=student)
+	
+	section_obj = None
+	if section_id:
+		section_obj = get_object_or_404(Section, id=section_id, class_group=class_obj)
+	
+	profile.section = section_obj
+	profile.save()
+	
+	if section_obj:
+		group = f"{class_obj.name}-{section_obj.name}"
+	else:
+		group = class_obj.name
+	
+	return JsonResponse({'success': True, 'group': group, 'section_id': section_obj.id if section_obj else None})
+
+
+@staff_member_required
+def class_students(request, class_id=None, section_id=None):
+	query = request.GET.get('q', '')
+	sort_by = request.GET.get('sort', 'first_name')
+	order = request.GET.get('order', 'asc')
+	
+	students = User.objects.filter(is_staff=False).select_related('profile__class_group', 'profile__section')
+	
+	title = "Class Students"
+	subtitle = "All students assigned to this class"
+	class_obj = None
+	section_obj = None
+	breadcrumbs = [
+		{'label': 'Dashboard', 'url': '/dashboard/'},
+		{'label': 'Classes', 'url': '/dashboard/classes/'},
+	]
+	
+	if section_id:
+		section_obj = get_object_or_404(Section, id=section_id)
+		class_obj = section_obj.class_group
+		students = students.filter(profile__section=section_obj)
+		title = f"Section {section_obj.name}"
+		subtitle = f"Students in {class_obj.name}, Section {section_obj.name}"
+		breadcrumbs.append({'label': class_obj.name, 'url': f'/dashboard/classes/{class_obj.id}/students/'})
+		breadcrumbs.append({'label': f'Section {section_obj.name}', 'url': '', 'current': True})
+	elif class_id:
+		class_obj = get_object_or_404(Class, id=class_id)
+		students = students.filter(profile__class_group=class_obj)
+		title = class_obj.name
+		subtitle = f"All students assigned to {class_obj.name}"
+		breadcrumbs.append({'label': class_obj.name, 'url': '', 'current': True})
+		
+	if query:
+		students = students.filter(
+			Q(username__icontains=query) |
+			Q(first_name__icontains=query) |
+			Q(last_name__icontains=query) |
+			Q(email__icontains=query)
+		)
+		
+	# Sorting
+	if sort_by in ['first_name', 'username', 'email', 'last_login', 'is_active']:
+		order_prefix = '-' if order == 'desc' else ''
+		if sort_by == 'first_name':
+			students = students.order_by(f'{order_prefix}first_name', f'{order_prefix}username')
+		else:
+			students = students.order_by(f'{order_prefix}{sort_by}')
+		
+	# Pagination
+	from django.core.paginator import Paginator
+	paginator = Paginator(students, 25)
+	page_number = request.GET.get('page')
+	page_obj = paginator.get_page(page_number)
+	
+	return render(request, 'dashboard/class_student_list.html', {
+		'page_obj': page_obj,
+		'query': query,
+		'sort_by': sort_by,
+		'order': order,
+		'title': title,
+		'subtitle': subtitle,
+		'class_obj': class_obj,
+		'section_obj': section_obj,
+		'breadcrumbs': breadcrumbs,
+	})
+
+

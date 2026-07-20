@@ -1,0 +1,51 @@
+<table class="glass-table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Username</th>
+            <th>Class &amp; Section</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for student in page_obj %}
+    <tr>
+        <td>{% if student.first_name %}{{ student.first_name }} {{ student.last_name }}{% else %}{{ student.username }}{% endif %}</td>
+        <td style="color:rgba(255,255,255,0.6); font-family:monospace;">{{ student.username }}</td>
+        <td>
+            {% with cg=student.profile.class_group sec=student.profile.section %}
+            {% if cg and sec %}
+            <span class="group-badge">{{ cg.name }}-{{ sec.name }}</span>
+            {% elif cg %}
+            <span class="group-badge">{{ cg.name }}</span>
+            {% else %}
+            <span style="color:rgba(255,255,255,0.3);">—</span>
+            {% endif %}
+            {% endwith %}
+        </td>
+        <td><span class="pill {% if student.is_active %}success{% else %}warning{% endif %}">{% if student.is_active %}Active{% else %}Disabled{% endif %}</span></td>
+        <td style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+            <a class="btn-small secondary" href="{% url 'dashboard_student_edit' student.id %}">Edit</a>
+            <a class="btn-small secondary" href="{% url 'dashboard_student_reset_password' student.id %}">Reset PW</a>
+            <a class="btn-small secondary" href="{% url 'dashboard_student_toggle' student.id %}">{% if student.is_active %}Disable{% else %}Enable{% endif %}</a>
+            <button class="btn-small danger" onclick="showModal('deleteModal-{{ student.id }}')">Delete</button>
+        </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5"><div class="empty-state">No students found.</div></td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% if page_obj.has_other_pages %}
+<div class="pagination-row">
+    {% if page_obj.has_previous %}
+    <a class="dash-btn secondary" href="?page={{ page_obj.previous_page_number }}&q={{ query }}&classes={{ classes_param }}&sections={{ sections_param }}"><i class="fa-solid fa-angle-left"></i> Previous</a>
+    {% endif %}
+    <span style="color:rgba(255,255,255,0.6); font-size:0.9rem;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a class="dash-btn secondary" href="?page={{ page_obj.next_page_number }}&q={{ query }}&classes={{ classes_param }}&sections={{ sections_param }}">Next <i class="fa-solid fa-angle-right"></i></a>
+    {% endif %}
+</div>
+{% endif %}

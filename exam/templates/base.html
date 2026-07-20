@@ -5,15 +5,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}QuizX{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="{% static 'css/google_fonts_inter_outfit.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/variables.css' %}">
     <link rel="stylesheet" href="{% static 'css/global.css' %}">
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
     <link rel="stylesheet" href="{% static 'css/animations.css' %}">
     <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
     {% block extra_css %}{% endblock %}
+    <!-- MathJax for formula formatting -->
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 <div class="background">
@@ -59,5 +70,68 @@
 </main>
 
 {% block extra_js %}{% endblock %}
+<script>
+document.addEventListener('click', function(e) {
+    if (e.target.tagName === 'IMG' && !e.target.closest('button')) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            cursor: zoom-out;
+            opacity: 0;
+            transition: opacity 0.22s ease-in-out;
+        `;
+        
+        const img = document.createElement('img');
+        img.src = e.target.src;
+        img.style.cssText = `
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            transform: scale(0.95);
+            transition: transform 0.22s ease-in-out;
+        `;
+        
+        overlay.appendChild(img);
+        document.body.appendChild(overlay);
+        
+        setTimeout(() => {
+            overlay.style.opacity = '1';
+            img.style.transform = 'scale(1)';
+        }, 10);
+        
+        const closeLightbox = () => {
+            overlay.style.opacity = '0';
+            img.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                overlay.remove();
+            }, 220);
+            document.removeEventListener('keydown', keyHandler);
+        };
+        
+        const keyHandler = (evt) => {
+            if (evt.key === 'Escape') closeLightbox();
+        };
+        
+        overlay.onclick = closeLightbox;
+        document.addEventListener('keydown', keyHandler);
+    }
+});
+
+const styleSheet = document.createElement("style");
+styleSheet.innerText = "img:not(.logo img) { cursor: zoom-in; }";
+document.head.appendChild(styleSheet);
+</script>
 </body>
 </html>
+

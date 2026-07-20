@@ -5,9 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Dashboard | QuizX{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="{% static 'css/google_fonts_inter_outfit.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/variables.css' %}">
     <link rel="stylesheet" href="{% static 'css/global.css' %}">
@@ -15,6 +13,19 @@
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
     <link rel="stylesheet" href="{% static 'css/modal.css' %}">
     {% block extra_css %}{% endblock %}
+    <!-- MathJax for formula formatting -->
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body class="dashboard-body">
 <div class="dashboard-shell" id="dashboardShell">
@@ -35,6 +46,7 @@
         <nav class="dashboard-nav">
             <a href="{% url 'dashboard_home' %}"><i class="fa-solid fa-chart-line"></i><span class="nav-label">Dashboard</span></a>
             <a href="{% url 'dashboard_students' %}"><i class="fa-solid fa-users"></i><span class="nav-label">Students</span></a>
+            <a href="{% url 'dashboard_classes' %}"><i class="fa-solid fa-graduation-cap"></i><span class="nav-label">Classes</span></a>
             <a href="{% url 'dashboard_quizzes' %}"><i class="fa-solid fa-clipboard-list"></i><span class="nav-label">Quizzes</span></a>
             <a href="{% url 'dashboard_results' %}"><i class="fa-solid fa-ranking-star"></i><span class="nav-label">Results</span></a>
             <a href="{% url 'dashboard_analytics' %}"><i class="fa-solid fa-chart-pie"></i><span class="nav-label">Analytics</span></a>
@@ -120,8 +132,70 @@ window.onclick = function(event) {
         event.target.classList.remove('show');
     }
 }
+
+document.addEventListener('click', function(e) {
+    if (e.target.tagName === 'IMG' && !e.target.closest('button')) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            cursor: zoom-out;
+            opacity: 0;
+            transition: opacity 0.22s ease-in-out;
+        `;
+        
+        const img = document.createElement('img');
+        img.src = e.target.src;
+        img.style.cssText = `
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            transform: scale(0.95);
+            transition: transform 0.22s ease-in-out;
+        `;
+        
+        overlay.appendChild(img);
+        document.body.appendChild(overlay);
+        
+        setTimeout(() => {
+            overlay.style.opacity = '1';
+            img.style.transform = 'scale(1)';
+        }, 10);
+        
+        const closeLightbox = () => {
+            overlay.style.opacity = '0';
+            img.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                overlay.remove();
+            }, 220);
+            document.removeEventListener('keydown', keyHandler);
+        };
+        
+        const keyHandler = (evt) => {
+            if (evt.key === 'Escape') closeLightbox();
+        };
+        
+        overlay.onclick = closeLightbox;
+        document.addEventListener('keydown', keyHandler);
+    }
+});
+
+const styleSheet = document.createElement("style");
+styleSheet.innerText = "img:not(.logo img):not(.brand-mark img) { cursor: zoom-in; }";
+document.head.appendChild(styleSheet);
 </script>
 
 {% block extra_js %}{% endblock %}
 </body>
 </html>
+

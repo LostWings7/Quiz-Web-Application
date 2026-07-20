@@ -1,5 +1,5 @@
-﻿{% extends 'dashboard/base.html' %}
-
+{% extends 'dashboard/base.html' %}
+{% load static %}
 {% block heading %}Analytics Details{% endblock %}
 {% block subtitle %}Detailed view of {{ chart_data.title }} for {{ selected_quiz.title }}{% endblock %}
 
@@ -105,6 +105,20 @@ function openExportModal(format) {
 }
 
 function executeExport(sortParam) {
+    const cols = [];
+    const possibleCols = ['sno', 'name', 'marks', 'pct', 'date', 'class', 'section'];
+    possibleCols.forEach(col => {
+        const chk = document.getElementById('col_' + col);
+        if (chk && chk.checked) {
+            cols.push(col);
+        }
+    });
+
+    if (cols.length === 0) {
+        alert("Please select at least one column to export.");
+        return;
+    }
+
     hideModal('exportSortModal');
     let url = '';
     if (currentExportFormat === 'csv') {
@@ -112,7 +126,7 @@ function executeExport(sortParam) {
     } else {
         url = "{% url 'export_overall_analysis_pdf' selected_quiz.id %}";
     }
-    url += "?sort=" + sortParam;
+    url += "?sort=" + sortParam + "&cols=" + cols.join(',');
     window.location.href = url;
 }
 </script>
@@ -264,7 +278,7 @@ function toggleAccordion(id, rowElement) {
 {% block extra_js %}
 {% if chart_data.type != 'none' %}
 {{ chart_data|json_script:"chart-data" }}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/vendor/chart.min.js' %}"></script>
 <script>
 const chartData = JSON.parse(document.getElementById("chart-data").textContent);
 const glassGrid = { color: "rgba(255,255,255,.12)" };
@@ -385,12 +399,67 @@ if(ctx && window.Chart) {
 {% if chart_type == 'scorecard' %}
 <!-- Export Sorting Modal -->
 <div id="exportSortModal" class="modal-overlay">
-    <div class="glass-modal">
-        <div class="modal-icon"><i class="fa-solid fa-sort"></i></div>
-        <h2>Export Sorting Preference</h2>
-        <p style="text-align: center; margin-bottom: 24px; color: var(--text-soft); line-height: 1.6;">
-            How would you like to order the students in this export?
+    <div class="glass-modal" style="max-width: 440px; padding: 28px;">
+        <div class="modal-icon"><i class="fa-solid fa-file-export"></i></div>
+        <h2>Export Settings</h2>
+        
+        <p style="text-align: center; margin-bottom: 12px; color: var(--text-soft); line-height: 1.6; font-size: 0.9rem;">
+            Select the columns to include in your export:
         </p>
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; color: rgba(255,255,255,0.85); font-size: 0.88rem;">
+            <tbody>
+                <tr>
+                    <td style="padding: 6px 4px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="col_sno" checked value="sno"> S.No
+                        </label>
+                    </td>
+                    <td style="padding: 6px 4px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="col_name" checked value="name"> Student Name
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 4px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="col_marks" checked value="marks"> Marks
+                        </label>
+                    </td>
+                    <td style="padding: 6px 4px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="col_pct" checked value="pct"> Percentage
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 4px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="col_date" checked value="date"> Date Submitted
+                        </label>
+                    </td>
+                    <td style="padding: 6px 4px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="col_class" checked value="class"> Class
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 4px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="col_section" checked value="section"> Section
+                        </label>
+                    </td>
+                    <td style="padding: 6px 4px;"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p style="text-align: center; margin-bottom: 12px; color: var(--text-soft); line-height: 1.6; font-size: 0.9rem;">
+            Order export list by:
+        </p>
+
         <div class="modal-actions" style="flex-direction: column; gap: 12px;">
             <button type="button" class="modal-btn primary" style="width: 100%;" onclick="executeExport('marks')">Marking-wise (Highest Score First)</button>
             <button type="button" class="modal-btn primary" style="width: 100%;" onclick="executeExport('alpha')">Alphabetically (A-Z)</button>
@@ -400,3 +469,4 @@ if(ctx && window.Chart) {
 </div>
 {% endif %}
 {% endblock %}
+

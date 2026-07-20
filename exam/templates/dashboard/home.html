@@ -1,5 +1,5 @@
 {% extends 'dashboard/base.html' %}
-
+{% load static %}
 {% block heading %}Dashboard{% endblock %}
 {% block subtitle %}A live overview of quizzes, students, attempts, and recent activity.{% endblock %}
 {% block actions %}
@@ -11,9 +11,9 @@
 <section class="metric-grid">
     <div class="metric-card"><span>Total quizzes</span><strong>{{ total_quizzes }}</strong></div>
     <div class="metric-card"><span>Total students</span><strong>{{ total_students }}</strong></div>
+    <div class="metric-card"><span>Total classes</span><strong>{{ total_classes }}</strong></div>
     <div class="metric-card"><span>Total questions</span><strong>{{ total_questions }}</strong></div>
     <div class="metric-card"><span>Total attempts</span><strong>{{ total_attempts }}</strong></div>
-    <div class="metric-card"><span>Average score</span><strong>{{ average_score }}</strong></div>
 </section>
 
 <section class="content-grid">
@@ -60,9 +60,29 @@
             </table>
         </div>
 
-        <div class="dashboard-card">
+        <div class="dashboard-card" style="margin-top: 20px;">
+            <div class="section-heading">
+                <h2>Class Enrollments</h2>
+                <a class="btn-small secondary" href="{% url 'dashboard_classes' %}">Manage</a>
+            </div>
+            <table class="glass-table">
+                <thead><tr><th>Class Group</th><th>Enrollment</th></tr></thead>
+                <tbody>
+                {% for item in students_per_class %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.count }} Student{{ item.count|pluralize }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2"><div class="empty-state">No classes created.</div></td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="dashboard-card" style="margin-top: 20px;">
             <div class="section-heading"><h2>Quick Actions</h2></div>
-            <div class="dashboard-actions" style="justify-content:flex-start;">
+            <div class="dashboard-actions" style="justify-content:flex-start; gap: 8px;">
                 <a class="dash-btn" href="{% url 'dashboard_question_create' %}"><i class="fa-solid fa-plus"></i>Add Question</a>
                 <a class="dash-btn secondary" href="{% url 'dashboard_question_import' %}"><i class="fa-solid fa-file-import"></i>Import Questions</a>
                 <a class="dash-btn secondary" href="{% url 'dashboard_student_import' %}"><i class="fa-solid fa-file-csv"></i>Import Students</a>
@@ -72,3 +92,4 @@
     </div>
 </section>
 {% endblock %}
+

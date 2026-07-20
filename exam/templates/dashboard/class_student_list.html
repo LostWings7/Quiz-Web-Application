@@ -1,0 +1,445 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} | QuizX{% endblock %}
+{% block heading %}{{ title }}{% endblock %}
+{% block subtitle %}{{ subtitle }}{% endblock %}
+
+{% block actions %}
+<button class="dash-btn" onclick="openAddStudentModal()"><i class="fa-solid fa-user-plus"></i>Add Student</button>
+<a class="dash-btn secondary" href="{% url 'dashboard_classes' %}"><i class="fa-solid fa-chevron-left"></i>Back to Classes</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.student-section-select {
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    width: 140px;
+}
+.student-section-select:focus {
+    border-color: rgba(0, 255, 200, 0.4);
+}
+.modal-toast {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    background: rgba(0, 255, 200, 0.15);
+    border: 1px solid rgba(0, 255, 200, 0.4);
+    color: #00ffc8;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+    z-index: 2000;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+.modal-toast.error {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+}
+
+/* Modal Search List Styles */
+.modal-student-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+    cursor: pointer;
+}
+.modal-student-row:last-child {
+    border-bottom: none;
+}
+.modal-student-row:hover {
+    background: rgba(0, 255, 200, 0.05);
+}
+
+/* Custom Styled Checkbox */
+.custom-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(0, 255, 200, 0.35);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.custom-checkbox:hover {
+    border-color: #00ffc8;
+    background: rgba(0, 255, 200, 0.08);
+}
+.custom-checkbox.checked {
+    background: #00ffc8;
+    border-color: #00ffc8;
+    box-shadow: 0 0 12px rgba(0, 255, 200, 0.4);
+}
+.custom-checkbox.checked::after {
+    content: '✓';
+    color: #050c18;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.modal-student-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+.modal-student-name {
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: #fff;
+}
+.modal-student-username {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.45);
+}
+.modal-student-badge {
+    font-size: 0.75rem;
+    color: rgba(0, 255, 200, 0.85);
+    background: rgba(0, 255, 200, 0.08);
+    border: 1px solid rgba(0, 255, 200, 0.2);
+    padding: 2px 7px;
+    border-radius: 5px;
+    white-space: nowrap;
+}
+.modal-student-list::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-student-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 3px;
+}
+.modal-student-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 200, 0.25);
+    border-radius: 3px;
+}
+.modal-student-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 200, 0.5);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Toast Notification -->
+<div id="modalToast" class="modal-toast" style="display:none;"></div>
+
+<div class="dashboard-card" style="animation: fadeUp 0.6s ease backwards;">
+
+    <form class="search-row" method="get" style="margin-bottom: 20px; display:flex; gap:10px; align-items:center;">
+        <input type="text" name="q" value="{{ query }}" placeholder="Search students in this group…" style="flex:1;">
+        <input type="hidden" name="sort" value="{{ sort_by }}">
+        <input type="hidden" name="order" value="{{ order }}">
+        <button class="dash-btn secondary" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+    </form>
+
+    <table class="glass-table">
+        <thead>
+            <tr>
+                <th><a href="?q={{ query }}&sort=first_name&order={% if sort_by == 'first_name' and order == 'asc' %}desc{% else %}asc{% endif %}" style="color:#00ffc8; text-decoration:none;">
+                    Name {% if sort_by == 'first_name' %}{% if order == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a></th>
+                <th><a href="?q={{ query }}&sort=username&order={% if sort_by == 'username' and order == 'asc' %}desc{% else %}asc{% endif %}" style="color:#00ffc8; text-decoration:none;">
+                    Username {% if sort_by == 'username' %}{% if order == 'asc' %}▲{% else %}▼{% endif %}{% endif %}
+                </a></th>
+                <th>Section</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="studentTableBody">
+        {% for student in page_obj %}
+        <tr id="studentRow-{{ student.id }}">
+            <td>{% if student.first_name %}{{ student.first_name }} {{ student.last_name }}{% else %}{{ student.username }}{% endif %}</td>
+            <td style="font-family:monospace; color:rgba(255,255,255,0.6);">{{ student.username }}</td>
+            <td>
+                <!-- Section Dropdown Selection -->
+                <select class="student-section-select" onchange="moveStudent({{ student.id }}, this.value)">
+                    <option value="">No Section</option>
+                    {% for s in class_obj.sections.all %}
+                    <option value="{{ s.id }}" {% if student.profile.section.id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td><span class="pill {% if student.is_active %}success{% else %}warning{% endif %}">{% if student.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+            <td>
+                <button class="btn-small danger" onclick="promptRemoveStudent({{ student.id }}, '{{ student.username }}')" title="Remove from Class"><i class="fa-solid fa-xmark"></i> Remove</button>
+            </td>
+        </tr>
+        {% empty %}
+        <tr id="emptyRow"><td colspan="5"><div class="empty-state">No students found in this group.</div></td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% if page_obj.has_other_pages %}
+    <div style="display:flex; justify-content:center; gap:8px; margin-top:24px; align-items:center;">
+        {% if page_obj.has_previous %}
+        <a class="dash-btn secondary" href="?page={{ page_obj.previous_page_number }}&q={{ query }}&sort={{ sort_by }}&order={{ order }}"><i class="fa-solid fa-angle-left"></i> Previous</a>
+        {% endif %}
+        <span style="color:rgba(255,255,255,0.6); font-size:0.9rem;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+        <a class="dash-btn secondary" href="?page={{ page_obj.next_page_number }}&q={{ query }}&sort={{ sort_by }}&order={{ order }}">Next <i class="fa-solid fa-angle-right"></i></a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Add Existing Student Modal Overlay -->
+<div id="addStudentModal" class="modal-overlay">
+    <div class="glass-modal edit-modal-wide" style="position: relative; max-width: 600px;">
+        <h2>Add Students to {{ class_obj.name }}</h2>
+        <p style="color: rgba(255,255,255,0.5); font-size: 0.88rem; margin-bottom: 16px;">Search and select multiple students to assign to this class.</p>
+        
+        <div class="add-student-search" style="margin-bottom: 16px;">
+            <input type="text" id="modalStudentSearchInput" placeholder="Search by name or username…" autocomplete="off" oninput="searchStudents(this.value)" style="width: 100%;">
+        </div>
+        
+        <!-- Search results with custom checkboxes -->
+        <div id="modalStudentSearchResults" class="modal-student-list" style="max-height: 280px; overflow-y: auto; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; background: rgba(0,0,0,0.25);">
+            <!-- Populated by JS -->
+        </div>
+        
+        <div class="modal-actions" style="margin-top: 20px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="modal-btn secondary" onclick="closeAddStudentModal()">Cancel</button>
+            <button type="button" class="modal-btn primary" id="addSelectedBtn" onclick="addSelectedStudents()">Add Selected</button>
+        </div>
+    </div>
+</div>
+
+<!-- Remove Student Confirmation Modal Overlay -->
+<div id="removeStudentModal" class="modal-overlay">
+    <div class="glass-modal" style="max-width: 440px;">
+        <div class="modal-icon warning"><i class="fa-solid fa-trash"></i></div>
+        <h2>Remove Student</h2>
+        <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+            Are you sure you want to remove <strong id="removeStudentUsername" style="color: #00ffc8;"></strong> from {{ class_obj.name }}?
+        </p>
+        <div class="modal-actions" style="display: flex; justify-content: center; gap: 12px;">
+            <button type="button" class="modal-btn secondary" onclick="hideModal('removeStudentModal')">Cancel</button>
+            <button type="button" class="modal-btn primary" id="confirmRemoveBtn" style="background: #ef4444; border-color: #ef4444;">Remove</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const currentClassId = "{{ class_obj.id }}";
+const selectedStudentIds = new Set();
+let pendingRemoveStudentId = null;
+
+function getCsrf() {
+    return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+}
+
+function showToast(text, success) {
+    const toast = document.getElementById('modalToast');
+    if (!toast) return;
+    toast.textContent = text;
+    toast.className = success ? 'modal-toast' : 'modal-toast error';
+    
+    toast.style.display = 'block';
+    toast.style.opacity = '1';
+    
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 250);
+    }, 2500);
+}
+
+// Modal open/close actions
+function openAddStudentModal() {
+    selectedStudentIds.clear();
+    document.getElementById('modalStudentSearchInput').value = '';
+    const btn = document.getElementById('addSelectedBtn');
+    if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Add Selected';
+    }
+    showModal('addStudentModal');
+    searchStudents(''); // Auto-load recently added students
+}
+
+function closeAddStudentModal() {
+    hideModal('addStudentModal');
+}
+
+// ---- Move Student Section ----
+function moveStudent(studentId, sectionId) {
+    const fd = new FormData();
+    fd.append('student_id', studentId);
+    fd.append('section_id', sectionId);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch(`/dashboard/classes/${currentClassId}/move-student/`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Student section updated successfully.', true);
+                {% if section_obj %}
+                if (String(sectionId) !== "{{ section_obj.id }}") {
+                    document.getElementById(`studentRow-${studentId}`)?.remove();
+                    checkEmptyTable();
+                }
+                {% endif %}
+            } else {
+                showToast(data.error || 'Failed to update section.', false);
+            }
+        })
+        .catch(() => showToast('Failed to update section.', false));
+}
+
+// ---- Remove Student Modal ----
+function promptRemoveStudent(studentId, username) {
+    pendingRemoveStudentId = studentId;
+    document.getElementById('removeStudentUsername').textContent = username;
+    showModal('removeStudentModal');
+}
+
+document.getElementById('confirmRemoveBtn').addEventListener('click', function() {
+    if (!pendingRemoveStudentId) return;
+    const studentId = pendingRemoveStudentId;
+    hideModal('removeStudentModal');
+
+    const fd = new FormData();
+    fd.append('student_id', studentId);
+    fd.append('csrfmiddlewaretoken', getCsrf());
+
+    fetch(`/dashboard/classes/${currentClassId}/remove-student/`, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Student removed from class.', true);
+                document.getElementById(`studentRow-${studentId}`)?.remove();
+                checkEmptyTable();
+            } else {
+                showToast(data.error || 'Failed to remove student.', false);
+            }
+        })
+        .catch(() => showToast('Failed to remove student.', false));
+});
+
+// ---- Search Students to Add (Checkbox Persistence & Custom Checkbox) ----
+let searchDebounce;
+function searchStudents(q) {
+    const resultsEl = document.getElementById('modalStudentSearchResults');
+    clearTimeout(searchDebounce);
+
+    searchDebounce = setTimeout(() => {
+        resultsEl.innerHTML = '<div style="padding:20px; text-align:center; color:rgba(255,255,255,0.4);"><i class="fa-solid fa-spinner fa-spin"></i> Searching…</div>';
+        
+        fetch(`/dashboard/classes/student-search-ajax/?class_id=${currentClassId}&q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.length) { 
+                    resultsEl.innerHTML = '<div style="padding:20px; text-align:center; color:rgba(255,255,255,0.4);">No unassigned students found</div>'; 
+                } else {
+                    resultsEl.innerHTML = data.map(s => {
+                        const isChecked = selectedStudentIds.has(s.id);
+                        return `
+                            <div class="modal-student-row" onclick="toggleStudentRow(event, ${s.id})">
+                                <div class="custom-checkbox ${isChecked ? 'checked' : ''}" id="chk-${s.id}"></div>
+                                <div class="modal-student-info">
+                                    <span class="modal-student-name">${escHtml(s.name)}</span>
+                                    <span class="modal-student-username">@${escHtml(s.username)}</span>
+                                </div>
+                                <span class="modal-student-badge">${escHtml(s.group)}</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            })
+            .catch(() => {
+                resultsEl.innerHTML = '<div style="padding:20px; text-align:center; color:#ef4444;">Failed to load search results</div>';
+            });
+    }, q.trim() ? 50 : 0);
+}
+
+function toggleStudentRow(event, studentId) {
+    event.stopPropagation();
+    const chk = document.getElementById(`chk-${studentId}`);
+    if (selectedStudentIds.has(studentId)) {
+        selectedStudentIds.delete(studentId);
+        if (chk) chk.classList.remove('checked');
+    } else {
+        selectedStudentIds.add(studentId);
+        if (chk) chk.classList.add('checked');
+    }
+    
+    // Update button text to display number of selected students
+    const btn = document.getElementById('addSelectedBtn');
+    if (btn) {
+        btn.textContent = selectedStudentIds.size > 0 ? `Add Selected (${selectedStudentIds.size})` : 'Add Selected';
+    }
+}
+
+// ---- Bulk Add Selected Students (Instant Performance) ----
+function addSelectedStudents() {
+    if (selectedStudentIds.size === 0) {
+        showToast('No students selected.', false);
+        return;
+    }
+    
+    const idsArray = Array.from(selectedStudentIds);
+    const btn = document.getElementById('addSelectedBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Adding…';
+    
+    const promises = idsArray.map(studentId => {
+        const fd = new FormData();
+        fd.append('student_id', studentId);
+        fd.append('csrfmiddlewaretoken', getCsrf());
+        return fetch(`/dashboard/classes/${currentClassId}/add-student/`, { method: 'POST', body: fd }).then(r => r.json());
+    });
+    
+    Promise.all(promises)
+        .then(results => {
+            const successCount = results.filter(r => r.success).length;
+            showToast(`Successfully added ${successCount} student(s) to this class.`, true);
+            closeAddStudentModal();
+            // Immediate page reload without artificial delay
+            window.location.reload();
+        })
+        .catch(() => {
+            showToast('An error occurred while adding students.', false);
+            btn.disabled = false;
+            btn.textContent = `Add Selected (${selectedStudentIds.size})`;
+        });
+}
+
+function checkEmptyTable() {
+    const tbody = document.getElementById('studentTableBody');
+    if (tbody && tbody.querySelectorAll('tr').length === 0) {
+        tbody.innerHTML = '<tr id="emptyRow"><td colspan="5"><div class="empty-state">No students found in this group.</div></td></tr>';
+    }
+}
+
+function escHtml(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+{% endblock %}

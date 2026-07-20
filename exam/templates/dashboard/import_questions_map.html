@@ -1,5 +1,5 @@
 {% extends 'dashboard/base.html' %}
-
+{% load static %}
 {% block heading %}Map Question Columns{% endblock %}
 {% block subtitle %}Match spreadsheet columns to question fields for {{ quiz.title }}.{% endblock %}
 
@@ -165,3 +165,4 @@ optionMapList.addEventListener("click", (event) => {
 });
 </script>
 {% endblock %}
+

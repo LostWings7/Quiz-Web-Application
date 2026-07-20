@@ -6,9 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ quiz.title }}</title>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="{% static 'css/google_fonts_inter_outfit.css' %}" rel="stylesheet">
 
 <link rel="stylesheet" href="{% static 'css/variables.css' %}">
 <link rel="stylesheet" href="{% static 'css/global.css' %}">
@@ -16,6 +14,19 @@
 <link rel="stylesheet" href="{% static 'css/quiz.css' %}">
 <link rel="stylesheet" href="{% static 'css/modal.css' %}">
 <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
+<!-- MathJax for formula formatting -->
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']]
+  },
+  svg: {
+    fontCache: 'global'
+  }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 
 <body class="quiz-page">
@@ -154,9 +165,19 @@
 {{ question.text|safe }}
 </div>
 
-{% if question.image %}
-<div class="question-image-wrapper">
-<img src="{{ question.image.url }}" class="question-image">
+{% if question.subtopic and question.subtopic.get_all_images %}
+<div class="subtopic-images-wrapper" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+    {% for sub_img in question.subtopic.get_all_images %}
+    <img src="{{ sub_img.url }}" class="subtopic-image" style="max-height:220px; max-width:100%; border-radius:12px; border:1px solid rgba(255,255,255,0.12); object-fit:contain;">
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if question.get_all_images %}
+<div class="question-images-wrapper" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+    {% for q_img in question.get_all_images %}
+    <img src="{{ q_img.url }}" class="question-image" style="max-height:260px; max-width:100%; border-radius:12px; border:1px solid rgba(255,255,255,0.12); object-fit:contain;">
+    {% endfor %}
 </div>
 {% endif %}
 
@@ -167,7 +188,16 @@
     <input type="radio" name="answer" value="{{ option.value }}" {% if selected_answer == option.value or selected_answer == option.legacy_value %}checked{% endif %}>
     <div class="option-body">
     <span class="option-letter">{{ option.label }}</span>
-    <span>{{ option.text|safe }}</span>
+    <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+        <span>{{ option.text|safe }}</span>
+        {% if option.image_urls %}
+        <div class="option-image-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-top: 6px;">
+            {% for img_url in option.image_urls %}
+            <img src="{{ img_url }}" alt="Option {{ option.label }}" style="max-height: 180px; max-width: 100%; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); object-fit: contain;">
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
     </div>
     </label>
     {% endfor %}
@@ -651,6 +681,7 @@ if(sidebarSubmit){
 }
 
 function submitExamNow(){
+    sessionStorage.removeItem("quiz_{{ quiz.id }}_deadline");
     const finishInput = document.createElement("input");
     finishInput.type = "hidden";
     finishInput.name = "finish";
@@ -683,7 +714,67 @@ if(timerEnabled){
     }, 1000);
 }
 
-</script>
+document.addEventListener('click', function(e) {
+    if (e.target.tagName === 'IMG' && !e.target.closest('button')) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            cursor: zoom-out;
+            opacity: 0;
+            transition: opacity 0.22s ease-in-out;
+        `;
+        
+        const img = document.createElement('img');
+        img.src = e.target.src;
+        img.style.cssText = `
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            transform: scale(0.95);
+            transition: transform 0.22s ease-in-out;
+        `;
+        
+        overlay.appendChild(img);
+        document.body.appendChild(overlay);
+        
+        setTimeout(() => {
+            overlay.style.opacity = '1';
+            img.style.transform = 'scale(1)';
+        }, 10);
+        
+        const closeLightbox = () => {
+            overlay.style.opacity = '0';
+            img.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                overlay.remove();
+            }, 220);
+            document.removeEventListener('keydown', keyHandler);
+        };
+        
+        const keyHandler = (evt) => {
+            if (evt.key === 'Escape') closeLightbox();
+        };
+        
+        overlay.onclick = closeLightbox;
+        document.addEventListener('keydown', keyHandler);
+    }
+});
 
+const styleSheet = document.createElement("style");
+styleSheet.innerText = "img { cursor: zoom-in; }";
+document.head.appendChild(styleSheet);
+</script>
 </body>
 </html>
+
