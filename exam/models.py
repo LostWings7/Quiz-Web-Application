@@ -215,3 +215,77 @@ class SchoolProfile(models.Model):
 		profile, _ = cls.objects.get_or_create(id=1)
 		return profile
 
+
+import os
+from django.db.models.signals import post_delete, pre_save
+
+def _delete_file_if_exists(file_field):
+	if file_field and hasattr(file_field, 'path'):
+		try:
+			if os.path.isfile(file_field.path):
+				os.remove(file_field.path)
+		except Exception:
+			pass
+
+@receiver(post_delete, sender=Question)
+def delete_question_image_file(sender, instance, **kwargs):
+	if instance.image:
+		_delete_file_if_exists(instance.image)
+
+@receiver(post_delete, sender=QuestionImage)
+def delete_question_extra_image_file(sender, instance, **kwargs):
+	if instance.image:
+		_delete_file_if_exists(instance.image)
+
+@receiver(post_delete, sender=QuestionOption)
+def delete_option_image_file(sender, instance, **kwargs):
+	if instance.image:
+		_delete_file_if_exists(instance.image)
+
+@receiver(post_delete, sender=OptionImage)
+def delete_option_extra_image_file(sender, instance, **kwargs):
+	if instance.image:
+		_delete_file_if_exists(instance.image)
+
+@receiver(post_delete, sender=SchoolProfile)
+def delete_school_profile_image_files(sender, instance, **kwargs):
+	if instance.school_logo:
+		_delete_file_if_exists(instance.school_logo)
+	if instance.school_banner_image:
+		_delete_file_if_exists(instance.school_banner_image)
+
+@receiver(pre_save, sender=Question)
+def delete_old_question_image(sender, instance, **kwargs):
+	if not instance.pk:
+		return
+	try:
+		old_obj = Question.objects.get(pk=instance.pk)
+		if old_obj.image and old_obj.image != instance.image:
+			_delete_file_if_exists(old_obj.image)
+	except Question.DoesNotExist:
+		pass
+
+@receiver(pre_save, sender=QuestionOption)
+def delete_old_option_image(sender, instance, **kwargs):
+	if not instance.pk:
+		return
+	try:
+		old_obj = QuestionOption.objects.get(pk=instance.pk)
+		if old_obj.image and old_obj.image != instance.image:
+			_delete_file_if_exists(old_obj.image)
+	except QuestionOption.DoesNotExist:
+		pass
+
+@receiver(pre_save, sender=SchoolProfile)
+def delete_old_school_profile_images(sender, instance, **kwargs):
+	if not instance.pk:
+		return
+	try:
+		old_obj = SchoolProfile.objects.get(pk=instance.pk)
+		if old_obj.school_logo and old_obj.school_logo != instance.school_logo:
+			_delete_file_if_exists(old_obj.school_logo)
+		if old_obj.school_banner_image and old_obj.school_banner_image != instance.school_banner_image:
+			_delete_file_if_exists(old_obj.school_banner_image)
+	except SchoolProfile.DoesNotExist:
+		pass
+
