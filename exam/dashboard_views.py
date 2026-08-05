@@ -102,14 +102,25 @@ def option_rows_from_post(request):
 
 def save_question_options(question, rows):
     old_options = list(question.options.all().order_by('order'))
+
+    # Collect images that will be reused on the new options.
+    # Temporarily clear those image fields in the DB BEFORE deleting the old options,
+    # so the post_delete signal doesn't delete those files from disk.
+    reuse_images = {}  # index -> image name string
+    for index, row in enumerate(rows):
+        if row.get('keep_image') and not row.get('image'):
+            if index < len(old_options) and old_options[index].image:
+                reuse_images[index] = old_options[index].image.name
+                QuestionOption.objects.filter(pk=old_options[index].pk).update(image='')
+
     question.options.all().delete()
+
     for index, row in enumerate(rows):
         image_to_save = None
         if row.get('image'):
             image_to_save = row['image']
-        elif row.get('keep_image'):
-            if index < len(old_options) and old_options[index].image:
-                image_to_save = old_options[index].image
+        elif index in reuse_images:
+            image_to_save = reuse_images[index]
 
         QuestionOption.objects.create(
             question=question,
@@ -468,6 +479,22 @@ def save_question_options(question, rows):
             'main': old_opt.image,
             'extras': list(old_opt.images.all()),
         }
+
+    # Before deleting old options, protect images that will be reused:
+    # Clear those image fields in the DB so post_delete won't delete the files.
+    for new_idx, row in enumerate(rows):
+        orig_idx = row.get('index', new_idx)
+        delete_ids = set(row.get('delete_image_ids', []))
+        if orig_idx in old_option_images_map:
+            old_info = old_option_images_map[orig_idx]
+            old_opt = old_options[orig_idx] if orig_idx < len(old_options) else None
+            # Protect main image if it's being kept
+            if old_opt and old_info['main'] and 'main' not in delete_ids:
+                QuestionOption.objects.filter(pk=old_opt.pk).update(image='')
+            # Protect extra images being kept
+            for extra_img in old_info['extras']:
+                if str(extra_img.id) not in delete_ids:
+                    OptionImage.objects.filter(pk=extra_img.id).update(image='')
 
     question.options.all().delete()
 
