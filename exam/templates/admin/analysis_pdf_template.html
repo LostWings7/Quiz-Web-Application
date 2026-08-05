@@ -2,15 +2,43 @@
 <html>
 <head>
     <style>
-        body { font-family: Arial, sans-serif; font-size: 12px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #333; padding: 8px; text-align: left; }
-        th { background-color: #f0f0f0; }
+        body { font-family: Arial, sans-serif; font-size: 11px; color: #111827; }
+        .report-banner { margin-top: 8px; margin-bottom: 12px; padding: 8px 12px; background-color: #f1f5f9; border-left: 4px solid #3b82f6; }
+        .report-title { font-size: 14px; font-weight: bold; color: #1e293b; margin: 0; }
+        table.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table.data-table th, table.data-table td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; }
+        table.data-table th { background-color: #f8fafc; font-weight: bold; color: #334155; }
     </style>
 </head>
 <body>
-    <h2>Quiz Scorecard: {{ quiz.title }}</h2>
-    <table>
+    <div style="text-align: center; margin-bottom: 8px;">
+        <table align="center" style="margin: 0 auto; border-collapse: collapse; border: none; max-width: 100%;">
+            <tr>
+                {% if school_profile.school_banner_image or school_profile.school_logo %}
+                <td style="border: none; padding-right: 10px; vertical-align: middle;">
+                    {% if school_profile.school_banner_image %}
+                    <img src="{{ school_profile.school_banner_image.path }}" height="36" style="height: 36px; vertical-align: middle;" />
+                    {% elif school_profile.school_logo %}
+                    <img src="{{ school_profile.school_logo.path }}" height="36" style="height: 36px; vertical-align: middle;" />
+                    {% endif %}
+                </td>
+                {% endif %}
+                {% if school_profile.school_name %}
+                <td style="border: none; vertical-align: middle; text-align: left;">
+                    <div style="font-size: 18px; font-weight: bold; color: #0f172a; line-height: 1.2; word-wrap: break-word;">{{ school_profile.school_name }}</div>
+                </td>
+                {% endif %}
+            </tr>
+        </table>
+    </div>
+
+    <div style="border-bottom: 1.5px solid #cbd5e1; margin: 6px 0 12px 0;"></div>
+
+    <div class="report-banner">
+        <div class="report-title">Scorecard Report: {{ quiz.title }}</div>
+    </div>
+
+    <table class="data-table">
         <thead>
             <tr>
                 {% for header in headers %}

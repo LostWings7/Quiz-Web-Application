@@ -19,10 +19,10 @@ class ImportUploadForm(forms.Form):
     def clean_file(self):
         uploaded = self.cleaned_data['file']
         name = uploaded.name.lower()
-        if not (name.endswith('.csv') or name.endswith('.xlsx')):
-            raise forms.ValidationError('Please upload a .csv or .xlsx file.')
-        if uploaded.size > 5 * 1024 * 1024:
-            raise forms.ValidationError('File must be smaller than 5 MB.')
+        if not (name.endswith('.csv') or name.endswith('.xlsx') or name.endswith('.zip')):
+            raise forms.ValidationError('Please upload a .csv, .xlsx, or .zip file.')
+        if uploaded.size > 25 * 1024 * 1024:
+            raise forms.ValidationError('File must be smaller than 25 MB.')
         return uploaded
 
 

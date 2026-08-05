@@ -4,16 +4,161 @@
 {% block heading %}Analytics{% endblock %}
 {% block subtitle %}Detailed performance metrics for your quizzes.{% endblock %}
 
+{% block extra_css %}
+<style>
+    .quiz-picker-wrapper {
+        position: relative;
+        margin-bottom: 24px;
+        animation: fadeUp 0.4s ease backwards;
+        width: 100%;
+    }
+    .quiz-picker-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 13px 18px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 12px;
+        cursor: pointer;
+        color: rgba(248,251,255,0.9);
+        font-size: 15px;
+        font-weight: 500;
+        transition: border-color 0.2s, background 0.2s;
+        user-select: none;
+    }
+    .quiz-picker-trigger:hover, .quiz-picker-trigger.open {
+        border-color: var(--primary);
+        background: rgba(255,255,255,0.09);
+    }
+    .quiz-picker-trigger .trigger-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .quiz-picker-trigger .trigger-icon { transition: transform 0.25s ease; opacity: 0.6; }
+    .quiz-picker-trigger.open .trigger-icon { transform: rotate(180deg); }
+
+    .quiz-picker-dropdown {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        background: #1e2535;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 14px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+        z-index: 200;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(-8px);
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .quiz-picker-dropdown.open {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: all;
+    }
+    .quiz-picker-search {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .quiz-picker-search i { color: rgba(248,251,255,0.4); font-size: 13px; }
+    .quiz-picker-search input {
+        flex: 1;
+        background: none;
+        border: none;
+        outline: none;
+        color: rgba(248,251,255,0.92);
+        font-size: 14px;
+        caret-color: var(--primary);
+    }
+    .quiz-picker-search input::placeholder { color: rgba(248,251,255,0.3); }
+    .quiz-picker-list {
+        max-height: 320px;
+        overflow-y: auto;
+        padding: 6px 0;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.1) transparent;
+    }
+    .quiz-picker-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 11px 18px;
+        cursor: pointer;
+        font-size: 14px;
+        color: rgba(248,251,255,0.8);
+        transition: background 0.15s, color 0.15s;
+        border-radius: 0;
+    }
+    .quiz-picker-item:hover, .quiz-picker-item.focused {
+        background: rgba(255,255,255,0.07);
+        color: #fff;
+    }
+    .quiz-picker-item.selected {
+        background: rgba(var(--primary-rgb, 99,102,241), 0.18);
+        color: var(--primary);
+        font-weight: 600;
+    }
+    .quiz-picker-item .item-icon {
+        width: 30px;
+        height: 30px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        flex-shrink: 0;
+        color: rgba(248,251,255,0.5);
+    }
+    .quiz-picker-item.selected .item-icon { background: rgba(var(--primary-rgb,99,102,241),0.25); color: var(--primary); }
+    .quiz-picker-item .item-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .quiz-picker-item .item-code { font-size: 11px; color: rgba(248,251,255,0.35); flex-shrink: 0; }
+    .quiz-picker-empty {
+        text-align: center;
+        padding: 28px 18px;
+        color: rgba(248,251,255,0.35);
+        font-size: 13px;
+    }
+    .match-highlight { color: var(--primary); font-weight: 700; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="dash-form" style="margin-bottom: 24px; animation: fadeUp 0.6s ease backwards;">
-    <form method="get">
-        <select name="quiz" onchange="this.form.submit()">
+{% if quizzes %}
+<!-- Searchable Quiz Picker -->
+<div class="quiz-picker-wrapper" id="quizPickerWrapper">
+    <div class="quiz-picker-trigger" id="quizPickerTrigger" onclick="togglePicker()">
+        <i class="fa-solid fa-flask-vial" style="color: var(--primary); font-size: 14px;"></i>
+        <span class="trigger-text" id="triggerLabel">
+            {% if selected_quiz %}{{ selected_quiz.title }}{% else %}Select a quiz to view analytics{% endif %}
+        </span>
+        <i class="fa-solid fa-chevron-down trigger-icon"></i>
+    </div>
+    <div class="quiz-picker-dropdown" id="quizPickerDropdown">
+        <div class="quiz-picker-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="quizSearchInput" placeholder="Search quizzes by name or code…" oninput="filterQuizzes(this.value)" autocomplete="off">
+        </div>
+        <div class="quiz-picker-list" id="quizPickerList">
             {% for quiz in quizzes %}
-            <option value="{{ quiz.id }}" {% if quiz.id == selected_quiz.id %}selected{% endif %}>{{ quiz.title }}</option>
+            <div class="quiz-picker-item {% if quiz.id == selected_quiz.id %}selected{% endif %}"
+                 data-id="{{ quiz.id }}"
+                 data-title="{{ quiz.title|lower }}"
+                 data-code="{{ quiz.code|lower }}"
+                 onclick="selectQuiz('{{ quiz.id }}', '{{ quiz.title|escapejs }}')">
+                <div class="item-icon"><i class="fa-solid fa-file-pen"></i></div>
+                <span class="item-label" data-original="{{ quiz.title }}">{{ quiz.title }}</span>
+                <span class="item-code">{{ quiz.code }}</span>
+            </div>
             {% endfor %}
-        </select>
-    </form>
+        </div>
+    </div>
 </div>
+{% endif %}
 
 {% if not selected_quiz %}
 <div class="empty-state">
@@ -228,5 +373,119 @@ makeChart("rankingChart", "bar", chartData.rankingLabels, chartData.rankingValue
 makeChart("difficultyChart", "line", chartData.difficultyLabels, chartData.difficultyValues, "Accuracy");
 </script>
 {% endif %}
+
+<script>
+// ── Quiz Picker Logic ─────────────────────────────────────
+const trigger    = document.getElementById('quizPickerTrigger');
+const dropdown   = document.getElementById('quizPickerDropdown');
+const searchInput= document.getElementById('quizSearchInput');
+const list       = document.getElementById('quizPickerList');
+if (trigger && dropdown) {
+    let focusedIdx = -1;
+
+    function togglePicker() {
+        const isOpen = dropdown.classList.contains('open');
+        if (isOpen) { closePicker(); }
+        else { openPicker(); }
+    }
+
+    function openPicker() {
+        trigger.classList.add('open');
+        dropdown.classList.add('open');
+        if (searchInput) { setTimeout(() => searchInput.focus(), 60); }
+        focusedIdx = -1;
+    }
+
+    function closePicker() {
+        trigger.classList.remove('open');
+        dropdown.classList.remove('open');
+        if (searchInput) { searchInput.value = ''; filterQuizzes(''); }
+        focusedIdx = -1;
+    }
+
+    // Close on outside click
+    document.addEventListener('click', function(e) {
+        const wrapper = document.getElementById('quizPickerWrapper');
+        if (wrapper && !wrapper.contains(e.target)) closePicker();
+    });
+
+    // Keyboard navigation
+    if (searchInput) {
+        searchInput.addEventListener('keydown', function(e) {
+            const visible = [...list.querySelectorAll('.quiz-picker-item:not([style*="display: none"])')];
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                focusedIdx = Math.min(focusedIdx + 1, visible.length - 1);
+                updateFocus(visible);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                focusedIdx = Math.max(focusedIdx - 1, 0);
+                updateFocus(visible);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (focusedIdx >= 0 && visible[focusedIdx]) visible[focusedIdx].click();
+            } else if (e.key === 'Escape') {
+                closePicker();
+            }
+        });
+    }
+
+    function updateFocus(visible) {
+        visible.forEach((el, i) => {
+            el.classList.toggle('focused', i === focusedIdx);
+            if (i === focusedIdx) el.scrollIntoView({ block: 'nearest' });
+        });
+    }
+}
+
+function filterQuizzes(query) {
+    if (!list) return;
+    const q = query.trim().toLowerCase();
+    const items = list.querySelectorAll('.quiz-picker-item');
+    let hasVisible = false;
+    let emptyMsg = list.querySelector('.quiz-picker-empty');
+
+    items.forEach(item => {
+        const title = item.dataset.title || '';
+        const code  = item.dataset.code  || '';
+        const match = !q || title.includes(q) || code.includes(q);
+        item.style.display = match ? '' : 'none';
+        if (match) {
+            hasVisible = true;
+            // Highlight matching text
+            const labelEl = item.querySelector('.item-label');
+            if (labelEl) {
+                const original = labelEl.dataset.original || labelEl.textContent;
+                labelEl.dataset.original = original;
+                if (q) {
+                    const rx = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    labelEl.innerHTML = original.replace(rx, '<span class="match-highlight">$1</span>');
+                } else {
+                    labelEl.innerHTML = original;
+                }
+            }
+        }
+    });
+
+    if (!emptyMsg) {
+        emptyMsg = document.createElement('div');
+        emptyMsg.className = 'quiz-picker-empty';
+        emptyMsg.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="margin-right:6px;"></i>No quizzes match your search.';
+        list.appendChild(emptyMsg);
+    }
+    emptyMsg.style.display = hasVisible ? 'none' : '';
+}
+
+function selectQuiz(id, title) {
+    const trigger = document.getElementById('quizPickerTrigger');
+    const label   = document.getElementById('triggerLabel');
+    if (label) label.textContent = title;
+    if (trigger) { trigger.classList.remove('open'); }
+    const dropdown = document.getElementById('quizPickerDropdown');
+    if (dropdown) dropdown.classList.remove('open');
+    window.location.href = '?quiz=' + id;
+}
+</script>
 {% endblock %}
+
 

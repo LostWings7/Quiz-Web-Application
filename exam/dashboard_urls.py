@@ -18,6 +18,7 @@ urlpatterns = [
 
     path('questions/create/', views.question_create, name='dashboard_question_create'),
     path('questions/import/', views.question_import, name='dashboard_question_import'),
+    path('questions/import/sample/', views.import_questions_sample, name='dashboard_question_import_sample'),
     path('questions/reorder/', views.question_reorder, name='dashboard_question_reorder'),
     path('questions/<int:question_id>/edit/', views.question_edit, name='dashboard_question_edit'),
     path('questions/<int:question_id>/delete/', views.question_delete, name='dashboard_question_delete'),

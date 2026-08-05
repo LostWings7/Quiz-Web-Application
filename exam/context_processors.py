@@ -117,3 +117,9 @@ def dashboard_breadcrumbs(request):
     crumbs[0]['current'] = True
     crumbs[0].pop('url', None)
     return {'breadcrumbs': crumbs}
+
+
+def school_profile_processor(request):
+    from .models import SchoolProfile
+    profile = SchoolProfile.get_instance()
+    return {'school_profile': profile}

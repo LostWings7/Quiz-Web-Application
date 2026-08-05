@@ -36,11 +36,35 @@ window.MathJax = {
 <header class="exam-header">
 
 <div class="exam-left">
-    <div class="exam-logo">QuizX</div>
+    {% if school_profile.has_custom_branding %}
+        {% if school_profile.school_banner_image %}
+        <div class="school-branding">
+            <img src="{{ school_profile.school_banner_image.url }}" alt="{{ school_profile.school_name|default:'Institution' }}" class="school-banner-img no-lightbox" style="max-height: 40px; max-width: 240px; width: auto; height: auto; object-fit: contain;">
+        </div>
+        {% else %}
+            <div class="school-branding">
+                {% if school_profile.school_logo %}
+                <img src="{{ school_profile.school_logo.url }}" alt="{{ school_profile.school_name }}" class="school-logo-img no-lightbox" style="max-height: 36px; max-width: 100px; width: auto; height: auto; object-fit: contain;">
+                {% endif %}
+                {% if school_profile.school_name %}
+                <span class="school-name">{{ school_profile.school_name }}</span>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="school-branding">
+            <div class="school-icon-default">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <span class="school-name">QuizX</span>
+        </div>
+    {% endif %}
+</div>
 
+<div class="exam-center">
     <div class="exam-meta">
         <span class="exam-label">Exam</span>
-        <h2>{{ quiz.title }}</h2>
+        <h2 class="exam-title{% if quiz.title|length > 45 %} title-long{% elif quiz.title|length > 25 %} title-medium{% endif %}" title="{{ quiz.title }}">{{ quiz.title }}</h2>
     </div>
 </div>
 
@@ -61,6 +85,27 @@ window.MathJax = {
 <div class="candidate-chip">
     <span class="candidate-label">Time Left</span>
     <strong id="examTimer">--:--</strong>
+    <script>
+        (function(){
+            try {
+                var el = document.getElementById("examTimer");
+                var k = "quiz_{{ quiz.id }}_deadline";
+                var d = parseInt(sessionStorage.getItem(k), 10);
+                var dur = parseInt("{{ duration_seconds|default:0 }}", 10) || 0;
+                if (!d && dur > 0) {
+                    d = Date.now() + dur * 1000;
+                    sessionStorage.setItem(k, d);
+                }
+                if (d && el) {
+                    var rem = Math.max(0, Math.ceil((d - Date.now()) / 1000));
+                    var m = String(Math.floor(rem / 60)).padStart(2, "0");
+                    var s = String(rem % 60).padStart(2, "0");
+                    el.textContent = m + ":" + s;
+                    if (rem <= 60) el.style.color = "#fbbf24";
+                }
+            } catch(e){}
+        })();
+    </script>
 </div>
 {% endif %}
 
@@ -694,16 +739,17 @@ if(timerEnabled){
     const timerEl = document.getElementById("examTimer");
     const storageKey = "quiz_{{ quiz.id }}_deadline";
     let deadline = parseInt(sessionStorage.getItem(storageKey), 10);
-    if(!deadline){
+    if(!deadline && durationSeconds > 0){
         deadline = Date.now() + durationSeconds * 1000;
         sessionStorage.setItem(storageKey, deadline);
     }
-    const timerInterval = setInterval(() => {
+    function updateTimerDisplay(){
+        if(!deadline) return;
         const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
         const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
         const seconds = String(remaining % 60).padStart(2, "0");
-        timerEl.textContent = `${minutes}:${seconds}`;
-        if(remaining <= 60){
+        if(timerEl) timerEl.textContent = `${minutes}:${seconds}`;
+        if(remaining <= 60 && timerEl){
             timerEl.style.color = "#fbbf24";
         }
         if(remaining <= 0){
@@ -711,11 +757,13 @@ if(timerEnabled){
             sessionStorage.removeItem(storageKey);
             submitExamNow();
         }
-    }, 1000);
+    }
+    updateTimerDisplay();
+    const timerInterval = setInterval(updateTimerDisplay, 1000);
 }
 
 document.addEventListener('click', function(e) {
-    if (e.target.tagName === 'IMG' && !e.target.closest('button')) {
+    if (e.target.tagName === 'IMG' && !e.target.closest('button') && !e.target.closest('.exam-header') && !e.target.classList.contains('no-lightbox')) {
         const overlay = document.createElement('div');
         overlay.style.cssText = `
             position: fixed;
@@ -772,7 +820,7 @@ document.addEventListener('click', function(e) {
 });
 
 const styleSheet = document.createElement("style");
-styleSheet.innerText = "img { cursor: zoom-in; }";
+styleSheet.innerText = ".question-content img, .subtopic-images-wrapper img, .option-image-container img { cursor: zoom-in; }";
 document.head.appendChild(styleSheet);
 </script>
 </body>

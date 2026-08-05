@@ -9,15 +9,14 @@
 
 {% block content %}
 <div class="dashboard-card">
-    <form class="search-row" method="get">
-        <input type="text" name="q" value="{{ query }}" placeholder="Search by student">
-        <button class="dash-btn secondary" type="submit">Search</button>
-    </form>
+    <div class="search-row">
+        <input type="text" name="q" id="quizResultsFilterInput" value="{{ query }}" placeholder="Search by student or username…" autocomplete="off" style="width: 100%;">
+    </div>
     <table class="glass-table">
         <thead><tr><th>Student</th><th>Username</th><th>Score</th><th>Submitted</th><th>Actions</th></tr></thead>
-        <tbody>
+        <tbody id="quizResultsTbody">
         {% for result in results %}
-        <tr>
+        <tr class="quiz-result-row">
             <td>{% if result.user.first_name %}{{ result.user.first_name }} {{ result.user.last_name }}{% else %}{{ result.user.username }}{% endif %}</td>
             <td>{{ result.user.username }}</td>
             <td>{{ result.score }} / {{ quiz.questions.count }}</td>
@@ -27,14 +26,30 @@
                 <button class="btn-small danger" onclick="showModal('deleteModal-{{ result.id }}')">Delete</button>
             </td>
         </tr>
-        
-
         {% empty %}
         <tr><td colspan="5"><div class="empty-state">No results found for this quiz.</div></td></tr>
         {% endfor %}
         </tbody>
     </table>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('quizResultsFilterInput');
+    const rows = document.querySelectorAll('.quiz-result-row');
+    if (input && rows.length > 0) {
+        input.addEventListener('input', function() {
+            const q = this.value.toLowerCase().trim();
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = (!q || text.includes(q)) ? '' : 'none';
+            });
+        });
+    }
+});
+</script>
 {% endblock %}
 
 {% block modals %}

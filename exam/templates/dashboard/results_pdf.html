@@ -1,18 +1,45 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <style>
-        body{font-family:Arial,sans-serif;color:#111827;}
-        h1{font-size:24px;}
-        table{width:100%;border-collapse:collapse;}
-        th,td{border:1px solid #d1d5db;padding:8px;text-align:left;}
-        th{background:#eef2ff;}
+        body { font-family: Arial, sans-serif; font-size: 11px; color: #111827; }
+        .report-banner { margin-top: 8px; margin-bottom: 12px; padding: 8px 12px; background-color: #f1f5f9; border-left: 4px solid #3b82f6; }
+        .report-title { font-size: 14px; font-weight: bold; color: #1e293b; margin: 0; }
+        table.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table.data-table th, table.data-table td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; }
+        table.data-table th { background-color: #eef2ff; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>Quiz Results</h1>
-    <table>
+    <div style="text-align: center; margin-bottom: 8px;">
+        <table align="center" style="margin: 0 auto; border-collapse: collapse; border: none; max-width: 100%;">
+            <tr>
+                {% if school_profile.school_banner_image or school_profile.school_logo %}
+                <td style="border: none; padding-right: 10px; vertical-align: middle;">
+                    {% if school_profile.school_banner_image %}
+                    <img src="{{ school_profile.school_banner_image.path }}" height="36" style="height: 36px; vertical-align: middle;" />
+                    {% elif school_profile.school_logo %}
+                    <img src="{{ school_profile.school_logo.path }}" height="36" style="height: 36px; vertical-align: middle;" />
+                    {% endif %}
+                </td>
+                {% endif %}
+                {% if school_profile.school_name %}
+                <td style="border: none; vertical-align: middle; text-align: left;">
+                    <div style="font-size: 18px; font-weight: bold; color: #0f172a; line-height: 1.2; word-wrap: break-word;">{{ school_profile.school_name }}</div>
+                </td>
+                {% endif %}
+            </tr>
+        </table>
+    </div>
+
+    <div style="border-bottom: 1.5px solid #cbd5e1; margin: 6px 0 12px 0;"></div>
+
+    <div class="report-banner">
+        <div class="report-title">Quiz Assessment Results</div>
+    </div>
+
+    <table class="data-table">
         <thead><tr><th>Student</th><th>Username</th><th>Quiz</th><th>Score</th><th>Submitted</th></tr></thead>
         <tbody>
         {% for result in results %}
@@ -21,11 +48,10 @@
             <td>{{ result.user.username }}</td>
             <td>{{ result.quiz.title }}</td>
             <td>{{ result.score }}</td>
-            <td>{{ result.submitted_at }}</td>
+            <td>{{ result.submitted_at|date:"Y-m-d H:i" }}</td>
         </tr>
         {% endfor %}
         </tbody>
     </table>
 </body>
 </html>
-

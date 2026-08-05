@@ -4,13 +4,14 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.template import loader 
 from django.db.models import Avg, Max, Min, Count, Q
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.conf import settings
 from collections import defaultdict,Counter
-from .models import Quiz, Question, QuizResult, Subtopic
+from .models import Quiz, Question, QuizResult, Subtopic, SchoolProfile
 from .forms import CodeForm
 from xhtml2pdf import pisa
 from io import BytesIO
@@ -109,7 +110,7 @@ def student_result_detail(request, result_id):
                 'text': opt_text,
                 'is_correct': opt_dict['is_correct'],
                 'is_selected': str(opt_val) == str(user_answer),
-                'image_url': opt_dict['image_url'],
+                'image_urls': opt_dict.get('image_urls', []),
             })
             
         is_correct = answer_is_correct(question, user_answer)
@@ -644,11 +645,20 @@ def export_overall_analysis_csv(request, quiz_id):
     quiz = Quiz.objects.get(id=quiz_id)
     total_questions = quiz.questions.count() or 1
     
+    class_id = request.GET.get('class_id')
+    section_id = request.GET.get('section_id')
     sort_param = request.GET.get('sort', 'marks')
+
+    queryset = QuizResult.objects.filter(quiz=quiz).select_related('user', 'user__profile', 'user__profile__class_group', 'user__profile__section')
+    if class_id:
+        queryset = queryset.filter(user__profile__class_group_id=class_id)
+    if section_id:
+        queryset = queryset.filter(user__profile__section_id=section_id)
+
     if sort_param == 'alpha':
-        results = QuizResult.objects.filter(quiz=quiz).select_related('user', 'user__profile', 'user__profile__class_group', 'user__profile__section').order_by('user__first_name', 'user__username')
+        results = queryset.order_by('user__first_name', 'user__username')
     else:
-        results = QuizResult.objects.filter(quiz=quiz).select_related('user', 'user__profile', 'user__profile__class_group', 'user__profile__section').order_by('-score', 'submitted_at')
+        results = queryset.order_by('-score', 'submitted_at')
 
     col_params = request.GET.get('cols', '')
     if col_params:
@@ -707,11 +717,20 @@ def export_overall_analysis_pdf(request, quiz_id):
     quiz = Quiz.objects.get(id=quiz_id)
     total_questions = quiz.questions.count() or 1
     
+    class_id = request.GET.get('class_id')
+    section_id = request.GET.get('section_id')
     sort_param = request.GET.get('sort', 'marks')
+
+    queryset = QuizResult.objects.filter(quiz=quiz).select_related('user', 'user__profile', 'user__profile__class_group', 'user__profile__section')
+    if class_id:
+        queryset = queryset.filter(user__profile__class_group_id=class_id)
+    if section_id:
+        queryset = queryset.filter(user__profile__section_id=section_id)
+
     if sort_param == 'alpha':
-        results = QuizResult.objects.filter(quiz=quiz).select_related('user', 'user__profile', 'user__profile__class_group', 'user__profile__section').order_by('user__first_name', 'user__username')
+        results = queryset.order_by('user__first_name', 'user__username')
     else:
-        results = QuizResult.objects.filter(quiz=quiz).select_related('user', 'user__profile', 'user__profile__class_group', 'user__profile__section').order_by('-score', 'submitted_at')
+        results = queryset.order_by('-score', 'submitted_at')
 
     col_params = request.GET.get('cols', '')
     if col_params:
@@ -763,7 +782,8 @@ def export_overall_analysis_pdf(request, quiz_id):
         'quiz': quiz,
         'headers': headers,
         'rows': rows,
-    })
+        'school_profile': SchoolProfile.get_instance(),
+    }, request=request)
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{quiz.title}_scorecard.pdf"'

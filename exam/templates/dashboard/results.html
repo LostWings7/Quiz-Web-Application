@@ -1,65 +1,278 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
 {% block heading %}Results Management{% endblock %}
-{% block subtitle %}Search individual and overall results, then export reports.{% endblock %}
-{% block actions %}
-<a class="dash-btn secondary" href="{% url 'dashboard_results_export_csv' %}"><i class="fa-solid fa-file-csv"></i>Export CSV</a>
-<a class="dash-btn secondary" href="{% url 'dashboard_results_export_pdf' %}"><i class="fa-solid fa-file-pdf"></i>Export PDF</a>
+{% block subtitle %}Search individual and overall student quiz results.{% endblock %}
+
+{% block extra_css %}
+<style>
+    .quiz-picker-wrapper {
+        position: relative;
+    }
+    .quiz-picker-trigger {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.14);
+        border-radius: 10px;
+        cursor: pointer;
+        color: rgba(248,251,255,0.85);
+        font-size: 14px;
+        font-weight: 500;
+        transition: border-color 0.2s, background 0.2s;
+        user-select: none;
+        min-width: 200px;
+        white-space: nowrap;
+    }
+    .quiz-picker-trigger:hover, .quiz-picker-trigger.open {
+        border-color: var(--primary);
+        background: rgba(255,255,255,0.09);
+    }
+    .quiz-picker-trigger .trigger-text { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+    .quiz-picker-trigger .trigger-icon { transition: transform 0.25s ease; opacity: 0.55; }
+    .quiz-picker-trigger.open .trigger-icon { transform: rotate(180deg); }
+
+    .quiz-picker-dropdown {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        min-width: 100%;
+        width: max-content;
+        max-width: 420px;
+        background: #1e2535;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+        z-index: 300;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(-6px);
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .quiz-picker-dropdown.open {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: all;
+    }
+    .quiz-picker-search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .quiz-picker-search i { color: rgba(248,251,255,0.35); font-size: 12px; }
+    .quiz-picker-search input {
+        flex: 1;
+        background: none;
+        border: none;
+        outline: none;
+        color: rgba(248,251,255,0.9);
+        font-size: 13px;
+        caret-color: var(--primary);
+    }
+    .quiz-picker-search input::placeholder { color: rgba(248,251,255,0.3); }
+    .quiz-picker-list {
+        max-height: 260px;
+        overflow-y: auto;
+        padding: 4px 0;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.1) transparent;
+    }
+    .quiz-picker-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 14px;
+        cursor: pointer;
+        font-size: 13px;
+        color: rgba(248,251,255,0.8);
+        transition: background 0.12s;
+    }
+    .quiz-picker-item:hover, .quiz-picker-item.focused {
+        background: rgba(255,255,255,0.07);
+        color: #fff;
+    }
+    .quiz-picker-item.selected {
+        background: rgba(var(--primary-rgb, 99,102,241), 0.18);
+        color: var(--primary);
+        font-weight: 600;
+    }
+    .quiz-picker-item .item-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .quiz-picker-item .item-code { font-size: 11px; color: rgba(248,251,255,0.32); flex-shrink: 0; }
+    .quiz-picker-empty {
+        text-align: center;
+        padding: 22px 14px;
+        color: rgba(248,251,255,0.35);
+        font-size: 12px;
+    }
+    .rqp-match { color: var(--primary); font-weight: 700; }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-card">
-    <form class="search-row" method="get">
-        <input type="text" name="q" value="{{ query }}" placeholder="Search by student or quiz">
-        <select name="quiz">
-            <option value="">All quizzes</option>
-            {% for quiz in quizzes %}
-            <option value="{{ quiz.id }}" {% if selected_quiz == quiz.id|stringformat:"s" %}selected{% endif %}>{{ quiz.title }}</option>
-            {% endfor %}
-        </select>
-        <button class="dash-btn secondary" type="submit">Search</button>
-    </form>
+    <div class="search-row" style="align-items: center; flex-wrap: wrap; gap: 10px;">
+        <input type="text" name="q" id="resultsSearchInput" value="{{ query }}" placeholder="Search by student or quiz" autocomplete="off" style="flex: 1; min-width: 180px;">
+
+        <!-- Searchable Quiz Filter Picker -->
+        <div class="quiz-picker-wrapper" id="rqpWrapper">
+            <div class="quiz-picker-trigger" id="rqpTrigger" onclick="rqpToggle()">
+                <i class="fa-solid fa-flask-vial" style="color: var(--primary); font-size: 12px;"></i>
+                <span class="trigger-text" id="rqpLabel">
+                    {% if selected_quiz %}
+                        {% for quiz in quizzes %}{% if quiz.id|stringformat:"s" == selected_quiz %}{{ quiz.title }}{% endif %}{% endfor %}
+                    {% else %}All Quizzes{% endif %}
+                </span>
+                <i class="fa-solid fa-chevron-down trigger-icon"></i>
+            </div>
+            <div class="quiz-picker-dropdown" id="rqpDropdown">
+                <div class="quiz-picker-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="rqpSearchInput" placeholder="Search quizzes…" oninput="rqpFilter(this.value)" autocomplete="off">
+                </div>
+                <div class="quiz-picker-list" id="rqpList">
+                    <div class="quiz-picker-item {% if not selected_quiz %}selected{% endif %}"
+                         data-id="" data-title="all quizzes" data-code=""
+                         onclick="rqpSelect('', 'All Quizzes')">
+                        <span class="item-label" data-original="All Quizzes">All Quizzes</span>
+                    </div>
+                    {% for quiz in quizzes %}
+                    <div class="quiz-picker-item {% if quiz.id|stringformat:'s' == selected_quiz %}selected{% endif %}"
+                         data-id="{{ quiz.id }}"
+                         data-title="{{ quiz.title|lower }}"
+                         data-code="{{ quiz.code|lower }}"
+                         onclick="rqpSelect('{{ quiz.id }}', '{{ quiz.title|escapejs }}')">
+                        <span class="item-label" data-original="{{ quiz.title }}">{{ quiz.title }}</span>
+                        <span class="item-code">{{ quiz.code }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- Hidden input that actually drives the AJAX fetch -->
+            <input type="hidden" id="resultsQuizSelect" value="{{ selected_quiz }}">
+        </div>
+    </div>
     <table class="glass-table">
         <thead><tr><th>Student</th><th>Quiz</th><th>Score</th><th>Submitted</th><th>Actions</th></tr></thead>
-        <tbody>
-        {% for result in results %}
-        <tr>
-            <td>{% if result.user.first_name %}{{ result.user.first_name }} {{ result.user.last_name }}{% else %}{{ result.user.username }}{% endif %}</td>
-            <td>{{ result.quiz.title }}</td>
-            <td>{{ result.score }} / {{ result.quiz.questions.count }}</td>
-            <td>{{ result.submitted_at|date:"M j, Y g:i A" }}</td>
-            <td>
-                <a class="btn-small secondary" href="{% url 'student_result_detail' result.id %}">Individual Result</a>
-                <button class="btn-small danger" onclick="showModal('deleteModal-{{ result.id }}')">Delete</button>
-            </td>
-        </tr>
-        
-
-        {% empty %}
-        <tr><td colspan="5"><div class="empty-state">No results found.</div></td></tr>
-        {% endfor %}
+        <tbody id="resultsTbody" style="transition: opacity 0.15s ease;">
+        {% include 'dashboard/results_table_partial.html' %}
         </tbody>
     </table>
 </div>
 {% endblock %}
 
 {% block modals %}
-{% for result in results %}
-<!-- Delete Modal -->
-<div id="deleteModal-{{ result.id }}" class="modal-overlay">
-    <div class="glass-modal">
-        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
-        <h2>Delete Attempt</h2>
-        <p>Are you sure you want to delete this attempt by {{ result.user.username }} for "{{ result.quiz.title }}"?</p>
-        <form method="post" action="{% url 'dashboard_result_delete' result.id %}">
-            {% csrf_token %}
-            <div class="modal-actions">
-                <button type="button" class="modal-btn secondary" onclick="hideModal('deleteModal-{{ result.id }}')">Cancel</button>
-                <button type="submit" class="modal-btn primary">Delete</button>
-            </div>
-        </form>
-    </div>
+<div id="resultsModalsContainer">
+    {% include 'dashboard/results_modals_partial.html' %}
 </div>
-{% endfor %}
 {% endblock %}
 
+{% block extra_js %}
+<script>
+// ── Results Quiz Picker ───────────────────────────────────
+let rqpFocusedIdx = -1;
+const rqpTrigger   = document.getElementById('rqpTrigger');
+const rqpDropdown  = document.getElementById('rqpDropdown');
+const rqpSearch    = document.getElementById('rqpSearchInput');
+const rqpList      = document.getElementById('rqpList');
+
+function rqpToggle() {
+    rqpDropdown.classList.contains('open') ? rqpClose() : rqpOpen();
+}
+function rqpOpen() {
+    rqpTrigger.classList.add('open');
+    rqpDropdown.classList.add('open');
+    if (rqpSearch) setTimeout(() => rqpSearch.focus(), 60);
+    rqpFocusedIdx = -1;
+}
+function rqpClose() {
+    rqpTrigger.classList.remove('open');
+    rqpDropdown.classList.remove('open');
+    if (rqpSearch) { rqpSearch.value = ''; rqpFilter(''); }
+    rqpFocusedIdx = -1;
+}
+document.addEventListener('click', function(e) {
+    const w = document.getElementById('rqpWrapper');
+    if (w && !w.contains(e.target)) rqpClose();
+});
+if (rqpSearch) {
+    rqpSearch.addEventListener('keydown', function(e) {
+        const vis = [...rqpList.querySelectorAll('.quiz-picker-item:not([style*="display: none"])')];
+        if (e.key === 'ArrowDown') { e.preventDefault(); rqpFocusedIdx = Math.min(rqpFocusedIdx+1, vis.length-1); rqpUpdateFocus(vis); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); rqpFocusedIdx = Math.max(rqpFocusedIdx-1, 0); rqpUpdateFocus(vis); }
+        else if (e.key === 'Enter') { e.preventDefault(); if (rqpFocusedIdx >= 0 && vis[rqpFocusedIdx]) vis[rqpFocusedIdx].click(); }
+        else if (e.key === 'Escape') rqpClose();
+    });
+}
+function rqpUpdateFocus(vis) {
+    vis.forEach((el, i) => { el.classList.toggle('focused', i === rqpFocusedIdx); if (i === rqpFocusedIdx) el.scrollIntoView({block:'nearest'}); });
+}
+function rqpFilter(query) {
+    const q = query.trim().toLowerCase();
+    const items = rqpList.querySelectorAll('.quiz-picker-item');
+    let hasVis = false;
+    let emptyEl = rqpList.querySelector('.quiz-picker-empty');
+    items.forEach(item => {
+        const t = item.dataset.title || '', c = item.dataset.code || '';
+        const match = !q || t.includes(q) || c.includes(q);
+        item.style.display = match ? '' : 'none';
+        if (match) {
+            hasVis = true;
+            const lbl = item.querySelector('.item-label');
+            if (lbl) {
+                const orig = lbl.dataset.original || lbl.textContent;
+                lbl.dataset.original = orig;
+                lbl.innerHTML = q ? orig.replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'), '<span class="rqp-match">$1</span>') : orig;
+            }
+        }
+    });
+    if (!emptyEl) { emptyEl = document.createElement('div'); emptyEl.className = 'quiz-picker-empty'; emptyEl.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="margin-right:5px;"></i>No quizzes match.'; rqpList.appendChild(emptyEl); }
+    emptyEl.style.display = hasVis ? 'none' : '';
+}
+function rqpSelect(id, title) {
+    document.getElementById('rqpLabel').textContent = title;
+    document.getElementById('resultsQuizSelect').value = id;
+    rqpList.querySelectorAll('.quiz-picker-item').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
+    rqpClose();
+    fetchResults();
+}
+
+// ── Results AJAX ─────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('resultsSearchInput');
+    const quizSelect = document.getElementById('resultsQuizSelect');
+    const tbody = document.getElementById('resultsTbody');
+    const modalsContainer = document.getElementById('resultsModalsContainer');
+    let debounceTimer = null;
+
+    window.fetchResults = function() {
+        if (!tbody) return;
+        tbody.style.opacity = '0.5';
+        const q = searchInput ? searchInput.value : '';
+        const quiz = quizSelect ? quizSelect.value : '';
+        const url = `?q=${encodeURIComponent(q)}&quiz=${encodeURIComponent(quiz)}&ajax=1`;
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => r.json())
+            .then(data => {
+                if (data.table_html !== undefined) tbody.innerHTML = data.table_html;
+                if (data.modals_html !== undefined && modalsContainer) modalsContainer.innerHTML = data.modals_html;
+                tbody.style.opacity = '1';
+            })
+            .catch(err => { console.error('Results AJAX Error:', err); tbody.style.opacity = '1'; });
+    };
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fetchResults, 150);
+        });
+    }
+    if (document.getElementById('resultsSearchBtn')) {
+        document.getElementById('resultsSearchBtn').addEventListener('click', fetchResults);
+    }
+});
+</script>
+{% endblock %}

@@ -119,6 +119,9 @@ function executeExport(sortParam) {
         return;
     }
 
+    const classElem = document.getElementById('export_class_id');
+    const classId = classElem ? classElem.value : '';
+
     hideModal('exportSortModal');
     let url = '';
     if (currentExportFormat === 'csv') {
@@ -126,7 +129,10 @@ function executeExport(sortParam) {
     } else {
         url = "{% url 'export_overall_analysis_pdf' selected_quiz.id %}";
     }
-    url += "?sort=" + sortParam + "&cols=" + cols.join(',');
+    url += '?sort=' + sortParam + '&cols=' + cols.join(',');
+    if (classId) {
+        url += '&class_id=' + classId;
+    }
     window.location.href = url;
 }
 </script>
@@ -403,6 +409,16 @@ if(ctx && window.Chart) {
         <div class="modal-icon"><i class="fa-solid fa-file-export"></i></div>
         <h2>Export Settings</h2>
         
+        <div style="margin-bottom: 20px;">
+            <label for="export_class_id" style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-soft);">Filter by Class (Optional):</label>
+            <select id="export_class_id" style="width: 100%; padding: 8px 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff;">
+                <option value="" style="background: #1e293b; color: #fff;">All Classes</option>
+                {% for c in all_classes %}
+                <option value="{{ c.id }}" style="background: #1e293b; color: #fff;">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
         <p style="text-align: center; margin-bottom: 12px; color: var(--text-soft); line-height: 1.6; font-size: 0.9rem;">
             Select the columns to include in your export:
         </p>

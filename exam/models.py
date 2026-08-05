@@ -195,3 +195,23 @@ from django.dispatch import receiver
 def create_student_profile(sender, instance, created, **kwargs):
 	if created:
 		StudentProfile.objects.get_or_create(user=instance)
+
+
+class SchoolProfile(models.Model):
+	school_name = models.CharField(max_length=200, blank=True, default="")
+	school_logo = models.ImageField(upload_to="school/", null=True, blank=True)
+	school_banner_image = models.ImageField(upload_to="school/", null=True, blank=True)
+	updated_at = models.DateTimeField(auto_now=True)
+
+	def __str__(self):
+		return self.school_name or "School Profile"
+
+	@property
+	def has_custom_branding(self):
+		return bool(self.school_banner_image or self.school_logo or (self.school_name and self.school_name.strip() and self.school_name.strip() != "Quiz Application"))
+
+	@classmethod
+	def get_instance(cls):
+		profile, _ = cls.objects.get_or_create(id=1)
+		return profile
+

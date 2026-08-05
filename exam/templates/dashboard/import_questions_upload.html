@@ -1,43 +1,141 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
 {% block heading %}Import Questions{% endblock %}
-{% block subtitle %}Upload a spreadsheet and map columns to question fields.{% endblock %}
+{% block subtitle %}Bulk import questions from a CSV, Excel, or ZIP file.{% endblock %}
 
-{% block content %}
-<div class="dashboard-card">
-    <p class="dashboard-subtitle" style="margin-bottom:20px;">
-        Select the target quiz, upload your file, and map columns on the next step.
-        Use an <strong>.xlsx</strong> file and highlight the correct answer cell in any colour.
-        A header row is recommended.
-    </p>
-
-    <form class="dash-form" method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="upload">
-
-        <p>
-            <label for="{{ form.quiz.id_for_label }}">{{ form.quiz.label }}</label>
-            {{ form.quiz }}
-        </p>
-
-        <p>
-            <label for="{{ form.file.id_for_label }}">{{ form.file.label }}</label>
-            {{ form.file }}
-            {% if form.file.help_text %}<span class="import-hint">{{ form.file.help_text }}</span>{% endif %}
-        </p>
-
-        <p class="import-checkbox">
-            <label>
-                {{ form.has_header }}
-                {{ form.has_header.label }}
-            </label>
-        </p>
-
-        <div class="dashboard-actions" style="justify-content:flex-start;">
-            <button class="dash-btn" type="submit"><i class="fa-solid fa-upload"></i> Upload &amp; Map Columns</button>
-            <a class="dash-btn secondary" href="{% url 'dashboard_quizzes' %}">Cancel</a>
-        </div>
-    </form>
-</div>
+{% block extra_css %}
+<style>
+    .guide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .guide-step { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 16px; }
+    .guide-step h4 { color: var(--primary); margin: 0 0 8px 0; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+    .guide-step p, .guide-step li { color: rgba(255,255,255,0.7); font-size: 0.84rem; line-height: 1.6; margin: 0; }
+    .guide-step ul { padding-left: 18px; margin-top: 6px; }
+    .guide-step code { background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px; font-size: 0.82rem; color: #7dd3fc; }
+    .col-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 10px; }
+    .col-table th { background: rgba(var(--primary-rgb,99,102,241),0.2); color: var(--primary); padding: 6px 10px; text-align: left; }
+    .col-table td { padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.75); }
+    .col-table tr:last-child td { border-bottom: none; }
+    .badge-opt { background: rgba(45,212,191,0.15); color: #2dd4bf; border-radius: 4px; padding: 1px 6px; font-size: 0.75rem; }
+    .badge-req { background: rgba(248,113,113,0.15); color: #f87171; border-radius: 4px; padding: 1px 6px; font-size: 0.75rem; }
+</style>
 {% endblock %}
 
+{% block content %}
+<div style="display:flex;flex-direction:column;gap:24px;">
+
+    <!-- Upload Form -->
+    <div class="dashboard-card" style="animation:fadeUp .4s ease backwards;">
+        <div class="section-heading" style="margin-bottom:20px;">
+            <h2><i class="fa-solid fa-file-arrow-up" style="color:var(--primary);margin-right:8px;"></i>Upload Import File</h2>
+        </div>
+        <form method="post" enctype="multipart/form-data" style="display:flex;flex-direction:column;gap:18px;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="upload">
+
+            <div class="form-group">
+                <label style="font-weight:600;display:block;margin-bottom:8px;color:rgba(255,255,255,0.9);">Target Quiz</label>
+                {{ form.quiz }}
+            </div>
+
+            <div class="form-group">
+                <label style="font-weight:600;display:block;margin-bottom:8px;color:rgba(255,255,255,0.9);">Import File</label>
+                {{ form.file }}
+                <small style="color:var(--text-soft);margin-top:6px;display:block;">
+                    Accepted: <strong>.csv</strong>, <strong>.xlsx</strong>, or a <strong>.zip</strong> (spreadsheet + image files bundled together).
+                </small>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;">
+                {{ form.has_header }}
+                <label style="color:rgba(255,255,255,0.85);cursor:pointer;">First row is a header</label>
+            </div>
+
+            <div style="display:flex;gap:12px;align-items:center;margin-top:6px;">
+                <button type="submit" class="dash-btn primary"><i class="fa-solid fa-arrow-up-from-bracket"></i> Upload & Preview</button>
+                <a href="{% url 'dashboard_question_import_sample' %}" class="dash-btn secondary" download>
+                    <i class="fa-solid fa-file-csv"></i> Download Sample Template
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Format Guide -->
+    <div class="dashboard-card" style="animation:fadeUp .5s ease backwards;">
+        <div class="section-heading" style="margin-bottom:16px;">
+            <h2><i class="fa-solid fa-circle-info" style="color:var(--primary);margin-right:8px;"></i>How to Prepare Your File</h2>
+        </div>
+
+        <!-- Column Layout -->
+        <p style="color:rgba(255,255,255,0.7);font-size:0.88rem;margin-bottom:10px;">
+            Each <strong>row</strong> in your spreadsheet is one question. Use these recommended columns (you'll map them on the next screen):
+        </p>
+        <table class="col-table">
+            <thead><tr><th>Column Name</th><th>Purpose</th><th>Required?</th></tr></thead>
+            <tbody>
+                <tr><td><code>question_text</code></td><td>The question body text</td><td><span class="badge-req">Required</span></td></tr>
+                <tr><td><code>question_image</code></td><td>Filename (from ZIP) or URL for the question's image</td><td><span class="badge-opt">Optional</span></td></tr>
+                <tr><td><code>option_1</code></td><td>First answer option text</td><td><span class="badge-req">Required</span></td></tr>
+                <tr><td><code>option_1_image</code></td><td>Image for first answer option (filename or URL)</td><td><span class="badge-opt">Optional</span></td></tr>
+                <tr><td><code>option_2</code>, <code>option_2_image</code></td><td>Second answer option text + image</td><td><span class="badge-opt">Optional</span></td></tr>
+                <tr><td><code>option_3</code>, <code>option_3_image</code></td><td>Third answer option text + image</td><td><span class="badge-opt">Optional</span></td></tr>
+                <tr><td><code>option_4</code>, <code>option_4_image</code></td><td>Fourth answer option text + image</td><td><span class="badge-opt">Optional</span></td></tr>
+                <tr><td><code>correct_option</code></td><td>Which option is correct — enter <code>1</code>, <code>2</code>, <code>3</code>, or <code>4</code></td><td><span class="badge-req">Required*</span></td></tr>
+                <tr><td><code>subtopic</code></td><td>Subtopic name (created automatically if new)</td><td><span class="badge-opt">Optional</span></td></tr>
+                <tr><td><code>order</code></td><td>Display order number</td><td><span class="badge-opt">Optional</span></td></tr>
+            </tbody>
+        </table>
+        <small style="color:rgba(255,255,255,0.4);margin-top:6px;display:block;">* Required for CSV files. For Excel (.xlsx), you can instead highlight the correct answer cell in any colour — it is detected automatically.</small>
+
+        <div class="guide-grid" style="margin-top:20px;">
+
+            <div class="guide-step">
+                <h4><i class="fa-solid fa-file-excel"></i> Excel (.xlsx) — Best Option</h4>
+                <p>Highlight the correct answer cell in any colour. This is the easiest way — no need for a <code>correct_option</code> column.</p>
+                <ul>
+                    <li>One row = one question</li>
+                    <li>Put image filenames (e.g. <code>q1.png</code>) in image columns</li>
+                    <li>Bundle images together in a ZIP (see below)</li>
+                </ul>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fa-solid fa-file-csv"></i> CSV — Simple Option</h4>
+                <p>Add a <code>correct_option</code> column with values <code>1</code>, <code>2</code>, <code>3</code>, or <code>4</code> to mark the correct answer.</p>
+                <ul>
+                    <li>No colour support in CSV</li>
+                    <li>Use URLs in image columns for online images</li>
+                    <li>Or ZIP with image files for local images</li>
+                </ul>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fa-solid fa-file-zipper"></i> ZIP — For Local Images</h4>
+                <p>Put your spreadsheet and all image files into one ZIP archive:</p>
+                <ul>
+                    <li><code>questions.zip</code><br>
+                        &nbsp;&nbsp;<code>├─ questions.csv</code> (or .xlsx)<br>
+                        &nbsp;&nbsp;<code>├─ q1.png</code><br>
+                        &nbsp;&nbsp;<code>├─ q2.png</code><br>
+                        &nbsp;&nbsp;<code>└─ opt_a.png</code>
+                    </li>
+                    <li>Reference images by filename in the image columns</li>
+                    <li>Images can be PNG, JPG, JPEG, GIF, or WebP</li>
+                </ul>
+            </div>
+
+            <div class="guide-step">
+                <h4><i class="fa-solid fa-link"></i> URLs — For Online Images</h4>
+                <p>Put a direct image URL in any image column:</p>
+                <ul>
+                    <li>e.g. <code>https://example.com/img/q1.png</code></li>
+                    <li>Works for <code>question_image</code> and all <code>option_image</code> columns</li>
+                    <li>Images are downloaded and stored on import</li>
+                    <li>URL must point directly to an image file</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

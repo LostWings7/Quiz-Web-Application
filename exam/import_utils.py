@@ -30,13 +30,66 @@ def cell_has_highlight(cell):
     return theme is not None
 
 
+import os
+import uuid
+import zipfile
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+
+
 def parse_uploaded_file(uploaded_file):
     name = uploaded_file.name.lower()
+    if name.endswith('.zip'):
+        return parse_zip(uploaded_file)
     if name.endswith('.xlsx'):
         return parse_xlsx(uploaded_file)
     if name.endswith('.xls'):
         raise ValueError('Legacy .xls files are not supported. Please save as .xlsx or .csv.')
     return parse_csv(uploaded_file)
+
+
+def parse_zip(uploaded_file):
+    try:
+        z = zipfile.ZipFile(uploaded_file)
+    except zipfile.BadZipFile:
+        raise ValueError('Invalid or corrupted ZIP archive.')
+
+    names = z.namelist()
+    spreadsheet_name = next(
+        (n for n in names if not n.startswith('__MACOSX') and (n.lower().endswith('.xlsx') or n.lower().endswith('.csv'))),
+        None,
+    )
+    if not spreadsheet_name:
+        raise ValueError('No .xlsx or .csv spreadsheet file found inside the ZIP package.')
+
+    extracted_images = {}
+    valid_exts = ('.png', '.jpg', '.jpeg', '.gif', '.webp')
+    import_subfolder = f"imported_images/{uuid.uuid4().hex[:8]}"
+
+    for name in names:
+        if name.startswith('__MACOSX') or name.endswith('/'):
+            continue
+        lower_name = name.lower()
+        if any(lower_name.endswith(ext) for ext in valid_exts):
+            basename = os.path.basename(name)
+            if basename:
+                content = z.read(name)
+                save_path = f"{import_subfolder}/{basename}"
+                saved_name = default_storage.save(save_path, ContentFile(content))
+                extracted_images[basename] = saved_name
+                extracted_images[basename.lower()] = saved_name
+
+    sheet_data = z.read(spreadsheet_name)
+    sheet_file = ContentFile(sheet_data, name=os.path.basename(spreadsheet_name))
+
+    if spreadsheet_name.lower().endswith('.xlsx'):
+        parsed = parse_xlsx(sheet_file)
+    else:
+        parsed = parse_csv(sheet_file)
+
+    parsed['extracted_images'] = extracted_images
+    parsed['filename'] = uploaded_file.name
+    return parsed
 
 
 def parse_csv(uploaded_file):
@@ -156,3 +209,35 @@ def parse_order_value(raw):
         return max(0, int(float(str(raw))))
     except (ValueError, TypeError):
         return 0
+
+
+import urllib.request
+import urllib.parse
+
+def download_image_from_url(url):
+    """
+    Downloads an image from a URL and saves it to media/imported_images/.
+    Returns the relative path in storage if successful, else None.
+    """
+    url_str = str(url).strip()
+    if not (url_str.startswith('http://') or url_str.startswith('https://')):
+        return None
+    try:
+        req = urllib.request.Request(
+            url_str,
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            content = response.read()
+            parsed = urllib.parse.urlparse(url_str)
+            filename = os.path.basename(parsed.path)
+            if not filename or '.' not in filename:
+                filename = f"downloaded_{uuid.uuid4().hex[:8]}.png"
+
+            save_path = f"imported_images/{uuid.uuid4().hex[:8]}/{filename}"
+            saved_name = default_storage.save(save_path, ContentFile(content))
+            return saved_name
+    except Exception as e:
+        print(f"Failed to download image from {url_str}: {e}")
+        return None
+

@@ -1,0 +1,14 @@
+{% for result in results %}
+<tr>
+    <td>{% if result.user.first_name %}{{ result.user.first_name }} {{ result.user.last_name }}{% else %}{{ result.user.username }}{% endif %}</td>
+    <td>{{ result.quiz.title }}</td>
+    <td>{{ result.score }} / {{ result.quiz.questions.count }}</td>
+    <td>{{ result.submitted_at|date:"M j, Y g:i A" }}</td>
+    <td>
+        <a class="btn-small secondary" href="{% url 'student_result_detail' result.id %}">Individual Result</a>
+        <button class="btn-small danger" onclick="showModal('deleteModal-{{ result.id }}')">Delete</button>
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="5"><div class="empty-state">No results found.</div></td></tr>
+{% endfor %}

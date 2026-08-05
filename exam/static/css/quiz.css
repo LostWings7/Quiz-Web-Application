@@ -21,76 +21,185 @@
 /* ---------- Header ---------- */
 
 .exam-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:24px;
-    padding:20px 30px;
-    margin-bottom:24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    padding: 16px 28px;
+    margin-bottom: 24px;
+    min-height: 76px;
 
-    background:rgba(255,255,255,.72);
-    backdrop-filter:blur(18px);
+    background: rgba(255,255,255,.85);
+    backdrop-filter: blur(18px);
 
-    border:1px solid rgba(255,255,255,.9);
-    border-radius:22px;
+    border: 1px solid rgba(255,255,255,.9);
+    border-radius: 22px;
 
     box-shadow:
         0 15px 40px rgba(15,23,42,.08);
 }
 
 .exam-left{
-    display:flex;
-    align-items:center;
-    gap:22px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 2;
 }
 
-.exam-logo{
-    width:62px;
-    height:62px;
+.school-branding{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
 
-    display:flex;
-    align-items:center;
-    justify-content:center;
+.school-banner-img{
+    max-height: 40px !important;
+    max-width: 240px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+    border-radius: 6px;
+}
 
-    border-radius:18px;
+.school-logo-img{
+    max-height: 38px !important;
+    max-width: 100px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
 
-    font-family:'Outfit',sans-serif;
-    font-weight:700;
-    font-size:1.2rem;
+.school-name{
+    font-family: 'Outfit', 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: clamp(1rem, 1.3vw, 1.2rem);
+    color: #1f2937;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 240px;
+    display: flex;
+    align-items: center;
+}
 
-    color:#fff;
+.school-icon-default{
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
 
-    background:
-        linear-gradient(
-            135deg,
-            #6d5dfc,
-            #4f8cff
-        );
+.exam-center{
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    width: max-content;
+    max-width: calc(100% - 500px);
 }
 
 .exam-meta{
-    display:flex;
-    flex-direction:column;
-    gap:4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+    gap: 2px;
 }
 
 .exam-label{
-    text-transform:uppercase;
-    letter-spacing:.15em;
-    font-size:.72rem;
-    color:#7c8598;
+    text-transform: uppercase;
+    letter-spacing: .18em;
+    font-size: .72rem;
+    color: #7c8598;
+    font-weight: 700;
+    text-align: center;
+    width: 100%;
+    display: block;
 }
 
-.exam-meta h2{
-    margin:0;
-    font-size:1.45rem;
-    color:#1f2937;
+.exam-title{
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    color: #1f2937;
+    text-align: center;
+    line-height: 1.25;
+    font-size: clamp(1.1rem, 1.8vw, 1.45rem);
+    width: 100%;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.exam-title.title-medium{
+    font-size: clamp(0.95rem, 1.4vw, 1.2rem);
+}
+
+.exam-title.title-long{
+    font-size: clamp(0.85rem, 1.1vw, 1.05rem);
 }
 
 .exam-right{
-    display:flex;
-    align-items:center;
-    gap:16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-left: auto;
+    z-index: 2;
+}
+
+@media(max-width: 900px){
+    .exam-header{
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 14px;
+        padding: 16px;
+    }
+    
+    .exam-left{
+        justify-content: center;
+    }
+
+    .exam-center{
+        position: static;
+        transform: none;
+        max-width: 100%;
+        width: 100%;
+        margin: 0 auto;
+    }
+    
+    .exam-right{
+        margin-left: 0;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .school-name{
+        max-width: 100%;
+    }
+
+    .exam-title{
+        max-width: 100%;
+    }
 }
 
 .candidate-chip{

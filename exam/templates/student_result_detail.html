@@ -48,11 +48,28 @@
             </div>
         </div>
         
+        {% if item.question.get_all_images %}
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; margin-bottom: 12px;">
+            {% for img in item.question.get_all_images %}
+            <img src="{{ img.url }}" class="zoomable-img" style="max-height: 180px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in;" />
+            {% endfor %}
+        </div>
+        {% endif %}
+        
         <div class="options-list">
             {% for opt in item.options %}
             <div class="option-item {% if opt.is_correct %}correct{% elif opt.is_selected %}incorrect-selected{% endif %} {% if opt.is_selected %}selected{% endif %}">
                 <div class="option-marker">{{ opt.value }}</div>
-                <div class="option-text">{{ opt.text|striptags }}</div>
+                <div class="option-text">
+                    {{ opt.text|striptags }}
+                    {% if opt.image_urls %}
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+                        {% for img_url in opt.image_urls %}
+                        <img src="{{ img_url }}" class="zoomable-img" style="max-height: 100px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in;" />
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
                 
                 {% if opt.is_correct %}
                 <div class="option-badge correct"><i class="fa-solid fa-check"></i> Correct Answer</div>

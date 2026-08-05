@@ -21,8 +21,9 @@ from .import_utils import (
     parse_uploaded_file,
     preview_headers,
     preview_rows,
+    download_image_from_url,
 )
-from .models import Question, QuestionOption, Quiz, QuizResult, Subtopic, Class, Section, StudentProfile, QuestionImage, OptionImage
+from .models import Question, QuestionOption, Quiz, QuizResult, Subtopic, Class, Section, StudentProfile, QuestionImage, OptionImage, SchoolProfile
 
 QUESTION_IMPORT_SESSION = 'question_import_payload'
 STUDENT_IMPORT_SESSION = 'student_import_payload'
@@ -661,6 +662,7 @@ def question_import(request):
                         'highlighted': parsed['highlighted'],
                         'supports_color': parsed['supports_color'],
                         'filename': parsed['filename'],
+                        'extracted_images': parsed.get('extracted_images', {}),
                     }
                     request.session.modified = True
                     return redirect('dashboard_question_import')
@@ -669,30 +671,56 @@ def question_import(request):
             has_header = payload['has_header']
             rows = payload['rows']
             highlighted = [tuple(item) for item in payload['highlighted']]
+            extracted_images = payload.get('extracted_images', {})
 
-            map_text = request.POST.get('map_text', '')
-            map_order = request.POST.get('map_order', '')
-            map_subtopic = request.POST.get('map_subtopic', '')
+            map_text           = request.POST.get('map_text', '')
+            map_question_image = request.POST.get('map_question_image', '')
+            map_correct_option = request.POST.get('map_correct_option', '')
+            map_order          = request.POST.get('map_order', '')
+            map_subtopic       = request.POST.get('map_subtopic', '')
 
-            option_columns = []
-            index = 0
-            while f'map_option_{index}' in request.POST:
-                col = request.POST.get(f'map_option_{index}', '')
-                if col != '':
-                    option_columns.append(int(col))
-                index += 1
+            # Collect option columns: text + optional image column per option
+            option_text_cols  = []
+            option_image_cols = []
+            idx = 0
+            while f'map_option_{idx}' in request.POST:
+                t_col = request.POST.get(f'map_option_{idx}', '')
+                i_col = request.POST.get(f'map_option_image_{idx}', '')
+                option_text_cols.append(t_col if t_col != '' else None)
+                option_image_cols.append(i_col if i_col != '' else None)
+                idx += 1
+
+            # Filter to paired lists where text col is set
+            paired_options = [
+                (t, i) for t, i in zip(option_text_cols, option_image_cols) if t is not None
+            ]
 
             if map_text == '':
                 messages.error(request, 'Select a column for question text.')
                 return redirect('dashboard_question_import')
 
-            if not option_columns:
-                messages.error(request, 'Map at least one option column.')
+            if not paired_options:
+                messages.error(request, 'Map at least one option text column.')
                 return redirect('dashboard_question_import')
 
             data_rows = rows[1:] if has_header else rows
             created = 0
             skipped = 0
+
+            def resolve_image(cell_val):
+                """Resolve a cell value to an image path or ContentFile from ZIP/URL."""
+                val = str(cell_val).strip()
+                if not val:
+                    return None
+                if val.startswith(('http://', 'https://')):
+                    return download_image_from_url(val)
+                # Try exact filename match first, then stem match
+                if val in extracted_images:
+                    return extracted_images[val]
+                val_lower = val.lower()
+                if val_lower in extracted_images:
+                    return extracted_images[val_lower]
+                return None
 
             for row_idx, row in enumerate(data_rows):
                 actual_row_idx = row_idx + (1 if has_header else 0)
@@ -701,34 +729,66 @@ def question_import(request):
                     skipped += 1
                     continue
 
+                # Determine correct option index from: colour highlight → explicit column → fallback 0
                 highlighted_cols = {
                     int(col) for row_num, col in highlighted if int(row_num) == actual_row_idx
                 }
-                correct_col = next(
-                    (int(col) for col in option_columns if int(col) in highlighted_cols),
-                    None,
-                )
-
-                options = []
                 correct_idx = None
-                for col in option_columns:
-                    value = cell_value(row, col)
-                    if value:
-                        if correct_col is not None and int(col) == correct_col:
-                            correct_idx = len(options)
-                        options.append({'text': value, 'is_correct': False})
+
+                # 1. Colour-coded (Excel)
+                for opt_i, (t_col, _) in enumerate(paired_options):
+                    if int(t_col) in highlighted_cols:
+                        correct_idx = opt_i
+                        break
+
+                # 2. Explicit correct_option column (1-based integer)
+                if correct_idx is None and map_correct_option:
+                    raw_correct = cell_value(row, map_correct_option)
+                    try:
+                        correct_idx = max(0, int(float(raw_correct)) - 1)
+                    except (ValueError, TypeError):
+                        pass
+
+                # Build option rows
+                options = []
+                for opt_i, (t_col, i_col) in enumerate(paired_options):
+                    opt_text = cell_value(row, t_col)
+                    if not opt_text:
+                        continue
+                    opt_data = {
+                        'text': opt_text,
+                        'is_correct': False,
+                        'uploaded_images': [],
+                    }
+                    # Resolve option image
+                    if i_col:
+                        img_val = cell_value(row, i_col)
+                        resolved = resolve_image(img_val)
+                        if resolved:
+                            opt_data['uploaded_images'] = [resolved]
+                    options.append((opt_i, opt_data))
 
                 if not options:
                     skipped += 1
                     continue
 
-                if correct_idx is None:
-                    if payload['supports_color']:
-                        skipped += 1
-                        continue
+                # Map correct_idx from paired_options index to options list position
+                if correct_idx is not None:
+                    # Find the position in the options list that has this paired index
+                    actual_correct = None
+                    for pos, (opt_i, _) in enumerate(options):
+                        if opt_i == correct_idx:
+                            actual_correct = pos
+                            break
+                    if actual_correct is not None:
+                        correct_idx = actual_correct
+                    else:
+                        correct_idx = 0
+                else:
                     correct_idx = 0
 
-                options[correct_idx]['is_correct'] = True
+                option_rows = [d for _, d in options]
+                option_rows[correct_idx]['is_correct'] = True
 
                 subtopic = None
                 subtopic_name = cell_value(row, map_subtopic)
@@ -741,7 +801,24 @@ def question_import(request):
                     order=parse_order_value(cell_value(row, map_order)),
                     text=text,
                 )
-                save_question_options(question, options)
+                save_question_options(question, option_rows)
+
+                # Attach question image from dedicated column or ZIP auto-match
+                q_img_resolved = None
+                if map_question_image:
+                    q_img_val = cell_value(row, map_question_image)
+                    q_img_resolved = resolve_image(q_img_val)
+
+                if q_img_resolved:
+                    from django.core.files.base import ContentFile as _CF
+                    if isinstance(q_img_resolved, str):
+                        # Path stored in default_storage (from ZIP)
+                        question.image.name = q_img_resolved
+                        question.save(update_fields=['image'])
+                    else:
+                        question.image = q_img_resolved
+                        question.save(update_fields=['image'])
+
                 created += 1
 
             request.session.pop(QUESTION_IMPORT_SESSION, None)
@@ -768,6 +845,75 @@ def question_import(request):
 
     form = QuestionImportUploadForm(initial={'quiz': request.GET.get('quiz')})
     return render(request, 'dashboard/import_questions_upload.html', {'form': form})
+
+
+@staff_member_required
+def import_questions_sample(request):
+    """Return a downloadable sample CSV template for question imports."""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="questions_import_template.csv"'
+    writer = csv.writer(response)
+    writer.writerow([
+        'order',
+        'question_text',
+        'question_image',
+        'option_1',
+        'option_1_image',
+        'option_2',
+        'option_2_image',
+        'option_3',
+        'option_3_image',
+        'option_4',
+        'option_4_image',
+        'correct_option',
+        'subtopic',
+    ])
+    writer.writerow([
+        '1',
+        'What is the capital of France?',
+        '',
+        'Paris',
+        '',
+        'Berlin',
+        '',
+        'London',
+        '',
+        'Madrid',
+        '',
+        '1',
+        'Geography',
+    ])
+    writer.writerow([
+        '2',
+        'Which planet is shown in the image?',
+        'saturn.png',
+        'Saturn',
+        '',
+        'Jupiter',
+        '',
+        'Mars',
+        '',
+        'Venus',
+        '',
+        '1',
+        'Science',
+    ])
+    writer.writerow([
+        '3',
+        'Match the flag to the country.',
+        'question_flag.png',
+        'France',
+        'flag_france.png',
+        'Germany',
+        'flag_germany.png',
+        'Italy',
+        'flag_italy.png',
+        '',
+        '',
+        '1',
+        'Geography',
+    ])
+    return response
 
 
 @staff_member_required
@@ -1002,20 +1148,10 @@ def student_import(request):
                 if not username:
                     row_idx += 1
                     continue
-                class_name = cell_value(row, map_class) if map_class else None
-                section_name = cell_value(row, map_section) if map_section else None
+                class_name = cell_value(row, map_class).strip() if map_class and cell_value(row, map_class) else None
+                section_name = cell_value(row, map_section).strip() if map_section and cell_value(row, map_section) else None
                 
-                if class_name:
-                    try:
-                        c_obj = Class.objects.get(name=class_name)
-                        if section_name:
-                            try:
-                                Section.objects.get(class_group=c_obj, name=section_name)
-                            except Section.DoesNotExist:
-                                validation_errors.append(f"Row {row_idx}: Section '{section_name}' does not exist in Class '{class_name}'.")
-                    except Class.DoesNotExist:
-                        validation_errors.append(f"Row {row_idx}: Class '{class_name}' does not exist.")
-                elif section_name:
+                if section_name and not class_name:
                     validation_errors.append(f"Row {row_idx}: Section '{section_name}' specified without a class.")
                 row_idx += 1
                 
@@ -1050,16 +1186,16 @@ def student_import(request):
                 user.is_staff = False
                 user.save()
                 
-                # Assign class & section
-                class_name = cell_value(row, map_class) if map_class else None
-                section_name = cell_value(row, map_section) if map_section else None
+                # Assign class & section (auto-creating missing classes/sections)
+                class_name = cell_value(row, map_class).strip() if map_class and cell_value(row, map_class) else None
+                section_name = cell_value(row, map_section).strip() if map_section and cell_value(row, map_section) else None
                 
                 profile, _ = StudentProfile.objects.get_or_create(user=user)
                 if class_name:
-                    c_obj = Class.objects.get(name=class_name)
+                    c_obj, _ = Class.objects.get_or_create(name=class_name)
                     profile.class_group = c_obj
                     if section_name:
-                        s_obj = Section.objects.get(class_group=c_obj, name=section_name)
+                        s_obj, _ = Section.objects.get_or_create(class_group=c_obj, name=section_name)
                         profile.section = s_obj
                     else:
                         profile.section = None
@@ -1108,6 +1244,12 @@ def results_list(request):
         results = results.filter(quiz_id=quiz_id)
     if query:
         results = results.filter(Q(user__username__icontains=query) | Q(user__first_name__icontains=query) | Q(user__last_name__icontains=query) | Q(quiz__title__icontains=query))
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('ajax') == '1':
+        table_html = render_to_string('dashboard/results_table_partial.html', {'results': results}, request=request)
+        modals_html = render_to_string('dashboard/results_modals_partial.html', {'results': results}, request=request)
+        return JsonResponse({'table_html': table_html, 'modals_html': modals_html})
+
     return render(request, 'dashboard/results.html', {
         'results': results,
         'quizzes': Quiz.objects.order_by('title'),
@@ -1129,7 +1271,10 @@ def results_export_csv(request):
 
 @staff_member_required
 def results_export_pdf(request):
-    html = render_to_string('dashboard/results_pdf.html', {'results': QuizResult.objects.select_related('user', 'quiz')})
+    html = render_to_string('dashboard/results_pdf.html', {
+        'results': QuizResult.objects.select_related('user', 'quiz'),
+        'school_profile': SchoolProfile.get_instance(),
+    }, request=request)
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="quiz-results.pdf"'
     pisa_status = pisa.CreatePDF(html, dest=response)
@@ -1255,6 +1400,7 @@ def quiz_detailed_report_pdf(request, quiz_id):
         'distribution': distribution,
         'topic_performance': topic_performance,
         'question_analysis': question_analysis,
+        'school_profile': SchoolProfile.get_instance(),
     }, request=request)
     
     response = HttpResponse(content_type='application/pdf')
@@ -1587,12 +1733,36 @@ def analytics_detail(request, chart_type):
         'chart_data': chart_data,
         'text_metrics': text_metrics,
         'table_data': table_data,
-        'chart_type': chart_type
+        'chart_type': chart_type,
+        'all_classes': Class.objects.prefetch_related('sections').all(),
     })
 
 @staff_member_required
 def settings_view(request):
-    return render(request, 'dashboard/settings.html')
+    school_profile = SchoolProfile.get_instance()
+    if request.method == 'POST':
+        name = request.POST.get('school_name', '').strip()
+        logo = request.FILES.get('school_logo')
+        banner = request.FILES.get('school_banner_image')
+        remove_logo = request.POST.get('remove_logo')
+        remove_banner = request.POST.get('remove_banner')
+
+        school_profile.school_name = name
+        if logo:
+            school_profile.school_logo = logo
+        elif remove_logo:
+            school_profile.school_logo = None
+
+        if banner:
+            school_profile.school_banner_image = banner
+        elif remove_banner:
+            school_profile.school_banner_image = None
+
+        school_profile.save()
+        messages.success(request, 'Institution branding settings updated successfully!')
+        return redirect('dashboard_settings')
+
+    return render(request, 'dashboard/settings.html', {'school_profile': school_profile})
 
 @staff_member_required
 def classes_list(request):

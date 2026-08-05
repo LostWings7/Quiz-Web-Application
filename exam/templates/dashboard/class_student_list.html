@@ -144,12 +144,11 @@
 
 <div class="dashboard-card" style="animation: fadeUp 0.6s ease backwards;">
 
-    <form class="search-row" method="get" style="margin-bottom: 20px; display:flex; gap:10px; align-items:center;">
-        <input type="text" name="q" value="{{ query }}" placeholder="Search students in this group…" style="flex:1;">
+    <div class="search-row" style="margin-bottom: 20px; display:flex; gap:10px; align-items:center;">
+        <input type="text" name="q" id="classStudentFilterInput" value="{{ query }}" placeholder="Search students in this group…" autocomplete="off" style="width:100%;">
         <input type="hidden" name="sort" value="{{ sort_by }}">
         <input type="hidden" name="order" value="{{ order }}">
-        <button class="dash-btn secondary" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
-    </form>
+    </div>
 
     <table class="glass-table">
         <thead>
@@ -441,5 +440,20 @@ function checkEmptyTable() {
 function escHtml(str) {
     return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const filterInput = document.getElementById('classStudentFilterInput');
+    const tableBody = document.getElementById('studentTableBody');
+    if (filterInput && tableBody) {
+        filterInput.addEventListener('input', function() {
+            const q = this.value.toLowerCase().trim();
+            const rows = tableBody.querySelectorAll('tr:not(#emptyRow)');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = (!q || text.includes(q)) ? '' : 'none';
+            });
+        });
+    }
+});
 </script>
 {% endblock %}

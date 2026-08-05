@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -13,6 +13,9 @@
             color: #333;
             font-size: 12px;
         }
+        .brand-block { text-align: center; margin-bottom: 8px; }
+        .brand-block img { height: 36px; vertical-align: middle; }
+        .brand-block .inst-name { font-size: 20px; font-weight: bold; color: #0f172a; vertical-align: middle; margin-left: 8px; }
         .header {
             background-color: #d8e2dc;
             padding: 10px;
@@ -99,7 +102,29 @@
 <body>
 
     <div class="header">
-        <div class="header-top">QuizX Report</div>
+        <div style="text-align: center; margin-bottom: 8px;">
+            <table align="center" style="margin: 0 auto; border-collapse: collapse; border: none; max-width: 100%;">
+                <tr>
+                    {% if school_profile.school_banner_image or school_profile.school_logo %}
+                    <td style="border: none; padding-right: 10px; vertical-align: middle;">
+                        {% if school_profile.school_banner_image %}
+                        <img src="{{ school_profile.school_banner_image.path }}" height="36" style="height: 36px; vertical-align: middle;" />
+                        {% elif school_profile.school_logo %}
+                        <img src="{{ school_profile.school_logo.path }}" height="36" style="height: 36px; vertical-align: middle;" />
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    {% if school_profile.school_name %}
+                    <td style="border: none; vertical-align: middle; text-align: left;">
+                        <div style="font-size: 18px; font-weight: bold; color: #0f172a; line-height: 1.2; word-wrap: break-word;">{{ school_profile.school_name }}</div>
+                    </td>
+                    {% endif %}
+                </tr>
+            </table>
+        </div>
+
+        <div style="border-bottom: 1.5px solid #cbd5e1; margin: 4px 0 10px 0;"></div>
+
         <div class="header-main">TEACHER REPORT: {{ quiz.title }}</div>
         <div class="header-stats">
             Exam Code: {{ quiz.code }} | Students Present: {{ students_present }} | Average Score: {{ avg_score }} / {{ total_questions }}
