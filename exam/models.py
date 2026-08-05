@@ -225,10 +225,6 @@ def _delete_file_if_exists(file_field):
 			path = file_field.path
 			if os.path.isfile(path):
 				os.remove(path)
-			# Remove parent directory if it's now empty (e.g. imported_images/uuid8/)
-			parent = os.path.dirname(path)
-			if os.path.isdir(parent) and not os.listdir(parent):
-				os.rmdir(parent)
 		except Exception:
 			pass
 
