@@ -222,8 +222,13 @@ from django.db.models.signals import post_delete, pre_save
 def _delete_file_if_exists(file_field):
 	if file_field and hasattr(file_field, 'path'):
 		try:
-			if os.path.isfile(file_field.path):
-				os.remove(file_field.path)
+			path = file_field.path
+			if os.path.isfile(path):
+				os.remove(path)
+			# Remove parent directory if it's now empty (e.g. imported_images/uuid8/)
+			parent = os.path.dirname(path)
+			if os.path.isdir(parent) and not os.listdir(parent):
+				os.rmdir(parent)
 		except Exception:
 			pass
 
