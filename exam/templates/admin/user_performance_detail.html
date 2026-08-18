@@ -1,77 +1,64 @@
+{% extends 'dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-<head>
-    <title>User Performance Detail</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-        th {
-            background-color: #f0f0f0;
-        }
-        .correct {
-            color: green;
-            font-weight: bold;
-        }
-        .wrong {
-            color: red;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
+{% block title %}Performance Detail - {{ result.user.username }} | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
 
-<div class="container">
-    <h1>Performance Details: {{ result.user.username }} - {{ result.quiz.title }}</h1>
-    
-    <p><strong>Score:</strong> {{ result.score }}</p>
-    <p><strong>Submitted on:</strong> {{ result.submission_time }}</p>
+{% block eyebrow %}Candidate Submissions{% endblock %}
+{% block heading %}Performance: {{ result.user.username }}{% endblock %}
+{% block subtitle %}Examination: {{ result.quiz.title }}{% endblock %}
 
-    <table>
-        <thead>
-            <tr>
-                <th>Question</th>
-                <th>Correct Answer</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for question in result.quiz.questions.all %}
-                <tr>
-                    <td>{{ question.text|safe }}</td>
-                    <td>{{ question.correct_option_text }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+{% block actions %}
+<a class="btn btn-secondary" href="{% url 'dashboard_quiz_results' result.quiz.id %}">
+    <i class="fa-solid fa-chevron-left"></i>
+    <span>Back to Results</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 24px; max-width: 900px;">
+    <!-- Overview Metric Cards -->
+    <div class="metric-grid">
+        <div class="metric-card fade-up stagger-1">
+            <span>Score Achieved</span>
+            <strong style="color: var(--accent-primary);">{{ result.score }} / {{ result.quiz.questions.count }}</strong>
+        </div>
+        <div class="metric-card fade-up stagger-2">
+            <span>Submitted On</span>
+            <strong style="font-size: var(--text-base); color: var(--text-secondary);">{{ result.submission_time|default:result.submitted_at|date:"M j, Y g:i A" }}</strong>
+        </div>
+    </div>
+
+    <!-- Question Answers Table -->
+    <div class="card fade-up stagger-3" style="padding: 24px;">
+        <div class="section-heading" style="margin-bottom: 16px;">
+            <h2>Answer Key &amp; Questions</h2>
+        </div>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60%;">Question Statement</th>
+                        <th style="width: 40%;">Configured Correct Answer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for question in result.quiz.questions.all %}
+                    <tr>
+                        <td style="font-weight: 600;">{{ question.text|safe }}</td>
+                        <td>
+                            <span class="pill success" style="font-weight: 600;">
+                                <i class="fa-solid fa-check" style="margin-right: 4px;"></i> {{ question.correct_option_text }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2" class="empty-state">No questions found in this assessment.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
-
-</body>
-</html>
-
+{% endblock %}

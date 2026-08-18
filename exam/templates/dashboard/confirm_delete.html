@@ -1,27 +1,38 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
-{% block heading %}Confirm Delete{% endblock %}
-{% block subtitle %}This action permanently removes the selected record.{% endblock %}
+
+{% block title %}Confirm Deletion | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
+{% block eyebrow %}Destructive Action{% endblock %}
+{% block heading %}Confirm Deletion{% endblock %}
+{% block subtitle %}This action permanently removes the selected record from the system.{% endblock %}
 
 {% block content %}
-<div class="dashboard-card">
-    <h2>Delete "{{ object_name }}"?</h2>
-    <p class="dashboard-subtitle" style="margin-bottom:24px;">This cannot be undone.</p>
-    <form method="post" class="dashboard-actions" style="justify-content:flex-start;">
-        {% csrf_token %}
-        <button class="dash-btn danger" type="submit"><i class="fa-solid fa-trash"></i>Delete</button>
-        {% if quiz_id %}
-            <a class="dash-btn secondary"
-            href="{% url 'dashboard_quiz_questions' quiz_id %}">
-                Cancel
-            </a>
-        {% else %}
-            <a class="dash-btn secondary"
-            href="{% url cancel_url %}">
-                Cancel
-            </a>
-        {% endif %}
-    </form>
+<div style="max-width: 600px; margin: 20px auto 0;">
+    <div class="card fade-up" style="padding: 36px 32px; text-align: center;">
+        <div class="modal-icon danger" style="width: 64px; height: 64px; font-size: 1.6rem; margin-bottom: 20px;">
+            <i class="fa-solid fa-trash"></i>
+        </div>
+        <h2 style="font-size: var(--text-2xl); margin-bottom: 8px;">Delete "{{ object_name }}"?</h2>
+        <p style="color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.6; margin-bottom: 28px;">
+            Are you sure you want to permanently delete this item? This action cannot be reversed.
+        </p>
+
+        <form method="post" style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+            {% csrf_token %}
+            <button class="btn btn-danger btn-lg" type="submit">
+                <i class="fa-solid fa-trash"></i> Confirm Delete
+            </button>
+            {% if quiz_id %}
+                <a class="btn btn-secondary btn-lg" href="{% url 'dashboard_quiz_questions' quiz_id %}">
+                    Cancel
+                </a>
+            {% else %}
+                <a class="btn btn-secondary btn-lg" href="{% url cancel_url %}">
+                    Cancel
+                </a>
+            {% endif %}
+        </form>
+    </div>
 </div>
 {% endblock %}
-

@@ -1,54 +1,253 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Home | QuizX{% endblock %}
+{% block title %}Dashboard | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
 
 {% block content %}
 <style>
-.hero-section{display:grid;grid-template-columns:1.12fr .88fr;gap:28px;align-items:stretch;padding:34px 0;}
-.hero-card,.info-card{background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(28px);border-radius:32px;box-shadow:var(--shadow);}
-.hero-card{padding:54px;display:flex;flex-direction:column;}
-.hero-card h1{font-size:clamp(2.5rem,5vw,5rem);line-height:.98;margin:18px 0 20px;letter-spacing:0;}
-.gradient-text{background:linear-gradient(90deg,#fff,#a7f3d0,#93c5fd);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.hero-card p{max-width:680px;font-size:1.08rem;line-height:1.8;color:var(--text-soft);margin-bottom:34px;}
-.hero-buttons{display:flex;gap:14px;flex-wrap:wrap;}
-.info-grid{display:grid;gap:18px;}
-.info-card{padding:28px;transition:var(--transition);}
-.info-card:hover{transform:translateY(-4px);}
-.info-icon{width:58px;height:58px;display:grid;place-items:center;border-radius:20px;margin-bottom:20px;color:#06201c;background:linear-gradient(135deg,var(--primary),var(--secondary));box-shadow:0 16px 34px rgba(45,212,191,.24);}
-.info-card h3{font-size:1.28rem;margin-bottom:10px;}
-.info-card p{color:var(--text-soft);line-height:1.7;}
-@media(max-width:900px){.hero-section{grid-template-columns:1fr}.hero-card{padding:36px;min-height:auto;}.info-grid{grid-template-columns:1fr;}}
+.student-hero-grid {
+    display: grid;
+    grid-template-columns: 1.25fr 0.75fr;
+    gap: var(--space-6);
+    margin-bottom: var(--space-8);
+    align-items: stretch;
+}
+
+.hero-welcome-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-welcome-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(99, 91, 255, 0.07) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.hero-headline {
+    font-size: clamp(1.8rem, 3.2vw, 2.5rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    color: var(--text-primary);
+    margin: var(--space-2) 0 var(--space-4);
+}
+
+.hero-description {
+    font-size: var(--text-base);
+    line-height: 1.65;
+    color: var(--text-secondary);
+    max-width: 620px;
+    margin-bottom: var(--space-6);
+}
+
+.hero-actions-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.hero-quick-entry {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.quick-code-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+}
+
+.code-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.code-input-wrapper i {
+    position: absolute;
+    left: 14px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.code-input-wrapper input {
+    padding-left: 40px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    height: 46px;
+    font-size: var(--text-base);
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-6);
+}
+
+.feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+    border-color: var(--border-strong);
+}
+
+.feature-icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    color: var(--accent-primary);
+    display: grid;
+    place-items: center;
+    font-size: 1.15rem;
+    margin-bottom: var(--space-4);
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.feature-card:hover .feature-icon-box {
+    background: var(--accent-primary);
+    color: var(--text-inverse);
+    border-color: var(--accent-primary);
+}
+
+.feature-title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+    color: var(--text-primary);
+}
+
+.feature-desc {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+@media (max-width: 992px) {
+    .student-hero-grid {
+        grid-template-columns: 1fr;
+    }
+    .features-grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 
-<div class="hero-section">
-    <section class="hero-card">
-        <div class="badge">WELCOME BACK</div>
-        <h1><span class="gradient-text">Premium</span><br>Examination Workspace</h1>
-        <p>Take assessments in a calm, focused interface designed for clarity, speed, and confidence. Start with a quiz code, complete your exam, and revisit your outcomes whenever you need them.</p>
-        <div class="hero-buttons">
-            <a href="/enter-code/" class="btn"><i class="fa-solid fa-play"></i>Start Quiz</a>
-            <a href="/quiz-results/" class="btn btn-outline"><i class="fa-solid fa-chart-simple"></i>View Results</a>
-        </div>
-    </section>
+<div class="student-dashboard">
+    <!-- Hero Welcome Grid -->
+    <div class="student-hero-grid">
+        <section class="hero-welcome-card fade-up">
+            <div>
+                <div class="eyebrow">Academic Workspace</div>
+                <h1 class="hero-headline">
+                    Welcome back,<br>
+                    {% if user.first_name %}{{ user.first_name }}{% else %}{{ user.username }}{% endif %}.
+                </h1>
+                <p class="hero-description">
+                    Take assessments in a calm, focused environment designed for clarity, speed, and confidence. Enter your quiz code to start or review your past outcomes anytime.
+                </p>
+            </div>
 
-    <aside class="info-grid">
-        <div class="info-card">
-            <div class="info-icon"><i class="fa-solid fa-bolt"></i></div>
-            <h3>Fast Experience</h3>
-            <p>Move through exams smoothly with clear progress, saved answers, and distraction-free navigation.</p>
+            <div class="hero-actions-row">
+                <a href="/enter-code/" class="btn btn-primary">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span>Take Examination</span>
+                </a>
+                <a href="/quiz-results/" class="btn btn-secondary">
+                    <i class="fa-solid fa-square-poll-vertical"></i>
+                    <span>My Results</span>
+                </a>
+                {% if user.is_staff %}
+                <a href="{% url 'dashboard_home' %}" class="btn btn-ghost" style="color: var(--accent-primary);">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>Admin Control Center &rarr;</span>
+                </a>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Quick Code Entry Tile -->
+        <aside class="hero-quick-entry fade-up stagger-1">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                <div style="width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--accent-primary-light); color: var(--accent-primary); display: grid; place-items: center; font-size: 13px;">
+                    <i class="fa-solid fa-key"></i>
+                </div>
+                <h3 style="font-size: var(--text-lg); font-weight: 700;">Quick Exam Entry</h3>
+            </div>
+            <p style="font-size: var(--text-xs); color: var(--text-secondary);">Enter the examination access code provided by your instructor.</p>
+
+            <form method="post" action="{% url 'enter-code' %}" class="quick-code-form">
+                {% csrf_token %}
+                <div class="code-input-wrapper">
+                    <input type="text" name="code" placeholder="e.g. EXAM101" required autocomplete="off">
+                    <i class="fa-solid fa-ticket"></i>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    <span>Continue to Exam</span>
+                    <i class="fa-solid fa-arrow-right" style="font-size: 12px;"></i>
+                </button>
+            </form>
+        </aside>
+    </div>
+
+    <!-- Feature Guidance Cards -->
+    <div class="features-grid">
+        <div class="feature-card fade-up stagger-2">
+            <div class="feature-icon-box">
+                <i class="fa-solid fa-bolt"></i>
+            </div>
+            <h3 class="feature-title">Distraction-Free</h3>
+            <p class="feature-desc">Experience an isolated exam mode with auto-saving, real-time question progress, and formula rendering.</p>
         </div>
-        <div class="info-card">
-            <div class="info-icon"><i class="fa-solid fa-chart-line"></i></div>
-            <h3>Track Progress</h3>
-            <p>Your completed attempts stay organized so you can review performance at a glance.</p>
+
+        <div class="feature-card fade-up stagger-3">
+            <div class="feature-icon-box">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <h3 class="feature-title">Detailed Feedback</h3>
+            <p class="feature-desc">Review your score analysis, accuracy metrics, and question-by-question explanations after submission.</p>
         </div>
-        <div class="info-card">
-            <div class="info-icon"><i class="fa-solid fa-shield-halved"></i></div>
-            <h3>Secure Exams</h3>
-            <p>Each quiz is recorded securely and limited to one submission for fair assessment.</p>
+
+        <div class="feature-card fade-up stagger-4">
+            <div class="feature-icon-box">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h3 class="feature-title">Secure & Fair</h3>
+            <p class="feature-desc">Every attempt is recorded with precise timer management and single-submission validation for academic integrity.</p>
         </div>
-    </aside>
+    </div>
 </div>
 {% endblock %}
-

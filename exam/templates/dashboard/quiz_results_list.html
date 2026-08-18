@@ -1,37 +1,96 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
+
+{% block title %}{{ quiz.title }} Results | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
+{% block eyebrow %}Assessment Performance{% endblock %}
 {% block heading %}{{ quiz.title }} Results{% endblock %}
-{% block subtitle %}View, manage and export results specifically for this quiz.{% endblock %}
+{% block subtitle %}View, manage, and export candidate performance records specifically for this examination.{% endblock %}
+
 {% block actions %}
-<a class="dash-btn secondary" href="{% url 'dashboard_quiz_report_pdf' quiz.id %}"><i class="fa-solid fa-file-pdf"></i>Detailed Report</a>
-<a class="dash-btn secondary" href="{% url 'dashboard_quizzes' %}">Back to Quizzes</a>
+<a class="btn btn-secondary" href="{% url 'dashboard_analytics' %}?quiz={{ quiz.id }}">
+    <i class="fa-solid fa-chart-line"></i>
+    <span>Result Analysis</span>
+</a>
+<a class="btn btn-secondary" href="{% url 'dashboard_quizzes' %}">
+    <i class="fa-solid fa-chevron-left"></i>
+    <span>Back to Quizzes</span>
+</a>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-card">
-    <div class="search-row">
-        <input type="text" name="q" id="quizResultsFilterInput" value="{{ query }}" placeholder="Search by student or username…" autocomplete="off" style="width: 100%;">
+<div class="card fade-up" style="padding: 24px;">
+    <div class="search-row" style="margin-bottom: 20px;">
+        <div class="search-bar-wrapper">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" name="q" id="quizResultsFilterInput" value="{{ query }}" placeholder="Search by student name or username…" autocomplete="off">
+        </div>
     </div>
-    <table class="glass-table">
-        <thead><tr><th>Student</th><th>Username</th><th>Score</th><th>Submitted</th><th>Actions</th></tr></thead>
-        <tbody id="quizResultsTbody">
-        {% for result in results %}
-        <tr class="quiz-result-row">
-            <td>{% if result.user.first_name %}{{ result.user.first_name }} {{ result.user.last_name }}{% else %}{{ result.user.username }}{% endif %}</td>
-            <td>{{ result.user.username }}</td>
-            <td>{{ result.score }} / {{ quiz.questions.count }}</td>
-            <td>{{ result.submitted_at|date:"M j, Y g:i A" }}</td>
-            <td>
-                <a class="btn-small secondary" href="{% url 'student_result_detail' result.id %}">View</a>
-                <button class="btn-small danger" onclick="showModal('deleteModal-{{ result.id }}')">Delete</button>
-            </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="5"><div class="empty-state">No results found for this quiz.</div></td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
+
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Candidate</th>
+                    <th>Username</th>
+                    <th>Score</th>
+                    <th>Submitted At</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="quizResultsTbody">
+            {% for result in results %}
+            <tr class="quiz-result-row">
+                <td style="font-weight: 600;">{% if result.user.first_name %}{{ result.user.first_name }} {{ result.user.last_name }}{% else %}{{ result.user.username }}{% endif %}</td>
+                <td style="font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-secondary);">{{ result.user.username }}</td>
+                <td>
+                    <span class="pill accent" style="font-weight: 700;">
+                        {{ result.score }} / {{ quiz.questions.count }}
+                    </span>
+                </td>
+                <td style="font-size: var(--text-xs); color: var(--text-secondary);">{{ result.submitted_at|date:"M j, Y g:i A" }}</td>
+                <td>
+                    <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                        <a class="btn-small secondary" href="{% url 'student_result_detail' result.id %}">View Feedback</a>
+                        <button class="btn-small danger" onclick="showModal('deleteModal-{{ result.id }}')">Delete</button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">
+                    <div class="empty-state">
+                        <div class="empty-state-icon"><i class="fa-solid fa-square-poll-vertical"></i></div>
+                        <div class="empty-state-title">No Attempts Recorded</div>
+                        <div class="empty-state-desc">No candidate submissions recorded for this examination yet.</div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
+{% endblock %}
+
+{% block modals %}
+{% for result in results %}
+<!-- Delete Modal -->
+<div id="deleteModal-{{ result.id }}" class="modal-overlay">
+    <div class="glass-modal">
+        <div class="modal-icon danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h2>Delete Attempt</h2>
+        <p>Are you sure you want to permanently delete this attempt by <strong>{{ result.user.username }}</strong>?</p>
+        <form method="post" action="{% url 'dashboard_result_delete' result.id %}">
+            {% csrf_token %}
+            <div class="modal-actions">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('deleteModal-{{ result.id }}')">Cancel</button>
+                <button type="submit" class="modal-btn primary" style="background-color: var(--error); border-color: var(--error);">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}
 
 {% block extra_js %}
@@ -51,24 +110,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-
-{% block modals %}
-{% for result in results %}
-<!-- Delete Modal -->
-<div id="deleteModal-{{ result.id }}" class="modal-overlay">
-    <div class="glass-modal">
-        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
-        <h2>Delete Attempt</h2>
-        <p>Are you sure you want to delete this attempt by {{ result.user.username }}?</p>
-        <form method="post" action="{% url 'dashboard_result_delete' result.id %}">
-            {% csrf_token %}
-            <div class="modal-actions">
-                <button type="button" class="modal-btn secondary" onclick="hideModal('deleteModal-{{ result.id }}')">Cancel</button>
-                <button type="submit" class="modal-btn primary">Delete</button>
-            </div>
-        </form>
-    </div>
-</div>
-{% endfor %}
-{% endblock %}
-

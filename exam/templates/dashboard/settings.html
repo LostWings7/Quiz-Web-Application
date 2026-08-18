@@ -1,75 +1,79 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
-{% block heading %}Settings{% endblock %}
-{% block subtitle %}Configure institution branding and system access.{% endblock %}
+
+{% block title %}Settings | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
+{% block eyebrow %}System Configuration{% endblock %}
+{% block heading %}Platform Settings{% endblock %}
+{% block subtitle %}Configure dynamic institution branding, logos, header banners, and administrative access.{% endblock %}
 
 {% block content %}
-<div style="display: flex; flex-direction: column; gap: 24px; width: 100%;">
+<div style="display: flex; flex-direction: column; gap: 24px; width: 100%; max-width: 800px;">
     <!-- Institution Branding Card -->
-    <div class="dashboard-card" style="animation: fadeUp 0.4s ease backwards;">
+    <div class="card fade-up" style="padding: 32px;">
         <div class="section-heading" style="margin-bottom: 20px;">
-            <h2><i class="fa-solid fa-school" style="color: var(--primary); margin-right: 8px;"></i> Institution Branding</h2>
+            <h2><i class="fa-solid fa-school" style="color: var(--accent-primary); margin-right: 8px;"></i> Institution Branding</h2>
         </div>
 
         <form method="post" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 20px;">
             {% csrf_token %}
 
             <div class="form-group">
-                <label for="school_name" style="font-weight: 600; margin-bottom: 8px; display: block; color: rgba(255,255,255,0.9);">Institution Name</label>
-                <input type="text" id="school_name" name="school_name" value="{{ school_profile.school_name }}" class="text-input" placeholder="e.g. Springfield Academy" style="width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;">
+                <label for="school_name" class="form-label">Institution Name</label>
+                <input type="text" id="school_name" name="school_name" value="{{ school_profile.school_name }}" placeholder="e.g. Springfield Academy">
+                <small style="color: var(--text-muted); font-size: var(--text-xs); margin-top: 4px;">This name replaces the default QuizX title across the student and admin interface.</small>
             </div>
 
             <div class="form-group">
-                <label style="font-weight: 600; margin-bottom: 8px; display: block; color: rgba(255,255,255,0.9);">Header Banner Image</label>
+                <label class="form-label">Header Banner Image</label>
                 {% if school_profile.school_banner_image %}
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
-                    <img src="{{ school_profile.school_banner_image.url }}" alt="Header Banner" style="max-height: 45px; max-width: 240px; object-fit: contain; border-radius: 4px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 14px; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                    <img src="{{ school_profile.school_banner_image.url }}" alt="Header Banner" style="max-height: 44px; max-width: 240px; object-fit: contain; border-radius: 4px;">
                     <button type="button" class="btn-small danger" onclick="showModal('deleteBannerModal')"><i class="fa-solid fa-trash"></i> Remove Banner</button>
                 </div>
                 {% endif %}
-                <input type="file" id="school_banner_image" name="school_banner_image" accept="image/*" class="file-input" style="color: rgba(255,255,255,0.8);">
+                <input type="file" id="school_banner_image" name="school_banner_image" accept="image/*">
             </div>
 
             <div class="form-group">
-                <label style="font-weight: 600; margin-bottom: 8px; display: block; color: rgba(255,255,255,0.9);">Institution Logo</label>
+                <label class="form-label">Institution Logo</label>
                 {% if school_profile.school_logo %}
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
-                    <img src="{{ school_profile.school_logo.url }}" alt="School Logo" style="max-height: 45px; max-width: 120px; object-fit: contain; border-radius: 4px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 14px; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border);">
+                    <img src="{{ school_profile.school_logo.url }}" alt="School Logo" style="max-height: 48px; max-width: 120px; object-fit: contain; border-radius: 4px;">
                     <button type="button" class="btn-small danger" onclick="showModal('deleteLogoModal')"><i class="fa-solid fa-trash"></i> Remove Logo</button>
                 </div>
                 {% endif %}
-                <input type="file" id="school_logo" name="school_logo" accept="image/*" class="file-input" style="color: rgba(255,255,255,0.8);">
+                <input type="file" id="school_logo" name="school_logo" accept="image/*">
             </div>
 
             <div style="margin-top: 8px;">
-                <button type="submit" class="dash-btn primary" style="padding: 12px 24px; border-radius: 8px;"><i class="fa-solid fa-floppy-disk"></i> Save Branding Settings</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Branding Settings</button>
             </div>
         </form>
     </div>
 
     <!-- System Access Card -->
-    <div class="dashboard-card" style="animation: fadeUp 0.4s ease backwards; animation-delay: 0.1s;">
-        <div class="section-heading"><h2>System Access</h2></div>
-        <p class="dashboard-subtitle" style="margin-bottom:20px;">Default Django admin panel for emergency fallback.</p>
-        <a class="dash-btn secondary" href="/admin/"><i class="fa-solid fa-screwdriver-wrench"></i> Open Django Admin</a>
+    <div class="card fade-up stagger-1" style="padding: 32px;">
+        <div class="section-heading"><h2>System Access &amp; Fallback</h2></div>
+        <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 20px;">Direct access to the core Django administrative console for low-level database operations.</p>
+        <a class="btn btn-secondary" href="/admin/"><i class="fa-solid fa-screwdriver-wrench"></i> Open Django Admin</a>
     </div>
 </div>
 {% endblock %}
 
 {% block modals %}
 {% if school_profile.school_banner_image %}
-<!-- Delete Banner Confirmation Modal -->
 <div id="deleteBannerModal" class="modal-overlay">
     <div class="glass-modal">
-        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div class="modal-icon danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
         <h2>Remove Header Banner?</h2>
-        <p>Are you sure you want to remove the current header banner image?</p>
+        <p>Are you sure you want to delete the configured header banner image?</p>
         <form method="post" action="{% url 'dashboard_settings' %}">
             {% csrf_token %}
             <input type="hidden" name="remove_banner" value="1">
             <div class="modal-actions">
                 <button type="button" class="modal-btn secondary" onclick="hideModal('deleteBannerModal')">Cancel</button>
-                <button type="submit" class="modal-btn primary">Confirm Remove</button>
+                <button type="submit" class="modal-btn primary" style="background-color: var(--error); border-color: var(--error);">Confirm Remove</button>
             </div>
         </form>
     </div>
@@ -77,18 +81,17 @@
 {% endif %}
 
 {% if school_profile.school_logo %}
-<!-- Delete Logo Confirmation Modal -->
 <div id="deleteLogoModal" class="modal-overlay">
     <div class="glass-modal">
-        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div class="modal-icon danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
         <h2>Remove Institution Logo?</h2>
-        <p>Are you sure you want to remove the current institution logo?</p>
+        <p>Are you sure you want to delete the configured institution logo?</p>
         <form method="post" action="{% url 'dashboard_settings' %}">
             {% csrf_token %}
             <input type="hidden" name="remove_logo" value="1">
             <div class="modal-actions">
                 <button type="button" class="modal-btn secondary" onclick="hideModal('deleteLogoModal')">Cancel</button>
-                <button type="submit" class="modal-btn primary">Confirm Remove</button>
+                <button type="submit" class="modal-btn primary" style="background-color: var(--error); border-color: var(--error);">Confirm Remove</button>
             </div>
         </form>
     </div>

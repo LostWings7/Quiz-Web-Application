@@ -4,15 +4,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Dashboard | QuizX{% endblock %}</title>
+    <title>{% block title %}Dashboard | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}</title>
+
+    <!-- Local Fonts -->
     <link href="{% static 'css/google_fonts_inter_outfit.css' %}" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
+
+    <!-- Design System Styles -->
     <link rel="stylesheet" href="{% static 'css/variables.css' %}">
     <link rel="stylesheet" href="{% static 'css/global.css' %}">
     <link rel="stylesheet" href="{% static 'css/components.css' %}">
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'css/animations.css' %}">
     <link rel="stylesheet" href="{% static 'css/modal.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+
     {% block extra_css %}{% endblock %}
+
     <!-- MathJax for formula formatting -->
     <script>
     window.MathJax = {
@@ -26,176 +33,279 @@
     };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+    </script>
+    <script>
+    try {
+      if (localStorage.getItem('quizx_sidebar_collapsed') === '1' && window.innerWidth > 992) {
+        document.documentElement.classList.add('sidebar-collapsed-preload');
+      }
+    } catch(e) {}
+    </script>
 </head>
-<body class="dashboard-body">
-<div class="dashboard-shell" id="dashboardShell">
-    <aside class="dashboard-sidebar">
-        <div class="dashboard-brand">
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div class="brand-mark"><i class="fa-solid fa-layer-group"></i></div>
-                <div class="brand-copy">
-                    <strong>QuizX Admin</strong>
-                    <span>Control Center</span>
+<body>
+
+<!-- Ambient Canvas Background -->
+<div class="ambient-bg" aria-hidden="true">
+    <div class="ambient-blob ambient-blob-1"></div>
+    <div class="ambient-blob ambient-blob-2"></div>
+</div>
+
+<div class="app-shell" id="appShell">
+    <script>
+    try {
+      if (localStorage.getItem('quizx_sidebar_collapsed') === '1' && window.innerWidth > 992) {
+        document.getElementById('appShell').classList.add('sidebar-collapsed');
+      }
+    } catch(e) {}
+    </script>
+
+    <!-- Mobile Navigation Backdrop Overlay -->
+    <div class="sidebar-backdrop" onclick="document.getElementById('appShell').classList.remove('sidebar-open')" aria-hidden="true"></div>
+
+    <!-- Admin Persistent Slim Sidebar -->
+    <aside class="app-sidebar" aria-label="Admin Navigation">
+        <!-- Floating Expand Tab (visible only when collapsed) -->
+        <button class="sidebar-expand-tab" id="sidebarExpandTab" type="button" aria-label="Expand sidebar" title="Expand Sidebar">
+            <i class="fa-solid fa-chevron-right"></i>
+        </button>
+
+        <!-- Sidebar Brand Header -->
+        <div class="app-sidebar-header">
+            <a href="{% url 'dashboard_home' %}" class="brand-link">
+                {% if school_profile.has_custom_branding and school_profile.school_logo %}
+                    <img src="{{ school_profile.school_logo.url }}" alt="{{ school_profile.school_name|default:'Institution' }}" style="max-height: 34px; max-width: 38px; object-fit: contain; border-radius: 4px;">
+                {% else %}
+                    <div class="brand-icon-box">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                {% endif %}
+                <div class="brand-info">
+                    <span class="brand-title">{% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}</span>
+                    <span class="brand-subtitle">Control Center</span>
                 </div>
-            </div>
-            <button class="collapse-btn" type="button" id="collapseSidebar" aria-label="Toggle sidebar">
-                <i class="fa-solid fa-bars"></i>
+            </a>
+            <button class="sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Toggle sidebar width" title="Toggle Sidebar">
+                <i class="fa-solid fa-bars-staggered"></i>
             </button>
         </div>
 
-        <nav class="dashboard-nav">
-            <a href="{% url 'dashboard_home' %}"><i class="fa-solid fa-chart-line"></i><span class="nav-label">Dashboard</span></a>
-            <a href="{% url 'dashboard_students' %}"><i class="fa-solid fa-users"></i><span class="nav-label">Students</span></a>
-            <a href="{% url 'dashboard_classes' %}"><i class="fa-solid fa-graduation-cap"></i><span class="nav-label">Classes</span></a>
-            <a href="{% url 'dashboard_quizzes' %}"><i class="fa-solid fa-clipboard-list"></i><span class="nav-label">Quizzes</span></a>
-            <a href="{% url 'dashboard_results' %}"><i class="fa-solid fa-ranking-star"></i><span class="nav-label">Results</span></a>
-            <a href="{% url 'dashboard_analytics' %}"><i class="fa-solid fa-chart-pie"></i><span class="nav-label">Analytics</span></a>
-            <a href="{% url 'dashboard_settings' %}"><i class="fa-solid fa-gear"></i><span class="nav-label">Settings</span></a>
-            <form method="post" action="{% url 'logout' %}" style="margin:0;">
+        <!-- Sidebar Navigation Items -->
+        <nav class="app-sidebar-nav">
+            <div class="nav-active-pill" aria-hidden="true"></div>
+
+            <div class="nav-section-label">Administration</div>
+            <a href="{% url 'dashboard_home' %}" class="app-nav-item">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>Overview</span>
+            </a>
+            <a href="{% url 'dashboard_quizzes' %}" class="app-nav-item">
+                <i class="fa-solid fa-clipboard-list"></i>
+                <span>Quizzes</span>
+            </a>
+            <a href="{% url 'dashboard_students' %}" class="app-nav-item">
+                <i class="fa-solid fa-users"></i>
+                <span>Students</span>
+            </a>
+            <a href="{% url 'dashboard_classes' %}" class="app-nav-item">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <span>Classes</span>
+            </a>
+            <a href="{% url 'dashboard_results' %}" class="app-nav-item">
+                <i class="fa-solid fa-ranking-star"></i>
+                <span>Results</span>
+            </a>
+            <a href="{% url 'dashboard_analytics' %}" class="app-nav-item">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Analytics</span>
+            </a>
+
+            <div class="nav-section-label">Candidate Portal</div>
+            <a href="{% url 'home' %}" class="app-nav-item">
+                <i class="fa-solid fa-house"></i>
+                <span>Student Home</span>
+            </a>
+            <a href="/enter-code/" class="app-nav-item">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span>Take Exam</span>
+            </a>
+            <a href="/quiz-results/" class="app-nav-item">
+                <i class="fa-solid fa-square-poll-vertical"></i>
+                <span>My Results</span>
+            </a>
+
+            <div class="nav-section-label">System</div>
+            <a href="{% url 'dashboard_settings' %}" class="app-nav-item">
+                <i class="fa-solid fa-gear"></i>
+                <span>Settings</span>
+            </a>
+        </nav>
+
+        <!-- Sidebar User Footer -->
+        <div class="app-sidebar-footer">
+            <div class="user-profile-chip">
+                <div class="user-avatar">
+                    {% if user.first_name %}{{ user.first_name|slice:":1" }}{% else %}{{ user.username|slice:":1"|upper }}{% endif %}
+                </div>
+                <div class="user-details">
+                    <span class="user-name">{% if user.first_name %}{{ user.first_name }} {{ user.last_name }}{% else %}{{ user.username }}{% endif %}</span>
+                    <span class="user-role-badge">{% if user.is_staff %}Administrator{% else %}Staff{% endif %}</span>
+                </div>
+            </div>
+            <form method="post" action="{% url 'logout' %}" style="margin: 0;">
                 {% csrf_token %}
-                <button type="submit" class="logout-btn">
+                <button type="submit" class="btn btn-secondary btn-small">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                    <span class="nav-label">Logout</span>
+                    <span>Sign Out</span>
                 </button>
             </form>
-        </nav>
+        </div>
     </aside>
 
-    <main class="dashboard-main">
-        <header class="dashboard-topbar">
-            <div>
-                <div class="eyebrow">{% block eyebrow %}Administrator{% endblock %}</div>
-                <h1 class="dashboard-title">{% block heading %}Dashboard{% endblock %}</h1>
-                <p class="dashboard-subtitle">{% block subtitle %}Manage exams, students, questions, and outcomes from one place.{% endblock %}</p>
+    <!-- Main Dashboard Area -->
+    <div class="app-main-layout">
+        <!-- Top App Bar -->
+        <header class="app-topbar">
+            <div class="topbar-left">
+                <button class="sidebar-toggle-btn mobile-menu-btn" onclick="document.getElementById('appShell').classList.toggle('sidebar-open')" aria-label="Open navigation menu">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="topbar-branding" style="display: flex; align-items: center; gap: 10px;">
+                    {% if school_profile.has_custom_branding and school_profile.school_banner_image %}
+                        <img src="{{ school_profile.school_banner_image.url }}" alt="{{ school_profile.school_name|default:'Institution' }}" style="max-height: 36px; max-width: 240px; object-fit: contain; border-radius: 4px;">
+                    {% elif school_profile.has_custom_branding and school_profile.school_name %}
+                        <span style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary);">{{ school_profile.school_name }}</span>
+                    {% endif %}
+                </div>
             </div>
-            <div class="dashboard-actions">
-                {% block actions %}{% endblock %}
+
+            <div class="topbar-right">
+                <button class="command-trigger-btn" type="button" onclick="showModal('commandPaletteModal')" title="Quick Navigation (Ctrl+K)">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>Jump to...</span>
+                    <kbd>Ctrl K</kbd>
+                </button>
             </div>
         </header>
 
-        {% if messages %}
-        <div class="messages">
-            {% for message in messages %}
-            <div class="message">{{ message }}</div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        {% if breadcrumbs %}
-        <nav class="form-breadcrumb" aria-label="Breadcrumb">
-            {% for crumb in breadcrumbs %}
-            {% if not forloop.first %}<span class="sep"><i class="fa-solid fa-chevron-right"></i></span>{% endif %}
-            {% if crumb.current %}
-            <span class="current">{{ crumb.label }}</span>
-            {% else %}
-            <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+        <!-- Main Page Content -->
+        <main class="app-page-content">
+            <!-- Contextual Breadcrumbs -->
+            {% if breadcrumbs %}
+            <nav class="app-breadcrumbs" aria-label="Breadcrumb">
+                {% for crumb in breadcrumbs %}
+                {% if not forloop.first %}<span class="crumb-sep"><i class="fa-solid fa-chevron-right"></i></span>{% endif %}
+                {% if crumb.current %}
+                <span class="crumb-current">{{ crumb.label }}</span>
+                {% else %}
+                <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+                {% endif %}
+                {% endfor %}
+            </nav>
             {% endif %}
-            {% endfor %}
-        </nav>
-        {% endif %}
 
-        {% block content %}{% endblock %}
-    </main>
+            <!-- Page Title & Actions -->
+            <div class="page-header">
+                <div>
+                    <div class="eyebrow">{% block eyebrow %}Administration{% endblock %}</div>
+                    <h1 class="page-header-title">{% block heading %}Dashboard{% endblock %}</h1>
+                    <p class="page-header-subtitle">{% block subtitle %}Manage exams, students, questions, and outcomes from one place.{% endblock %}</p>
+                </div>
+                <div class="page-header-actions">
+                    {% block actions %}{% endblock %}
+                </div>
+            </div>
+
+            <!-- Flash / Status Messages -->
+            {% if messages %}
+            <div style="display: grid; gap: 8px; margin-bottom: 24px;">
+                {% for message in messages %}
+                <div class="pill {% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% else %}success{% endif %}" style="padding: 10px 16px; border-radius: var(--radius-md); font-size: var(--text-sm); display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid {% if message.tags == 'error' %}fa-triangle-exclamation{% elif message.tags == 'warning' %}fa-circle-exclamation{% else %}fa-check{% endif %}"></i>
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+</div>
+
+<!-- Global Command Palette Modal -->
+<div id="commandPaletteModal" class="modal-overlay">
+    <div class="glass-modal command-palette-card">
+        <div class="command-search-header">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="commandPaletteInput" class="command-search-input" placeholder="Type a destination or action..." autocomplete="off">
+            <kbd style="font-size: 11px; padding: 2px 6px; border-radius: 4px; background: var(--surface-subtle); color: var(--text-muted);">ESC</kbd>
+        </div>
+        <div class="command-list" id="commandPaletteList">
+            <a href="{% url 'dashboard_home' %}" class="command-item">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>Admin Dashboard</span>
+            </a>
+            <a href="{% url 'dashboard_quizzes' %}" class="command-item">
+                <i class="fa-solid fa-clipboard-list"></i>
+                <span>Manage Quizzes</span>
+            </a>
+            <a href="{% url 'dashboard_quiz_create' %}" class="command-item">
+                <i class="fa-solid fa-plus"></i>
+                <span>Create New Quiz</span>
+            </a>
+            <a href="{% url 'dashboard_students' %}" class="command-item">
+                <i class="fa-solid fa-users"></i>
+                <span>Manage Students</span>
+            </a>
+            <a href="{% url 'dashboard_student_create' %}" class="command-item">
+                <i class="fa-solid fa-user-plus"></i>
+                <span>Create New Student</span>
+            </a>
+            <a href="{% url 'dashboard_classes' %}" class="command-item">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <span>Classes & Sections</span>
+            </a>
+            <a href="{% url 'dashboard_results' %}" class="command-item">
+                <i class="fa-solid fa-ranking-star"></i>
+                <span>View All Results</span>
+            </a>
+            <a href="{% url 'dashboard_analytics' %}" class="command-item">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Analytics & Metrics</span>
+            </a>
+            <a href="{% url 'dashboard_settings' %}" class="command-item">
+                <i class="fa-solid fa-gear"></i>
+                <span>Settings & Institution Branding</span>
+            </a>
+            <a href="/home" class="command-item">
+                <i class="fa-solid fa-house"></i>
+                <span>Candidate Portal Home</span>
+            </a>
+            <a href="/enter-code/" class="command-item">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span>Take Exam (Enter Code)</span>
+            </a>
+            <div class="command-empty" style="display: none;">
+                <p>No matching destinations found.</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% block modals %}{% endblock %}
 
-<script>
-const shell = document.getElementById("dashboardShell");
-const collapseBtn = document.getElementById("collapseSidebar");
-if (collapseBtn && shell) {
-    collapseBtn.addEventListener("click", () => {
-        shell.classList.toggle("collapsed");
-        localStorage.setItem("dashboardCollapsed", shell.classList.contains("collapsed") ? "1" : "0");
-    });
-    if (localStorage.getItem("dashboardCollapsed") === "1") {
-        shell.classList.add("collapsed");
-    }
-}
-
-function showModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) {
-        modal.classList.add('show');
-    }
-}
-
-function hideModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) {
-        modal.classList.remove('show');
-    }
-}
-
-window.onclick = function(event) {
-    if (event.target.classList.contains('modal-overlay')) {
-        event.target.classList.remove('show');
-    }
-}
-
-document.addEventListener('click', function(e) {
-    if (e.target.tagName === 'IMG' && !e.target.closest('button')) {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-            cursor: zoom-out;
-            opacity: 0;
-            transition: opacity 0.22s ease-in-out;
-        `;
-        
-        const img = document.createElement('img');
-        img.src = e.target.src;
-        img.style.cssText = `
-            max-width: 90%;
-            max-height: 90%;
-            object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-            transform: scale(0.95);
-            transition: transform 0.22s ease-in-out;
-        `;
-        
-        overlay.appendChild(img);
-        document.body.appendChild(overlay);
-        
-        setTimeout(() => {
-            overlay.style.opacity = '1';
-            img.style.transform = 'scale(1)';
-        }, 10);
-        
-        const closeLightbox = () => {
-            overlay.style.opacity = '0';
-            img.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                overlay.remove();
-            }, 220);
-            document.removeEventListener('keydown', keyHandler);
-        };
-        
-        const keyHandler = (evt) => {
-            if (evt.key === 'Escape') closeLightbox();
-        };
-        
-        overlay.onclick = closeLightbox;
-        document.addEventListener('keydown', keyHandler);
-    }
-});
-
-const styleSheet = document.createElement("style");
-styleSheet.innerText = "img:not(.logo img):not(.brand-mark img) { cursor: zoom-in; }";
-document.head.appendChild(styleSheet);
-</script>
-
+<!-- Core Application JS -->
+<script src="{% static 'js/app.js' %}"></script>
 {% block extra_js %}{% endblock %}
+
 </body>
 </html>
-

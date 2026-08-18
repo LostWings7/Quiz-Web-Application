@@ -1,51 +1,91 @@
-<table class="glass-table">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Username</th>
-            <th>Class &amp; Section</th>
-            <th>Status</th>
-            <th>Actions</th>
+<form id="bulkActionForm" method="post" action="{% url 'dashboard_student_bulk_action' %}">
+    {% csrf_token %}
+    <input type="hidden" name="action" id="bulkActionInput" value="">
+    
+    <!-- Bulk Action Toolbar (hidden by default) -->
+    <div id="bulkActionBar" style="display: none; padding: 12px 16px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 16px; align-items: center; justify-content: space-between;">
+        <div style="font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);">
+            <span id="bulkSelectedCount">0</span> students selected
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn-small secondary" onclick="submitBulkAction('enable')"><i class="fa-solid fa-user-check"></i> Enable</button>
+            <button type="button" class="btn-small secondary" onclick="submitBulkAction('disable')"><i class="fa-solid fa-user-slash"></i> Disable</button>
+            <button type="button" class="btn-small danger" onclick="submitBulkAction('delete')"><i class="fa-solid fa-trash"></i> Delete</button>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th class="bulk-select-col" style="width: 40px; text-align: center;">
+                        <input type="checkbox" id="selectAllStudents" class="theme-checkbox">
+                    </th>
+                    <th>Candidate Name</th>
+                    <th>Username</th>
+                    <th>Enrolled Class &amp; Section</th>
+                    <th style="text-align: center;">Status</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for student in page_obj %}
+            <tr>
+                <td class="bulk-select-col" style="text-align: center;">
+                    <input type="checkbox" name="student_ids" value="{{ student.id }}" class="theme-checkbox student-row-checkbox">
+                </td>
+                <td style="font-weight: 600;">{% if student.first_name %}{{ student.first_name }} {{ student.last_name }}{% else %}{{ student.username }}{% endif %}</td>
+                <td style="font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-secondary);">{{ student.username }}</td>
+            <td>
+                {% with cg=student.profile.class_group sec=student.profile.section %}
+                {% if cg and sec %}
+                <span class="pill accent" style="font-size: 11px;">{{ cg.name }} &rsaquo; {{ sec.name }}</span>
+                {% elif cg %}
+                <span class="pill accent" style="font-size: 11px;">{{ cg.name }}</span>
+                {% else %}
+                <span style="color: var(--text-muted); font-size: var(--text-xs);">Unassigned</span>
+                {% endif %}
+                {% endwith %}
+            </td>
+            <td style="text-align: center;">
+                <span class="pill {% if student.is_active %}success{% else %}warning{% endif %}" style="font-size: 11px;">
+                    <span class="status-dot"></span>
+                    {% if student.is_active %}Active{% else %}Disabled{% endif %}
+                </span>
+            </td>
+            <td>
+                <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center; flex-wrap: nowrap;">
+                    <a class="btn-small secondary" href="{% url 'dashboard_student_edit' student.id %}" title="Edit Student"><i class="fa-solid fa-pen"></i></a>
+                    <a class="btn-small secondary" href="{% url 'dashboard_student_reset_password' student.id %}" title="Reset Password"><i class="fa-solid fa-key"></i></a>
+                    <a class="btn-small secondary" href="{% url 'dashboard_student_toggle' student.id %}" title="Toggle Active">{% if student.is_active %}<i class="fa-solid fa-user-slash"></i>{% else %}<i class="fa-solid fa-user-check"></i>{% endif %}</a>
+                    <button class="btn-small danger" onclick="showModal('deleteModal-{{ student.id }}')" title="Delete Student"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </td>
         </tr>
-    </thead>
-    <tbody>
-    {% for student in page_obj %}
-    <tr>
-        <td>{% if student.first_name %}{{ student.first_name }} {{ student.last_name }}{% else %}{{ student.username }}{% endif %}</td>
-        <td style="color:rgba(255,255,255,0.6); font-family:monospace;">{{ student.username }}</td>
-        <td>
-            {% with cg=student.profile.class_group sec=student.profile.section %}
-            {% if cg and sec %}
-            <span class="group-badge">{{ cg.name }}-{{ sec.name }}</span>
-            {% elif cg %}
-            <span class="group-badge">{{ cg.name }}</span>
-            {% else %}
-            <span style="color:rgba(255,255,255,0.3);">—</span>
-            {% endif %}
-            {% endwith %}
-        </td>
-        <td><span class="pill {% if student.is_active %}success{% else %}warning{% endif %}">{% if student.is_active %}Active{% else %}Disabled{% endif %}</span></td>
-        <td style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
-            <a class="btn-small secondary" href="{% url 'dashboard_student_edit' student.id %}">Edit</a>
-            <a class="btn-small secondary" href="{% url 'dashboard_student_reset_password' student.id %}">Reset PW</a>
-            <a class="btn-small secondary" href="{% url 'dashboard_student_toggle' student.id %}">{% if student.is_active %}Disable{% else %}Enable{% endif %}</a>
-            <button class="btn-small danger" onclick="showModal('deleteModal-{{ student.id }}')">Delete</button>
-        </td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="5"><div class="empty-state">No students found.</div></td></tr>
-    {% endfor %}
-    </tbody>
-</table>
+        {% empty %}
+        <tr>
+            <td colspan="6">
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="fa-solid fa-user-graduate"></i></div>
+                    <div class="empty-state-title">No Students Found</div>
+                    <div class="empty-state-desc">No candidate records match your current search and filter selections.</div>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 {% if page_obj.has_other_pages %}
-<div class="pagination-row">
+<div style="display:flex; justify-content:center; gap:8px; margin-top:24px; align-items:center;">
     {% if page_obj.has_previous %}
-    <a class="dash-btn secondary" href="?page={{ page_obj.previous_page_number }}&q={{ query }}&classes={{ classes_param }}&sections={{ sections_param }}"><i class="fa-solid fa-angle-left"></i> Previous</a>
+    <a class="btn btn-secondary btn-small" href="?page={{ page_obj.previous_page_number }}&q={{ query }}&classes={{ classes_param }}&sections={{ sections_param }}"><i class="fa-solid fa-angle-left"></i> Previous</a>
     {% endif %}
-    <span style="color:rgba(255,255,255,0.6); font-size:0.9rem;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    <span style="color:var(--text-secondary); font-size:var(--text-xs); font-weight:600;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
     {% if page_obj.has_next %}
-    <a class="dash-btn secondary" href="?page={{ page_obj.next_page_number }}&q={{ query }}&classes={{ classes_param }}&sections={{ sections_param }}">Next <i class="fa-solid fa-angle-right"></i></a>
+    <a class="btn btn-secondary btn-small" href="?page={{ page_obj.next_page_number }}&q={{ query }}&classes={{ classes_param }}&sections={{ sections_param }}">Next <i class="fa-solid fa-angle-right"></i></a>
     {% endif %}
 </div>
 {% endif %}
+</form>

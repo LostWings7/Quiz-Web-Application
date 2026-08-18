@@ -1,25 +1,42 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}Quiz Submitted{% endblock %}
+
+{% block title %}Assessment Completed | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
 {% block content %}
-<style>
-.complete-page{display:flex;justify-content:center;align-items:center;min-height:70vh;}
-.complete-card{max-width:680px;width:100%;text-align:center;padding:58px;background:var(--glass);border:1px solid var(--glass-border);border-radius:32px;backdrop-filter:blur(28px);box-shadow:var(--shadow);}
-.success-icon{width:108px;height:108px;margin:0 auto 28px;border-radius:32px;display:grid;place-items:center;font-size:3rem;color:#052e22;background:linear-gradient(135deg,#86efac,#2dd4bf);box-shadow:0 18px 46px rgba(45,212,191,.3);}
-.complete-card h1{font-size:2.6rem;margin-bottom:16px;}
-.complete-card p{line-height:1.8;color:var(--text-soft);margin-bottom:34px;}
-.actions{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;}
-</style>
-<div class="complete-page">
-    <div class="complete-card">
-        <div class="success-icon"><i class="fa-solid fa-check"></i></div>
-        <h1>Quiz Submitted Successfully</h1>
-        <p>Thank you for completing <strong>{{ quiz.title }}</strong>. Your responses have been securely recorded.</p>
-        <div class="actions">
-            <a href="/home/" class="btn">Return Home</a>
-            <a href="/quiz-results/" class="btn btn-outline">View Results</a>
+<div style="max-width: 640px; margin: 40px auto 0;">
+    <!-- Breadcrumbs -->
+    <nav class="app-breadcrumbs" aria-label="Breadcrumb">
+        <a href="/home">Dashboard</a>
+        <span class="crumb-sep"><i class="fa-solid fa-chevron-right"></i></span>
+        <span class="crumb-current">Assessment Completed</span>
+    </nav>
+
+    <!-- Completion Card -->
+    <div class="card fade-up" style="padding: 48px 36px; text-align: center;">
+        <div class="modal-icon success" style="width: 76px; height: 76px; font-size: 2rem; margin-bottom: 24px;">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <div class="eyebrow" style="margin-bottom: 6px;">Submission Confirmed</div>
+        <h1 style="font-size: var(--text-3xl); margin-bottom: 12px;">Assessment Submitted</h1>
+        <p style="color: var(--text-secondary); font-size: var(--text-base); line-height: 1.65; margin-bottom: 32px;">
+            Thank you for completing <strong>{{ quiz.title }}</strong>. Your answers have been safely recorded and your score has been computed.
+        </p>
+
+        <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+            <a href="/quiz-results/" class="btn btn-primary btn-lg">
+                <i class="fa-solid fa-square-poll-vertical"></i>
+                <span>View My Results</span>
+            </a>
+            <a href="/home" class="btn btn-secondary btn-lg">
+                <span>Return to Dashboard</span>
+            </a>
+        </div>
+
+        <div style="margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border-subtle); font-size: var(--text-xs); color: var(--text-muted);">
+            <i class="fa-solid fa-shield-halved" style="color: var(--success); margin-right: 4px;"></i>
+            Session closed and verified securely.
         </div>
     </div>
 </div>
 {% endblock %}
-

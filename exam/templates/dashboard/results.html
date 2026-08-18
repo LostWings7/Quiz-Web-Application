@@ -1,126 +1,25 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
+
+{% block title %}Results Management | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
+{% block eyebrow %}Assessment Logs{% endblock %}
 {% block heading %}Results Management{% endblock %}
-{% block subtitle %}Search individual and overall student quiz results.{% endblock %}
-
-{% block extra_css %}
-<style>
-    .quiz-picker-wrapper {
-        position: relative;
-    }
-    .quiz-picker-trigger {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 14px;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.14);
-        border-radius: 10px;
-        cursor: pointer;
-        color: rgba(248,251,255,0.85);
-        font-size: 14px;
-        font-weight: 500;
-        transition: border-color 0.2s, background 0.2s;
-        user-select: none;
-        min-width: 200px;
-        white-space: nowrap;
-    }
-    .quiz-picker-trigger:hover, .quiz-picker-trigger.open {
-        border-color: var(--primary);
-        background: rgba(255,255,255,0.09);
-    }
-    .quiz-picker-trigger .trigger-text { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-    .quiz-picker-trigger .trigger-icon { transition: transform 0.25s ease; opacity: 0.55; }
-    .quiz-picker-trigger.open .trigger-icon { transform: rotate(180deg); }
-
-    .quiz-picker-dropdown {
-        position: absolute;
-        top: calc(100% + 6px);
-        left: 0;
-        min-width: 100%;
-        width: max-content;
-        max-width: 420px;
-        background: #1e2535;
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 12px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.55);
-        z-index: 300;
-        overflow: hidden;
-        opacity: 0;
-        transform: translateY(-6px);
-        pointer-events: none;
-        transition: opacity 0.2s ease, transform 0.2s ease;
-    }
-    .quiz-picker-dropdown.open {
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: all;
-    }
-    .quiz-picker-search {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 14px;
-        border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-    .quiz-picker-search i { color: rgba(248,251,255,0.35); font-size: 12px; }
-    .quiz-picker-search input {
-        flex: 1;
-        background: none;
-        border: none;
-        outline: none;
-        color: rgba(248,251,255,0.9);
-        font-size: 13px;
-        caret-color: var(--primary);
-    }
-    .quiz-picker-search input::placeholder { color: rgba(248,251,255,0.3); }
-    .quiz-picker-list {
-        max-height: 260px;
-        overflow-y: auto;
-        padding: 4px 0;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(255,255,255,0.1) transparent;
-    }
-    .quiz-picker-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 9px 14px;
-        cursor: pointer;
-        font-size: 13px;
-        color: rgba(248,251,255,0.8);
-        transition: background 0.12s;
-    }
-    .quiz-picker-item:hover, .quiz-picker-item.focused {
-        background: rgba(255,255,255,0.07);
-        color: #fff;
-    }
-    .quiz-picker-item.selected {
-        background: rgba(var(--primary-rgb, 99,102,241), 0.18);
-        color: var(--primary);
-        font-weight: 600;
-    }
-    .quiz-picker-item .item-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .quiz-picker-item .item-code { font-size: 11px; color: rgba(248,251,255,0.32); flex-shrink: 0; }
-    .quiz-picker-empty {
-        text-align: center;
-        padding: 22px 14px;
-        color: rgba(248,251,255,0.35);
-        font-size: 12px;
-    }
-    .rqp-match { color: var(--primary); font-weight: 700; }
-</style>
-{% endblock %}
+{% block subtitle %}Comprehensive submission logs, individual score records, and performance exports.{% endblock %}
 
 {% block content %}
-<div class="dashboard-card">
-    <div class="search-row" style="align-items: center; flex-wrap: wrap; gap: 10px;">
-        <input type="text" name="q" id="resultsSearchInput" value="{{ query }}" placeholder="Search by student or quiz" autocomplete="off" style="flex: 1; min-width: 180px;">
+<div class="card fade-up" style="padding: 24px;">
+    <!-- Filter and Search Row -->
+    <div class="search-row" style="align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+        <div class="search-bar-wrapper" style="flex: 1; min-width: 220px;">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" name="q" id="resultsSearchInput" value="{{ query }}" placeholder="Search by student name or quiz title…" autocomplete="off">
+        </div>
 
-        <!-- Searchable Quiz Filter Picker -->
+        <!-- Searchable Quiz Picker Dropdown -->
         <div class="quiz-picker-wrapper" id="rqpWrapper">
             <div class="quiz-picker-trigger" id="rqpTrigger" onclick="rqpToggle()">
-                <i class="fa-solid fa-flask-vial" style="color: var(--primary); font-size: 12px;"></i>
+                <i class="fa-solid fa-clipboard-list" style="color: var(--accent-primary); font-size: 13px;"></i>
                 <span class="trigger-text" id="rqpLabel">
                     {% if selected_quiz %}
                         {% for quiz in quizzes %}{% if quiz.id|stringformat:"s" == selected_quiz %}{{ quiz.title }}{% endif %}{% endfor %}
@@ -131,7 +30,7 @@
             <div class="quiz-picker-dropdown" id="rqpDropdown">
                 <div class="quiz-picker-search">
                     <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" id="rqpSearchInput" placeholder="Search quizzes…" oninput="rqpFilter(this.value)" autocomplete="off">
+                    <input type="text" id="rqpSearchInput" placeholder="Filter quizzes…" oninput="rqpFilter(this.value)" autocomplete="off">
                 </div>
                 <div class="quiz-picker-list" id="rqpList">
                     <div class="quiz-picker-item {% if not selected_quiz %}selected{% endif %}"
@@ -151,16 +50,27 @@
                     {% endfor %}
                 </div>
             </div>
-            <!-- Hidden input that actually drives the AJAX fetch -->
             <input type="hidden" id="resultsQuizSelect" value="{{ selected_quiz }}">
         </div>
     </div>
-    <table class="glass-table">
-        <thead><tr><th>Student</th><th>Quiz</th><th>Score</th><th>Submitted</th><th>Actions</th></tr></thead>
-        <tbody id="resultsTbody" style="transition: opacity 0.15s ease;">
-        {% include 'dashboard/results_table_partial.html' %}
-        </tbody>
-    </table>
+
+    <!-- Table -->
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Candidate</th>
+                    <th>Examination</th>
+                    <th style="text-align: center;">Score</th>
+                    <th>Submitted At</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="resultsTbody" style="transition: opacity 0.15s ease;">
+                {% include 'dashboard/results_table_partial.html' %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}
 
@@ -172,7 +82,6 @@
 
 {% block extra_js %}
 <script>
-// ── Results Quiz Picker ───────────────────────────────────
 let rqpFocusedIdx = -1;
 const rqpTrigger   = document.getElementById('rqpTrigger');
 const rqpDropdown  = document.getElementById('rqpDropdown');
@@ -180,24 +89,30 @@ const rqpSearch    = document.getElementById('rqpSearchInput');
 const rqpList      = document.getElementById('rqpList');
 
 function rqpToggle() {
-    rqpDropdown.classList.contains('open') ? rqpClose() : rqpOpen();
+    if (rqpDropdown) {
+        rqpDropdown.classList.contains('open') ? rqpClose() : rqpOpen();
+    }
 }
 function rqpOpen() {
+    if (!rqpTrigger || !rqpDropdown) return;
     rqpTrigger.classList.add('open');
     rqpDropdown.classList.add('open');
     if (rqpSearch) setTimeout(() => rqpSearch.focus(), 60);
     rqpFocusedIdx = -1;
 }
 function rqpClose() {
+    if (!rqpTrigger || !rqpDropdown) return;
     rqpTrigger.classList.remove('open');
     rqpDropdown.classList.remove('open');
     if (rqpSearch) { rqpSearch.value = ''; rqpFilter(''); }
     rqpFocusedIdx = -1;
 }
+
 document.addEventListener('click', function(e) {
     const w = document.getElementById('rqpWrapper');
     if (w && !w.contains(e.target)) rqpClose();
 });
+
 if (rqpSearch) {
     rqpSearch.addEventListener('keydown', function(e) {
         const vis = [...rqpList.querySelectorAll('.quiz-picker-item:not([style*="display: none"])')];
@@ -207,9 +122,11 @@ if (rqpSearch) {
         else if (e.key === 'Escape') rqpClose();
     });
 }
+
 function rqpUpdateFocus(vis) {
     vis.forEach((el, i) => { el.classList.toggle('focused', i === rqpFocusedIdx); if (i === rqpFocusedIdx) el.scrollIntoView({block:'nearest'}); });
 }
+
 function rqpFilter(query) {
     const q = query.trim().toLowerCase();
     const items = rqpList.querySelectorAll('.quiz-picker-item');
@@ -219,19 +136,21 @@ function rqpFilter(query) {
         const t = item.dataset.title || '', c = item.dataset.code || '';
         const match = !q || t.includes(q) || c.includes(q);
         item.style.display = match ? '' : 'none';
-        if (match) {
-            hasVis = true;
-            const lbl = item.querySelector('.item-label');
-            if (lbl) {
-                const orig = lbl.dataset.original || lbl.textContent;
-                lbl.dataset.original = orig;
-                lbl.innerHTML = q ? orig.replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'), '<span class="rqp-match">$1</span>') : orig;
-            }
-        }
+        if (match) hasVis = true;
     });
-    if (!emptyEl) { emptyEl = document.createElement('div'); emptyEl.className = 'quiz-picker-empty'; emptyEl.innerHTML = '<i class="fa-solid fa-circle-exclamation" style="margin-right:5px;"></i>No quizzes match.'; rqpList.appendChild(emptyEl); }
+    if (!emptyEl) {
+        emptyEl = document.createElement('div');
+        emptyEl.className = 'quiz-picker-empty';
+        emptyEl.style.padding = '16px';
+        emptyEl.style.textAlign = 'center';
+        emptyEl.style.color = 'var(--text-muted)';
+        emptyEl.style.fontSize = 'var(--text-xs)';
+        emptyEl.innerHTML = 'No quizzes match.';
+        rqpList.appendChild(emptyEl);
+    }
     emptyEl.style.display = hasVis ? 'none' : '';
 }
+
 function rqpSelect(id, title) {
     document.getElementById('rqpLabel').textContent = title;
     document.getElementById('resultsQuizSelect').value = id;
@@ -240,7 +159,6 @@ function rqpSelect(id, title) {
     fetchResults();
 }
 
-// ── Results AJAX ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('resultsSearchInput');
     const quizSelect = document.getElementById('resultsQuizSelect');
@@ -269,9 +187,6 @@ document.addEventListener('DOMContentLoaded', function() {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(fetchResults, 150);
         });
-    }
-    if (document.getElementById('resultsSearchBtn')) {
-        document.getElementById('resultsSearchBtn').addEventListener('click', fetchResults);
     }
 });
 </script>

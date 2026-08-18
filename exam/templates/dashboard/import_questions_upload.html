@@ -1,58 +1,60 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
+
+{% block title %}Import Questions | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
+{% block eyebrow %}Question Ingestion{% endblock %}
 {% block heading %}Import Questions{% endblock %}
-{% block subtitle %}Bulk import questions from a CSV, Excel, or ZIP file.{% endblock %}
+{% block subtitle %}Bulk import assessment items from CSV, Excel (.xlsx), or media-bundled ZIP archives.{% endblock %}
 
 {% block extra_css %}
 <style>
-    .guide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
-    .guide-step { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 16px; }
-    .guide-step h4 { color: var(--primary); margin: 0 0 8px 0; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
-    .guide-step p, .guide-step li { color: rgba(255,255,255,0.7); font-size: 0.84rem; line-height: 1.6; margin: 0; }
-    .guide-step ul { padding-left: 18px; margin-top: 6px; }
-    .guide-step code { background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px; font-size: 0.82rem; color: #7dd3fc; }
-    .col-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 10px; }
-    .col-table th { background: rgba(var(--primary-rgb,99,102,241),0.2); color: var(--primary); padding: 6px 10px; text-align: left; }
-    .col-table td { padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); color: rgba(255,255,255,0.75); }
-    .col-table tr:last-child td { border-bottom: none; }
-    .badge-opt { background: rgba(45,212,191,0.15); color: #2dd4bf; border-radius: 4px; padding: 1px 6px; font-size: 0.75rem; }
-    .badge-req { background: rgba(248,113,113,0.15); color: #f87171; border-radius: 4px; padding: 1px 6px; font-size: 0.75rem; }
+.guide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.guide-step { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 18px; }
+.guide-step h4 { color: var(--accent-primary); margin: 0 0 8px 0; font-size: var(--text-sm); display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.guide-step p, .guide-step li { color: var(--text-secondary); font-size: var(--text-xs); line-height: 1.6; margin: 0; }
+.guide-step ul { padding-left: 18px; margin-top: 6px; }
+.guide-step code { background: var(--surface-sunken); padding: 2px 6px; border-radius: 4px; font-size: 11px; color: var(--accent-primary); font-family: var(--font-mono); }
+.col-table { width: 100%; border-collapse: collapse; font-size: var(--text-xs); margin-top: 10px; }
+.col-table th { background: var(--bg-secondary); color: var(--text-secondary); padding: 8px 12px; text-align: left; font-weight: 600; border-bottom: 1px solid var(--border); }
+.col-table td { padding: 8px 12px; border-bottom: 1px solid var(--border-subtle); color: var(--text-primary); }
+.col-table tr:last-child td { border-bottom: none; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div style="display:flex;flex-direction:column;gap:24px;">
+<div style="display: flex; flex-direction: column; gap: 24px; max-width: 960px;">
 
     <!-- Upload Form -->
-    <div class="dashboard-card" style="animation:fadeUp .4s ease backwards;">
-        <div class="section-heading" style="margin-bottom:20px;">
-            <h2><i class="fa-solid fa-file-arrow-up" style="color:var(--primary);margin-right:8px;"></i>Upload Import File</h2>
+    <div class="card fade-up" style="padding: 28px;">
+        <div class="section-heading" style="margin-bottom: 20px;">
+            <h2><i class="fa-solid fa-file-arrow-up" style="color: var(--accent-primary); margin-right: 8px;"></i> Upload Questions File</h2>
         </div>
-        <form method="post" enctype="multipart/form-data" style="display:flex;flex-direction:column;gap:18px;">
+        <form method="post" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 18px;">
             {% csrf_token %}
             <input type="hidden" name="action" value="upload">
 
             <div class="form-group">
-                <label style="font-weight:600;display:block;margin-bottom:8px;color:rgba(255,255,255,0.9);">Target Quiz</label>
+                <label class="form-label">Target Examination</label>
                 {{ form.quiz }}
             </div>
 
             <div class="form-group">
-                <label style="font-weight:600;display:block;margin-bottom:8px;color:rgba(255,255,255,0.9);">Import File</label>
+                <label class="form-label">Spreadsheet or Archive File</label>
                 {{ form.file }}
-                <small style="color:var(--text-soft);margin-top:6px;display:block;">
-                    Accepted: <strong>.csv</strong>, <strong>.xlsx</strong>, or a <strong>.zip</strong> (spreadsheet + image files bundled together).
+                <small style="color: var(--text-muted); margin-top: 6px; display: block; font-size: var(--text-xs);">
+                    Accepted formats: <strong>.csv</strong>, <strong>.xlsx</strong>, or bundled <strong>.zip</strong> (containing spreadsheet and referenced question/option images).
                 </small>
             </div>
 
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
                 {{ form.has_header }}
-                <label style="color:rgba(255,255,255,0.85);cursor:pointer;">First row is a header</label>
+                <label style="color: var(--text-primary); cursor: pointer; font-size: var(--text-sm);">First row contains column headers</label>
             </div>
 
-            <div style="display:flex;gap:12px;align-items:center;margin-top:6px;">
-                <button type="submit" class="dash-btn primary"><i class="fa-solid fa-arrow-up-from-bracket"></i> Upload & Preview</button>
-                <a href="{% url 'dashboard_question_import_sample' %}" class="dash-btn secondary" download>
+            <div style="display: flex; gap: 12px; align-items: center; margin-top: 8px; flex-wrap: wrap;">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-arrow-up-from-bracket"></i> Upload &amp; Preview</button>
+                <a href="{% url 'dashboard_question_import_sample' %}" class="btn btn-secondary" download>
                     <i class="fa-solid fa-file-csv"></i> Download Sample Template
                 </a>
             </div>
@@ -60,80 +62,51 @@
     </div>
 
     <!-- Format Guide -->
-    <div class="dashboard-card" style="animation:fadeUp .5s ease backwards;">
-        <div class="section-heading" style="margin-bottom:16px;">
-            <h2><i class="fa-solid fa-circle-info" style="color:var(--primary);margin-right:8px;"></i>How to Prepare Your File</h2>
+    <div class="card fade-up stagger-1" style="padding: 28px;">
+        <div class="section-heading" style="margin-bottom: 16px;">
+            <h2><i class="fa-solid fa-circle-info" style="color: var(--accent-primary); margin-right: 8px;"></i> Spreadsheet Column Layout</h2>
         </div>
 
-        <!-- Column Layout -->
-        <p style="color:rgba(255,255,255,0.7);font-size:0.88rem;margin-bottom:10px;">
-            Each <strong>row</strong> in your spreadsheet is one question. Use these recommended columns (you'll map them on the next screen):
+        <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 12px;">
+            Each <strong>row</strong> represents one question. You will map spreadsheet columns to question fields on the next step:
         </p>
-        <table class="col-table">
-            <thead><tr><th>Column Name</th><th>Purpose</th><th>Required?</th></tr></thead>
-            <tbody>
-                <tr><td><code>question_text</code></td><td>The question body text</td><td><span class="badge-req">Required</span></td></tr>
-                <tr><td><code>question_image</code></td><td>Filename (from ZIP) or URL for the question's image</td><td><span class="badge-opt">Optional</span></td></tr>
-                <tr><td><code>option_1</code></td><td>First answer option text</td><td><span class="badge-req">Required</span></td></tr>
-                <tr><td><code>option_1_image</code></td><td>Image for first answer option (filename or URL)</td><td><span class="badge-opt">Optional</span></td></tr>
-                <tr><td><code>option_2</code>, <code>option_2_image</code></td><td>Second answer option text + image</td><td><span class="badge-opt">Optional</span></td></tr>
-                <tr><td><code>option_3</code>, <code>option_3_image</code></td><td>Third answer option text + image</td><td><span class="badge-opt">Optional</span></td></tr>
-                <tr><td><code>option_4</code>, <code>option_4_image</code></td><td>Fourth answer option text + image</td><td><span class="badge-opt">Optional</span></td></tr>
-                <tr><td><code>correct_option</code></td><td>Which option is correct — enter <code>1</code>, <code>2</code>, <code>3</code>, or <code>4</code></td><td><span class="badge-req">Required*</span></td></tr>
-                <tr><td><code>subtopic</code></td><td>Subtopic name (created automatically if new)</td><td><span class="badge-opt">Optional</span></td></tr>
-                <tr><td><code>order</code></td><td>Display order number</td><td><span class="badge-opt">Optional</span></td></tr>
-            </tbody>
-        </table>
-        <small style="color:rgba(255,255,255,0.4);margin-top:6px;display:block;">* Required for CSV files. For Excel (.xlsx), you can instead highlight the correct answer cell in any colour — it is detected automatically.</small>
+        <div class="table-wrapper">
+            <table class="col-table">
+                <thead><tr><th>Column Name</th><th>Purpose</th><th>Requirement</th></tr></thead>
+                <tbody>
+                    <tr><td><code>question_text</code></td><td>Primary question statement / prompt</td><td><span class="pill error" style="font-size: 11px;">Required</span></td></tr>
+                    <tr><td><code>question_image</code></td><td>Image filename (from ZIP) or web URL</td><td><span class="pill" style="font-size: 11px;">Optional</span></td></tr>
+                    <tr><td><code>option_1</code></td><td>First answer option text</td><td><span class="pill error" style="font-size: 11px;">Required</span></td></tr>
+                    <tr><td><code>option_1_image</code></td><td>Image for first answer option</td><td><span class="pill" style="font-size: 11px;">Optional</span></td></tr>
+                    <tr><td><code>option_2</code>, <code>option_2_image</code></td><td>Second answer option text + image</td><td><span class="pill" style="font-size: 11px;">Optional</span></td></tr>
+                    <tr><td><code>option_3</code>, <code>option_3_image</code></td><td>Third answer option text + image</td><td><span class="pill" style="font-size: 11px;">Optional</span></td></tr>
+                    <tr><td><code>option_4</code>, <code>option_4_image</code></td><td>Fourth answer option text + image</td><td><span class="pill" style="font-size: 11px;">Optional</span></td></tr>
+                    <tr><td><code>correct_option</code></td><td>Index of the correct answer: <code>1</code>, <code>2</code>, <code>3</code>, or <code>4</code></td><td><span class="pill error" style="font-size: 11px;">Required*</span></td></tr>
+                    <tr><td><code>subtopic</code></td><td>Subtopic categorization label</td><td><span class="pill" style="font-size: 11px;">Optional</span></td></tr>
+                    <tr><td><code>order</code></td><td>Sequential question sort order number</td><td><span class="pill" style="font-size: 11px;">Optional</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <small style="color: var(--text-muted); margin-top: 8px; display: block; font-size: var(--text-xs);">* Required for CSV. In Excel (.xlsx), highlighted correct answer cells are detected automatically.</small>
 
-        <div class="guide-grid" style="margin-top:20px;">
-
+        <div class="guide-grid" style="margin-top: 20px;">
             <div class="guide-step">
-                <h4><i class="fa-solid fa-file-excel"></i> Excel (.xlsx) — Best Option</h4>
-                <p>Highlight the correct answer cell in any colour. This is the easiest way — no need for a <code>correct_option</code> column.</p>
+                <h4><i class="fa-solid fa-file-excel"></i> Excel (.xlsx)</h4>
+                <p>Highlight correct answer cells in color for automatic detection without needing a <code>correct_option</code> column.</p>
                 <ul>
-                    <li>One row = one question</li>
-                    <li>Put image filenames (e.g. <code>q1.png</code>) in image columns</li>
-                    <li>Bundle images together in a ZIP (see below)</li>
+                    <li>1 row = 1 question</li>
+                    <li>Specify image filenames (e.g. <code>q1.png</code>)</li>
                 </ul>
             </div>
 
             <div class="guide-step">
-                <h4><i class="fa-solid fa-file-csv"></i> CSV — Simple Option</h4>
-                <p>Add a <code>correct_option</code> column with values <code>1</code>, <code>2</code>, <code>3</code>, or <code>4</code> to mark the correct answer.</p>
+                <h4><i class="fa-solid fa-file-csv"></i> CSV Files</h4>
+                <p>Include a <code>correct_option</code> column with numeric values <code>1</code>, <code>2</code>, <code>3</code>, or <code>4</code>.</p>
                 <ul>
-                    <li>No colour support in CSV</li>
-                    <li>Use URLs in image columns for online images</li>
-                    <li>Or ZIP with image files for local images</li>
+                    <li>Supports direct image URLs</li>
+                    <li>Fast and lightweight</li>
                 </ul>
             </div>
-
-            <div class="guide-step">
-                <h4><i class="fa-solid fa-file-zipper"></i> ZIP — For Local Images</h4>
-                <p>Put your spreadsheet and all image files into one ZIP archive:</p>
-                <ul>
-                    <li><code>questions.zip</code><br>
-                        &nbsp;&nbsp;<code>├─ questions.csv</code> (or .xlsx)<br>
-                        &nbsp;&nbsp;<code>├─ q1.png</code><br>
-                        &nbsp;&nbsp;<code>├─ q2.png</code><br>
-                        &nbsp;&nbsp;<code>└─ opt_a.png</code>
-                    </li>
-                    <li>Reference images by filename in the image columns</li>
-                    <li>Images can be PNG, JPG, JPEG, GIF, or WebP</li>
-                </ul>
-            </div>
-
-            <div class="guide-step">
-                <h4><i class="fa-solid fa-link"></i> URLs — For Online Images</h4>
-                <p>Put a direct image URL in any image column:</p>
-                <ul>
-                    <li>e.g. <code>https://example.com/img/q1.png</code></li>
-                    <li>Works for <code>question_image</code> and all <code>option_image</code> columns</li>
-                    <li>Images are downloaded and stored on import</li>
-                    <li>URL must point directly to an image file</li>
-                </ul>
-            </div>
-
         </div>
     </div>
 

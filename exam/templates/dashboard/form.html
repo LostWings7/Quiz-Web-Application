@@ -1,93 +1,113 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
 
+{% block title %}{{ title }} | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
+{% block eyebrow %}Configuration Editor{% endblock %}
 {% block heading %}{{ title }}{% endblock %}
-{% block subtitle %}Complete the fields below and save your changes.{% endblock %}
+{% block subtitle %}Complete the fields below and save your configuration changes.{% endblock %}
 
 {% block extra_css %}
 <style>
 .custom-quiz-checkbox {
-    width: 20px;
-    height: 20px;
-    border: 2px solid rgba(0, 255, 200, 0.35);
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.4);
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-strong);
+    border-radius: 4px;
+    background: var(--surface);
     cursor: pointer;
     appearance: none;
     -webkit-appearance: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all var(--duration-fast) var(--ease-primary);
     outline: none;
 }
 .custom-quiz-checkbox:hover {
-    border-color: #00ffc8;
-    background: rgba(0, 255, 200, 0.1);
-    box-shadow: 0 0 10px rgba(0, 255, 200, 0.2);
+    border-color: var(--accent-primary);
 }
 .custom-quiz-checkbox:checked {
-    background: #00ffc8;
-    border-color: #00ffc8;
-    box-shadow: 0 0 12px rgba(0, 255, 200, 0.4);
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
 }
 .custom-quiz-checkbox:checked::after {
     content: '✓';
-    color: #050c18;
-    font-size: 13px;
+    color: var(--text-inverse);
+    font-size: 11px;
     font-weight: 900;
 }
 .section-checkbox-group {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 14px;
+    gap: 8px 12px;
     align-items: center;
     justify-content: center;
 }
 .section-checkbox-label {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.85);
+    gap: 6px;
+    font-size: var(--text-xs);
+    color: var(--text-primary);
     cursor: pointer;
-    background: rgba(0, 0, 0, 0.35);
+    background: var(--surface);
     padding: 6px 12px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.18s ease;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    transition: all var(--transition-fast);
     user-select: none;
 }
 .section-checkbox-label:hover {
-    background: rgba(0, 255, 200, 0.08);
-    border-color: rgba(0, 255, 200, 0.3);
+    background: var(--accent-primary-subtle);
+    border-color: var(--accent-primary-border);
 }
-.quiz-section-select:focus {
-    border-color: rgba(0, 255, 200, 0.4);
+.option-edit-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 12px;
 }
-.quiz-section-select:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
+.option-letter {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-xs);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    display: grid;
+    place-items: center;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: var(--text-xs);
+    color: var(--text-primary);
+    flex-shrink: 0;
+    margin-top: 4px;
 }
-.drop-zone {
-    border: 2px dashed rgba(255, 255, 255, 0.22);
-    border-radius: 16px;
-    padding: 22px 18px;
-    text-align: center;
-    background: rgba(0, 0, 0, 0.2);
+.option-correct {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: all 0.22s ease-in-out;
+    flex-shrink: 0;
+    margin-top: 8px;
 }
-.drop-zone:hover, .drop-zone.drag-over {
-    border-color: #67e8f9;
-    background: rgba(103, 232, 249, 0.08);
-    box-shadow: 0 0 15px rgba(103, 232, 249, 0.15);
+.option-correct input[type="radio"] {
+    accent-color: var(--accent-primary);
+    width: 16px;
+    height: 16px;
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-card">
+<div class="card fade-up" style="padding: 32px; max-width: 960px;">
     <form class="dash-form" method="post" enctype="multipart/form-data">
         {% csrf_token %}
         {% if title == "Edit Question" or title == "Create Question" %}
@@ -96,24 +116,24 @@
             {% if form.quiz.is_hidden %}
                 {{ form.quiz }}
             {% else %}
-            <p>
+            <div class="form-group">
                 {{ form.quiz.label_tag }}
                 {{ form.quiz }}
-            </p>
+            </div>
             {% endif %}
             {% endif %}
 
-            <p>
+            <div class="form-group">
                 {{ form.text.label_tag }}
                 {{ form.text }}
-            </p>
+            </div>
 
-            <!-- Drag & Drop Question Images (directly below Question Text) -->
-            <div class="drop-zone" id="questionImageDropZone" style="margin-top:10px; margin-bottom:20px;">
+            <!-- Drag & Drop Question Images -->
+            <div class="drop-zone" id="questionImageDropZone" style="margin-top: 10px; margin-bottom: 20px;">
                 <div class="drop-zone-content">
-                    <i class="fa-solid fa-cloud-arrow-up" style="font-size:1.8rem; color:#67e8f9; margin-bottom:6px;"></i>
-                    <p style="font-size:0.88rem; font-weight:600; margin-bottom:4px; color:rgba(255,255,255,0.9);">Drag &amp; Drop Question Images here, or <span style="color:#67e8f9; text-decoration:underline;">Browse</span></p>
-                    <span style="font-size:0.75rem; color:rgba(255,255,255,0.45);">Supported Formats: PNG, JPG, JPEG, WEBP, GIF (Select or drop multiple files)</span>
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.8rem; color: var(--accent-primary); margin-bottom: 6px;"></i>
+                    <p style="font-size: var(--text-sm); font-weight: 600; margin-bottom: 4px; color: var(--text-primary);">Drag &amp; Drop Question Images here, or <span style="color: var(--accent-primary); text-decoration: underline;">Browse</span></p>
+                    <span style="font-size: var(--text-xs); color: var(--text-muted);">Supported Formats: PNG, JPG, JPEG, WEBP, GIF</span>
                 </div>
                 <input type="file" name="extra_question_images" id="extraQuestionImagesInput" multiple accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" style="display:none;">
                 <div class="file-list-preview" id="questionFilesPreview" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; justify-content:center;"></div>
@@ -121,9 +141,9 @@
                 {% if question_images %}
                 <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:12px; justify-content:center;" onclick="event.stopPropagation();">
                     {% for img in question_images %}
-                    <div class="image-manage-card" id="questionImgCard_{{ img.id_val }}" style="display:flex; flex-direction:column; align-items:center; gap:6px; background:rgba(0,0,0,0.35); padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12);">
-                        <img src="{{ img.url }}" style="height:70px; object-fit:contain; border-radius:6px;">
-                        <button type="button" class="btn-small danger" style="padding:4px 10px; font-size:0.75rem; margin-top:4px;" onclick="promptDeleteExistingQuestionImage('{{ img.id_val }}')">
+                    <div class="image-manage-card" id="questionImgCard_{{ img.id_val }}" style="display:flex; flex-direction:column; align-items:center; gap:6px; background:var(--surface); padding:8px 12px; border-radius:var(--radius-sm); border:1px solid var(--border);">
+                        <img src="{{ img.url }}" style="height:70px; object-fit:contain; border-radius:4px;">
+                        <button type="button" class="btn-small danger" style="padding:4px 10px; font-size:11px; margin-top:4px;" onclick="promptDeleteExistingQuestionImage('{{ img.id_val }}')">
                             <i class="fa-solid fa-trash-can"></i> Delete
                         </button>
                     </div>
@@ -132,16 +152,16 @@
                 {% endif %}
             </div>
 
-            <p style="margin-top:16px;">
+            <div class="form-group" style="margin-top: 16px;">
                 {{ form.subtopic.label_tag }}
                 {{ form.subtopic }}
-            </p>
+            </div>
 
-            <div class="section-heading" style="margin-top:20px;">
-                <h2>Options</h2>
-                <button class="btn-small secondary" id="addOption" type="button">
+            <div class="section-heading" style="margin-top: 24px; margin-bottom: 16px;">
+                <h2>Answer Options</h2>
+                <button class="btn btn-secondary btn-small" id="addOption" type="button">
                     <i class="fa-solid fa-plus"></i>
-                    Add Option
+                    <span>Add Option</span>
                 </button>
             </div>
 
@@ -151,18 +171,17 @@
                     <span class="option-letter">{% cycle 'A' 'B' 'C' 'D' 'E' 'F' 'G' 'H' 'I' 'J' 'K' 'L' 'M' 'N' 'O' 'P' 'Q' 'R' 'S' 'T' 'U' 'V' 'W' 'X' 'Y' 'Z' %}</span>
                     <label class="option-correct">
                         <input type="radio" name="correct_option" value="{{ forloop.counter0 }}" {% if option.is_correct %}checked{% endif %}>
-                        Correct
+                        <span>Correct</span>
                     </label>
-                    
+
                     <div class="option-content-col" style="display:flex; flex-direction:column; gap:10px; min-width:0; width:100%;">
-                        <textarea name="option_text" rows="2" placeholder="Option text">{{ option.text }}</textarea>
-                        
-                        <div class="option-media-container drop-zone option-drop-zone" id="optionDropZone_{{ forloop.counter0 }}" style="padding:10px 14px; background:rgba(0,0,0,0.25); border:1px dashed rgba(255,255,255,0.18); border-radius:12px; cursor:pointer;">
+                        <textarea name="option_text" rows="2" placeholder="Enter option text">{{ option.text }}</textarea>
+
+                        <div class="option-media-container drop-zone option-drop-zone" id="optionDropZone_{{ forloop.counter0 }}" style="padding:10px 14px; background:var(--surface); border:1px dashed var(--border-strong); border-radius:var(--radius-sm); cursor:pointer;">
                             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                                    <i class="fa-solid fa-cloud-arrow-up" style="color:#00ffc8; font-size:1.1rem;"></i>
-                                    <span style="font-size:0.82rem; font-weight:600; color:rgba(255,255,255,0.9);">Drag &amp; Drop Option Images here, or <span style="color:#00ffc8; text-decoration:underline;">Browse</span></span>
-                                    <small style="color:rgba(255,255,255,0.4); font-size:0.75rem;">Formats: PNG, JPG, JPEG, WEBP, GIF</small>
+                                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                    <i class="fa-solid fa-cloud-arrow-up" style="color:var(--accent-primary); font-size:1rem;"></i>
+                                    <span style="font-size:var(--text-xs); font-weight:600; color:var(--text-primary);">Option Image <span style="color:var(--accent-primary); text-decoration:underline;">Browse</span></span>
                                 </div>
                                 <input type="file" name="option_images_{{ forloop.counter0 }}" id="optionImagesInput_{{ forloop.counter0 }}" class="option-image-input" multiple accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" style="display:none;">
                             </div>
@@ -171,9 +190,9 @@
                             {% if option.images %}
                             <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:8px;" onclick="event.stopPropagation();">
                                 {% for img in option.images %}
-                                <div class="current-option-image-preview" id="optionImgCard_{{ forloop.parentloop.counter0 }}_{{ img.id_val }}" style="display:flex; flex-direction:column; align-items:center; gap:4px; background:rgba(0,0,0,0.35); padding:6px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.12);">
+                                <div class="current-option-image-preview" id="optionImgCard_{{ forloop.parentloop.counter0 }}_{{ img.id_val }}" style="display:flex; flex-direction:column; align-items:center; gap:4px; background:var(--surface-subtle); padding:6px 10px; border-radius:var(--radius-xs); border:1px solid var(--border);">
                                     <img src="{{ img.url }}" style="max-height:50px; border-radius:4px; object-fit:contain;">
-                                    <button type="button" class="btn-small danger" style="padding:2px 8px; font-size:0.72rem; margin-top:2px;" onclick="promptDeleteExistingOptionImage({{ forloop.parentloop.counter0 }}, '{{ img.id_val }}')">
+                                    <button type="button" class="btn-small danger" style="padding:2px 8px; font-size:10px; margin-top:2px;" onclick="promptDeleteExistingOptionImage({{ forloop.parentloop.counter0 }}, '{{ img.id_val }}')">
                                         <i class="fa-solid fa-trash-can"></i> Delete
                                     </button>
                                 </div>
@@ -182,7 +201,7 @@
                             {% endif %}
                         </div>
                     </div>
-                    
+
                     <button class="btn-small danger remove-option" type="button" aria-label="Remove option" style="align-self:center;">
                         <i class="fa-solid fa-trash"></i>
                     </button>
@@ -195,101 +214,94 @@
             {{ form.as_p }}
 
             {% if title == "Create Quiz" or title == "Edit Quiz" %}
-            <hr style="margin:30px 0;border:0;border-top:1px solid rgba(255,255,255,.12);">
+            <hr style="margin:28px 0; border:0; border-top:1px solid var(--border);">
 
-            <div class="section-heading" style="margin-bottom:10px;">
+            <div class="section-heading" style="margin-bottom:8px;">
                 <h2>Class &amp; Section Visibility Assignment</h2>
             </div>
-            <p class="dashboard-subtitle" style="margin-bottom:20px;">
-                Check the classes to assign this quiz to, and optionally select specific sections. Leave section options unselected to grant access to all sections in that class.
+            <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 20px;">
+                Select the classes assigned to this examination. Optionally check specific sections to restrict access.
             </p>
 
-            <table class="glass-table" style="margin-bottom:24px;">
-                <thead>
-                    <tr>
-                        <th style="width:70px; text-align:center;">Assign</th>
-                        <th>Class Name</th>
-                        <th style="text-align:center;">Section Assignment</th>
-                        <th>Enrolled Students</th>
-                        <th style="width:140px; text-align:center;">Access Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for c in all_classes %}
-                    {% with cid=c.id|stringformat:"s" %}
-                    <tr id="classAssignRow-{{ c.id }}">
-                        <td style="text-align:center;">
-                            <input type="checkbox" name="assigned_classes" value="{{ c.id }}" class="custom-quiz-checkbox" id="classChk-{{ c.id }}" {% if cid in selected_class_ids %}checked{% endif %} onchange="toggleQuizClassRow({{ c.id }})">
-                        </td>
-                        <td>
-                            <label for="classChk-{{ c.id }}" style="font-weight:600; cursor:pointer; color:#fff; font-size:0.95rem;">
-                                {{ c.name }}
-                            </label>
-                        </td>
-                        <td style="text-align:center;">
-                            {% if c.sections.all %}
-                            <div class="section-checkbox-group" id="sectionGroup-{{ c.id }}">
-                                {% for sec in c.sections.all %}
-                                {% with sid=sec.id|stringformat:"s" %}
-                                <label class="section-checkbox-label" for="secChk-{{ sec.id }}">
-                                    <input type="checkbox" name="assigned_sections" value="{{ sec.id }}" class="custom-quiz-checkbox section-chk-{{ c.id }}" id="secChk-{{ sec.id }}" {% if sid in selected_section_ids %}checked{% endif %} {% if cid not in selected_class_ids %}disabled{% endif %} onchange="onSectionCheckboxChange({{ c.id }})">
-                                    <span>Section {{ sec.name }}</span>
+            <div class="table-wrapper" style="margin-bottom: 24px;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:70px; text-align:center;">Assign</th>
+                            <th>Class Name</th>
+                            <th style="text-align:center;">Section Assignment</th>
+                            <th>Enrolled Students</th>
+                            <th style="width:140px; text-align:center;">Access Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in all_classes %}
+                        {% with cid=c.id|stringformat:"s" %}
+                        <tr id="classAssignRow-{{ c.id }}">
+                            <td style="text-align:center;">
+                                <input type="checkbox" name="assigned_classes" value="{{ c.id }}" class="custom-quiz-checkbox" id="classChk-{{ c.id }}" {% if cid in selected_class_ids %}checked{% endif %} onchange="toggleQuizClassRow({{ c.id }})">
+                            </td>
+                            <td>
+                                <label for="classChk-{{ c.id }}" style="font-weight:600; cursor:pointer; color:var(--text-primary); font-size:var(--text-sm);">
+                                    {{ c.name }}
                                 </label>
-                                {% endwith %}
-                                {% endfor %}
-                            </div>
-                            <small style="display:block; color:rgba(255,255,255,0.4); font-size:0.75rem; margin-top:6px;">Select specific sections, or leave unselected to grant access to All Sections.</small>
-                            {% else %}
-                            <span style="color:rgba(255,255,255,0.4); font-size:0.85rem;">No sections (All students in {{ c.name }})</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span style="font-size:0.88rem; color:rgba(255,255,255,0.8);"><i class="fa-solid fa-users" style="margin-right:6px; color:#00ffc8;"></i>{{ c.student_count }} Student{{ c.student_count|pluralize }}</span>
-                        </td>
-                        <td style="text-align:center;">
-                            <span id="accessBadge-{{ c.id }}" class="pill {% if cid in selected_class_ids %}success{% else %}warning{% endif %}" style="white-space:nowrap;">
-                                {% if cid in selected_class_ids %}Assigned{% else %}Not Assigned{% endif %}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endwith %}
-                    {% empty %}
-                    <tr><td colspan="5"><div class="empty-state">No classes available. Create classes first.</div></td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </td>
+                            <td style="text-align:center;">
+                                {% if c.sections.all %}
+                                <div class="section-checkbox-group" id="sectionGroup-{{ c.id }}">
+                                    {% for sec in c.sections.all %}
+                                    {% with sid=sec.id|stringformat:"s" %}
+                                    <label class="section-checkbox-label" for="secChk-{{ sec.id }}">
+                                        <input type="checkbox" name="assigned_sections" value="{{ sec.id }}" class="custom-quiz-checkbox section-chk-{{ c.id }}" id="secChk-{{ sec.id }}" {% if sid in selected_section_ids %}checked{% endif %} {% if cid not in selected_class_ids %}disabled{% endif %} onchange="onSectionCheckboxChange({{ c.id }})">
+                                        <span>Section {{ sec.name }}</span>
+                                    </label>
+                                    {% endwith %}
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <span style="color:var(--text-muted); font-size:var(--text-xs);">All Students in {{ c.name }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span style="font-size:var(--text-xs); color:var(--text-secondary);"><i class="fa-solid fa-users" style="margin-right:6px; color:var(--accent-primary);"></i>{{ c.student_count }} Student{{ c.student_count|pluralize }}</span>
+                            </td>
+                            <td style="text-align:center;">
+                                <span id="accessBadge-{{ c.id }}" class="pill {% if cid in selected_class_ids %}success{% else %}warning{% endif %}" style="font-size: 11px;">
+                                    {% if cid in selected_class_ids %}Assigned{% else %}Not Assigned{% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% empty %}
+                        <tr><td colspan="5"><div class="empty-state">No classes available. Create classes first.</div></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
             {% endif %}
 
             {% endif %}
-        <div class="dashboard-actions" style="justify-content:flex-start;">
-            <button class="dash-btn" type="submit">
-                <i class="fa-solid fa-check"></i>{{ submit_label }}
+
+        <div style="display: flex; gap: 12px; align-items: center; margin-top: 24px;">
+            <button class="btn btn-primary" type="submit">
+                <i class="fa-solid fa-check"></i> {{ submit_label }}
             </button>
-
-            <a class="dash-btn secondary"
-            href="{{ request.META.HTTP_REFERER|default:'/dashboard/' }}">
+            <a class="btn btn-secondary" href="{{ request.META.HTTP_REFERER|default:'/dashboard/' }}">
                 Cancel
             </a>
         </div>
 
         {% if title == "Edit Quiz" %}
-
-        <hr style="margin:35px 0;border:0;border-top:1px solid rgba(255,255,255,.12);">
-
+        <hr style="margin:32px 0; border:0; border-top:1px solid var(--border);">
         <div class="section-heading">
             <h2>Question Management</h2>
         </div>
-
-        <p class="dashboard-subtitle" style="margin-bottom:20px;">
-            Manage all questions that belong to this quiz.
+        <p style="color:var(--text-secondary); font-size:var(--text-sm); margin-bottom:16px;">
+            Manage and configure the ordered question sequence for this assessment.
         </p>
-
-        <a class="dash-btn"
-        href="{% url 'dashboard_quiz_questions' form.instance.id %}">
-            <i class="fa-solid fa-list"></i>
-            Edit Questions
+        <a class="btn btn-secondary" href="{% url 'dashboard_quiz_questions' form.instance.id %}">
+            <i class="fa-solid fa-list"></i> Edit Questions ({{ form.instance.questions.count }})
         </a>
-
         {% endif %}
     </form>
 </div>
@@ -298,23 +310,23 @@
 {% block modals %}
 <div id="deleteOptionModal" class="modal-overlay">
     <div class="glass-modal">
-        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
-        <h2>Delete Option</h2>
-        <p>Are you sure you want to remove this option?</p>
+        <div class="modal-icon danger"><i class="fa-solid fa-trash"></i></div>
+        <h2>Remove Option?</h2>
+        <p>Are you sure you want to remove this answer option?</p>
         <div class="modal-actions">
             <button type="button" class="modal-btn secondary" id="cancelOptionDelete">Cancel</button>
-            <button type="button" class="modal-btn primary" id="confirmOptionDelete">Delete</button>
+            <button type="button" class="modal-btn primary" id="confirmOptionDelete" style="background-color: var(--error); border-color: var(--error);">Delete</button>
         </div>
     </div>
 </div>
 <div id="deleteImageModal" class="modal-overlay">
     <div class="glass-modal">
-        <div class="modal-icon warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div class="modal-icon danger"><i class="fa-solid fa-trash"></i></div>
         <h2>Delete Image?</h2>
         <p id="deleteImageModalText">Are you sure you want to remove this image?</p>
         <div class="modal-actions">
             <button type="button" class="modal-btn secondary" id="cancelImageDelete">Cancel</button>
-            <button type="button" class="modal-btn primary" id="confirmImageDelete">Delete</button>
+            <button type="button" class="modal-btn primary" id="confirmImageDelete" style="background-color: var(--error); border-color: var(--error);">Delete</button>
         </div>
     </div>
 </div>
@@ -439,16 +451,16 @@ function renderQuestionFilesPreview() {
     const previewContainer = document.getElementById("questionFilesPreview");
     if (!previewContainer) return;
     previewContainer.innerHTML = "";
-    
+
     Array.from(questionFilesDT.files).forEach((file, index) => {
         const blobUrl = URL.createObjectURL(file);
         const card = document.createElement("div");
         card.className = "image-manage-card";
-        card.style.cssText = "display:flex; flex-direction:column; align-items:center; gap:6px; background:rgba(0,0,0,0.35); padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.12);";
+        card.style.cssText = "display:flex; flex-direction:column; align-items:center; gap:6px; background:var(--surface); padding:8px 12px; border-radius:var(--radius-sm); border:1px solid var(--border);";
         card.innerHTML = `
-            <img src="${blobUrl}" style="height:70px; max-width:110px; object-fit:contain; border-radius:6px;">
-            <span style="font-size:0.72rem; color:rgba(255,255,255,0.7); max-width:100px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${file.name}</span>
-            <button type="button" class="btn-small danger" style="padding:4px 10px; font-size:0.75rem; margin-top:4px;" onclick="promptDeleteNewQuestionFile(${index})">
+            <img src="${blobUrl}" style="height:70px; max-width:110px; object-fit:contain; border-radius:4px;">
+            <span style="font-size:11px; color:var(--text-muted); max-width:100px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${file.name}</span>
+            <button type="button" class="btn-small danger" style="padding:4px 10px; font-size:11px; margin-top:4px;" onclick="promptDeleteNewQuestionFile(${index})">
                 <i class="fa-solid fa-trash-can"></i> Delete
             </button>
         `;
@@ -533,17 +545,17 @@ function renderOptionFilesPreview(optIdx) {
     const previewContainer = document.getElementById(`optionFilePreview_${optIdx}`);
     if (!previewContainer) return;
     previewContainer.innerHTML = "";
-    
+
     if (!optionFilesDTMap[optIdx]) return;
 
     Array.from(optionFilesDTMap[optIdx].files).forEach((file, fileIdx) => {
         const blobUrl = URL.createObjectURL(file);
         const card = document.createElement("div");
         card.className = "image-manage-card";
-        card.style.cssText = "display:flex; flex-direction:column; align-items:center; gap:4px; background:rgba(0,0,0,0.35); padding:6px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.12);";
+        card.style.cssText = "display:flex; flex-direction:column; align-items:center; gap:4px; background:var(--surface); padding:6px 10px; border-radius:var(--radius-xs); border:1px solid var(--border);";
         card.innerHTML = `
             <img src="${blobUrl}" style="max-height:50px; border-radius:4px; object-fit:contain;">
-            <button type="button" class="btn-small danger" style="padding:2px 8px; font-size:0.72rem; margin-top:2px;" onclick="promptDeleteNewOptionFile(${optIdx}, ${fileIdx})">
+            <button type="button" class="btn-small danger" style="padding:2px 8px; font-size:10px; margin-top:2px;" onclick="promptDeleteNewOptionFile(${optIdx}, ${fileIdx})">
                 <i class="fa-solid fa-trash-can"></i> Delete
             </button>
         `;
@@ -570,12 +582,12 @@ function initTinyMCE(target) {
     tinymce.init({
         target: target,
         menubar: false,
-        height: target.name === 'option_text' ? 120 : 300,
+        height: target.name === 'option_text' ? 120 : 260,
         resize: true,
         plugins: 'lists link code',
         toolbar: 'undo redo | bold italic underline strikethrough | numlist bullist | link code | subscript superscript',
-        skin: 'oxide-dark',
-        content_css: 'dark',
+        skin: 'oxide',
+        content_css: 'default',
         setup: function (editor) {
             editor.on('change', function () {
                 editor.save();
@@ -584,26 +596,16 @@ function initTinyMCE(target) {
     });
 }
 
-function clearOptionImage(btn, index) {
-    const container = btn.closest('.current-option-image-preview');
-    if (container) {
-        const hiddenInput = container.querySelector('input[type="hidden"]');
-        if (hiddenInput) hiddenInput.value = '';
-        container.style.display = 'none';
-    }
-}
-
 function renumberOptions(){
     optionList.querySelectorAll(".option-edit-row").forEach((row, index) => {
         const radio = row.querySelector('input[type="radio"]');
         radio.value = index;
         const letter = row.querySelector(".option-letter");
         if (letter) letter.textContent = index < 26 ? String.fromCharCode(65 + index) : String(index + 1);
-        
+
         const dropZone = row.querySelector('.option-drop-zone');
         const fileInput = row.querySelector('.option-image-input');
-        const previewContainer = row.querySelector('.option-file-preview');
-        
+
         if (fileInput) {
             fileInput.name = 'option_images_' + index;
             fileInput.id = 'optionImagesInput_' + index;
@@ -616,7 +618,7 @@ function renumberOptions(){
         row.querySelectorAll('input[name^="delete_option_image_ids_"]').forEach(chk => {
             chk.name = `delete_option_image_ids_${index}`;
         });
-        
+
         row.querySelector(".remove-option").disabled = optionList.children.length === 1;
     });
     if(!optionList.querySelector('input[type="radio"]:checked')){
@@ -631,25 +633,24 @@ function addOptionRow(text = ""){
         <span class="option-letter"></span>
         <label class="option-correct">
             <input type="radio" name="correct_option">
-            Correct
+            <span>Correct</span>
         </label>
-        
+
         <div class="option-content-col" style="display:flex; flex-direction:column; gap:10px; min-width:0; width:100%;">
             <textarea name="option_text" rows="2" placeholder="Option text"></textarea>
-            
-            <div class="option-media-container drop-zone option-drop-zone" style="padding:10px 14px; background:rgba(0,0,0,0.25); border:1px dashed rgba(255,255,255,0.18); border-radius:12px; cursor:pointer;">
+
+            <div class="option-media-container drop-zone option-drop-zone" style="padding:10px 14px; background:var(--surface); border:1px dashed var(--border-strong); border-radius:var(--radius-sm); cursor:pointer;">
                 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                        <i class="fa-solid fa-cloud-arrow-up" style="color:#00ffc8; font-size:1.1rem;"></i>
-                        <span style="font-size:0.82rem; font-weight:600; color:rgba(255,255,255,0.9);">Drag &amp; Drop Option Images here, or <span style="color:#00ffc8; text-decoration:underline;">Browse</span></span>
-                        <small style="color:rgba(255,255,255,0.4); font-size:0.75rem;">Formats: PNG, JPG, JPEG, WEBP, GIF</small>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <i class="fa-solid fa-cloud-arrow-up" style="color:var(--accent-primary); font-size:1rem;"></i>
+                        <span style="font-size:var(--text-xs); font-weight:600; color:var(--text-primary);">Option Image <span style="color:var(--accent-primary); text-decoration:underline;">Browse</span></span>
                     </div>
                     <input type="file" name="option_images" class="option-image-input" multiple accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" style="display:none;">
                 </div>
                 <div class="file-list-preview option-file-preview" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;"></div>
             </div>
         </div>
-        
+
         <button class="btn-small danger remove-option" type="button" aria-label="Remove option" style="align-self:center;">
             <i class="fa-solid fa-trash"></i>
         </button>
@@ -672,11 +673,11 @@ optionList.addEventListener("click", event => {
     }
     rowToDelete = button.closest(".option-edit-row");
     wasChecked = rowToDelete.querySelector('input[type="radio"]').checked;
-    document.getElementById("deleteOptionModal").classList.add("show");
+    showModal("deleteOptionModal");
 });
 
 document.getElementById("cancelOptionDelete").addEventListener("click", () => {
-    document.getElementById("deleteOptionModal").classList.remove("show");
+    hideModal("deleteOptionModal");
     rowToDelete = null;
 });
 
@@ -688,7 +689,7 @@ document.getElementById("confirmOptionDelete").addEventListener("click", () => {
             optionList.querySelector('input[type="radio"]').checked = true;
         }
     }
-    document.getElementById("deleteOptionModal").classList.remove("show");
+    hideModal("deleteOptionModal");
 });
 
 renumberOptions();
@@ -702,7 +703,7 @@ setupQuestionImagesDropZone();
 document.addEventListener("DOMContentLoaded", function() {
     const classSelect = document.getElementById("id_class_group");
     const sectionSelect = document.getElementById("id_section");
-    
+
     if (classSelect && sectionSelect) {
         function updateSections(selectedClassId, initialSectionId = null) {
             if (!selectedClassId) {
@@ -710,7 +711,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 sectionSelect.disabled = true;
                 return;
             }
-            
+
             fetch(`/dashboard/classes/get-sections-ajax/?class_id=${selectedClassId}`)
                 .then(response => response.json())
                 .then(data => {
@@ -727,11 +728,11 @@ document.addEventListener("DOMContentLoaded", function() {
                     });
                 });
         }
-        
+
         classSelect.addEventListener("change", function() {
             updateSections(this.value);
         });
-        
+
         if (classSelect.value) {
             const initialSectionId = sectionSelect.value;
             updateSections(classSelect.value, initialSectionId);
@@ -749,7 +750,7 @@ function toggleQuizClassRow(classId) {
     const chk = document.getElementById(`classChk-${classId}`);
     const secCheckboxes = document.querySelectorAll(`.section-chk-${classId}`);
     const badge = document.getElementById(`accessBadge-${classId}`);
-    
+
     if (chk && chk.checked) {
         secCheckboxes.forEach(sc => sc.disabled = false);
         if (badge) {
@@ -772,7 +773,7 @@ function onSectionCheckboxChange(classId) {
     const classChk = document.getElementById(`classChk-${classId}`);
     const secCheckboxes = document.querySelectorAll(`.section-chk-${classId}`);
     const badge = document.getElementById(`accessBadge-${classId}`);
-    
+
     const anySecChecked = Array.from(secCheckboxes).some(sc => sc.checked);
     if (anySecChecked && classChk && !classChk.checked) {
         classChk.checked = true;
@@ -786,4 +787,3 @@ function onSectionCheckboxChange(classId) {
 </script>
 {% endif %}
 {% endblock %}
-

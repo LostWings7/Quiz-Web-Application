@@ -1,53 +1,43 @@
+{% extends 'dashboard/base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Quiz List</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-        .quiz-list {
-            list-style: none;
-            padding: 0;
-        }
-        .quiz-item {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-            cursor: pointer;
-        }
-        .quiz-item:hover {
-            background-color: #f0f0f0;
-        }
-    </style>
-</head>
-<body>
 
-<div class="container">
-    <h1>Select a Quiz to View User Performance</h1>
-    <ul class="quiz-list">
-        {% for quiz in quizzes %}
-            <li class="quiz-item">
-                <a href="{% url 'user_performance_list' quiz.id %}">{{ quiz.title }}</a>
-            </li>
-        {% endfor %}
-    </ul>
+{% block title %}User Performance Quiz List | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
+{% block eyebrow %}Candidate Submissions{% endblock %}
+{% block heading %}Assessment Performance Index{% endblock %}
+{% block subtitle %}Select an examination to inspect individual candidate submissions and answer responses.{% endblock %}
+
+{% block content %}
+<div class="card fade-up" style="padding: 24px;">
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Examination Title</th>
+                    <th>Passcode</th>
+                    <th>Questions</th>
+                    <th style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for quiz in quizzes %}
+                <tr>
+                    <td style="font-weight: 600;">{{ quiz.title }}</td>
+                    <td><span class="pill" style="font-family: var(--font-mono); font-size: 11px;">{{ quiz.code }}</span></td>
+                    <td>{{ quiz.questions.count }} question{{ quiz.questions.count|pluralize }}</td>
+                    <td style="text-align: right;">
+                        <a class="btn-small secondary" href="{% url 'dashboard_quiz_results' quiz.id %}">
+                            View Performance <i class="fa-solid fa-arrow-right" style="margin-left: 4px;"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="empty-state">No assessments available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
-
-</body>
-</html>
+{% endblock %}

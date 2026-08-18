@@ -1,14 +1,28 @@
 {% for result in results %}
 <tr>
-    <td>{% if result.user.first_name %}{{ result.user.first_name }} {{ result.user.last_name }}{% else %}{{ result.user.username }}{% endif %}</td>
+    <td style="font-weight: 600;">{% if result.user.first_name %}{{ result.user.first_name }} {{ result.user.last_name }}{% else %}{{ result.user.username }}{% endif %}</td>
     <td>{{ result.quiz.title }}</td>
-    <td>{{ result.score }} / {{ result.quiz.questions.count }}</td>
-    <td>{{ result.submitted_at|date:"M j, Y g:i A" }}</td>
+    <td style="text-align: center;">
+        <span class="pill accent" style="font-weight: 700;">
+            {{ result.score }} / {{ result.quiz.questions.count }}
+        </span>
+    </td>
+    <td style="font-size: var(--text-xs); color: var(--text-secondary);">{{ result.submitted_at|date:"M j, Y g:i A" }}</td>
     <td>
-        <a class="btn-small secondary" href="{% url 'student_result_detail' result.id %}">Individual Result</a>
-        <button class="btn-small danger" onclick="showModal('deleteModal-{{ result.id }}')">Delete</button>
+        <div style="display: flex; gap: 6px; justify-content: flex-end;">
+            <a class="btn-small secondary" href="{% url 'student_result_detail' result.id %}">View Breakdown</a>
+            <button class="btn-small danger" onclick="showModal('deleteModal-{{ result.id }}')">Delete</button>
+        </div>
     </td>
 </tr>
 {% empty %}
-<tr><td colspan="5"><div class="empty-state">No results found.</div></td></tr>
+<tr>
+    <td colspan="5">
+        <div class="empty-state">
+            <div class="empty-state-icon"><i class="fa-solid fa-square-poll-vertical"></i></div>
+            <div class="empty-state-title">No Results Found</div>
+            <div class="empty-state-desc">No examination attempts match your search or quiz filter.</div>
+        </div>
+    </td>
+</tr>
 {% endfor %}

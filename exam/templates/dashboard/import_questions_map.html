@@ -1,184 +1,186 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
+
+{% block title %}Map Question Columns | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
+{% block eyebrow %}Question Ingestion{% endblock %}
 {% block heading %}Map Columns{% endblock %}
-{% block subtitle %}Match spreadsheet columns to question fields, then import.{% endblock %}
+{% block subtitle %}Match spreadsheet columns to question model fields, then proceed to ingestion.{% endblock %}
 
 {% block extra_css %}
 <style>
-    .map-section { margin-bottom: 28px; }
-    .map-section-title { font-weight: 700; font-size: 0.9rem; color: rgba(255,255,255,0.9); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-    .map-row { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .map-row:last-child { border-bottom: none; }
-    .map-row label { font-size: 0.87rem; color: rgba(255,255,255,0.75); }
-    .map-row label .req { color: #f87171; margin-left: 3px; }
-    .map-row label .opt { font-size: 0.75rem; color: rgba(255,255,255,0.35); margin-left: 4px; }
-    .option-rows-container { display: flex; flex-direction: column; gap: 0; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; }
-    .option-row-block { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); }
-    .option-row-block:last-child { border-bottom: none; }
-    .option-row-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .option-row-header span { font-weight: 600; font-size: 0.88rem; color: rgba(255,255,255,0.8); }
-    .option-row-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .option-field label { font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-bottom: 4px; display: block; }
-    .add-option-btn { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.12); border-radius: 10px; cursor: pointer; color: rgba(255,255,255,0.5); font-size: 0.87rem; transition: all 0.2s; margin-top: 10px; width: 100%; }
-    .add-option-btn:hover { background: rgba(255,255,255,0.06); border-color: var(--primary); color: var(--primary); }
-    .info-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 0.82rem; }
-    .info-chip.success { background: rgba(74,222,128,0.12); color: #4ade80; }
-    .info-chip.warning { background: rgba(251,191,36,0.12); color: #fbbf24; }
+.map-section { margin-bottom: 28px; }
+.map-section-title { font-weight: 700; font-size: var(--text-sm); color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.map-row { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 14px; padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); }
+.map-row:last-child { border-bottom: none; }
+.map-row label { font-size: var(--text-xs); font-weight: 600; color: var(--text-primary); }
+.map-row label .req { color: var(--error); margin-left: 3px; }
+.map-row label .opt { font-size: 11px; color: var(--text-muted); margin-left: 4px; font-weight: 400; }
+.option-rows-container { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.option-row-block { padding: 14px 18px; border-bottom: 1px solid var(--border-subtle); background: var(--bg-secondary); }
+.option-row-block:last-child { border-bottom: none; }
+.option-row-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.option-row-header span { font-weight: 700; font-size: var(--text-xs); color: var(--text-primary); }
+.option-row-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.option-field label { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: block; }
+.add-option-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; background: var(--surface); border: 1px dashed var(--border-strong); border-radius: var(--radius-md); cursor: pointer; color: var(--text-secondary); font-size: var(--text-xs); font-weight: 600; transition: all var(--transition-fast); margin-top: 10px; width: 100%; }
+.add-option-btn:hover { background: var(--accent-primary-subtle); border-color: var(--accent-primary); color: var(--accent-primary); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div style="display:flex;flex-direction:column;gap:24px;">
-<div class="dashboard-card" style="animation:fadeUp .4s ease backwards;">
-
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
-        <div>
-            <div class="section-heading" style="margin-bottom:6px;"><h2><i class="fa-solid fa-table-columns" style="color:var(--primary);margin-right:8px;"></i>Column Mapping</h2></div>
-            <p style="color:var(--text-soft);font-size:0.85rem;margin:0;">
-                File: <strong>{{ filename }}</strong> &nbsp;·&nbsp;
-                {{ row_count }} question{{ row_count|pluralize }} &nbsp;·&nbsp;
-                Quiz: <strong>{{ quiz.title }}</strong>
-            </p>
-        </div>
-        <a href="?cancel=1{% if request.GET.quiz %}&quiz={{ request.GET.quiz }}{% endif %}" class="dash-btn secondary" style="font-size:0.85rem;padding:8px 14px;flex-shrink:0;">
-            <i class="fa-solid fa-xmark"></i> Cancel
-        </a>
-    </div>
-
-    {% if supports_color %}
-    <div class="info-chip success" style="margin-bottom:20px;"><i class="fa-solid fa-palette"></i> Excel colour highlighting detected — highlighted cells will be marked as the correct answer automatically.</div>
-    {% else %}
-    <div class="info-chip warning" style="margin-bottom:20px;"><i class="fa-solid fa-circle-info"></i> No colour detected (CSV). Map a <strong>Correct Option</strong> column (values: 1, 2, 3, 4) to identify correct answers.</div>
-    {% endif %}
-
-    <form method="post" id="mapForm">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="import">
-
-        <!-- Question Fields -->
-        <div class="map-section">
-            <div class="map-section-title"><i class="fa-solid fa-question-circle" style="color:var(--primary);"></i> Question Fields</div>
-            <div style="border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;">
-                <div class="map-row" style="padding:10px 16px;">
-                    <label>Question Text <span class="req">*</span></label>
-                    <select name="map_text" required>
-                        <option value="">— Select column —</option>
-                        {% for col in columns %}
-                        <option value="{{ col.index }}">{{ col.label }}</option>
-                        {% endfor %}
-                    </select>
+<div style="display: flex; flex-direction: column; gap: 24px; max-width: 960px;">
+    <div class="card fade-up" style="padding: 28px;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div>
+                <div class="section-heading" style="margin-bottom: 6px;">
+                    <h2><i class="fa-solid fa-table-columns" style="color: var(--accent-primary); margin-right: 8px;"></i> Column Mapping Configuration</h2>
                 </div>
-                <div class="map-row" style="padding:10px 16px;">
-                    <label>Question Image <span class="opt">optional</span></label>
-                    <select name="map_question_image">
-                        <option value="">— None —</option>
-                        {% for col in columns %}
-                        <option value="{{ col.index }}">{{ col.label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="map-row" style="padding:10px 16px;">
-                    <label>Correct Option <span class="opt">optional*</span></label>
-                    <select name="map_correct_option">
-                        <option value="">— None / Use colour —</option>
-                        {% for col in columns %}
-                        <option value="{{ col.index }}">{{ col.label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="map-row" style="padding:10px 16px;">
-                    <label>Subtopic <span class="opt">optional</span></label>
-                    <select name="map_subtopic">
-                        <option value="">— None —</option>
-                        {% for col in columns %}
-                        <option value="{{ col.index }}">{{ col.label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="map-row" style="padding:10px 16px;border-bottom:none;">
-                    <label>Order <span class="opt">optional</span></label>
-                    <select name="map_order">
-                        <option value="">— None —</option>
-                        {% for col in columns %}
-                        <option value="{{ col.index }}">{{ col.label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+                <p style="color: var(--text-secondary); font-size: var(--text-xs); margin: 0;">
+                    File: <strong>{{ filename }}</strong> &nbsp;·&nbsp;
+                    {{ row_count }} question{{ row_count|pluralize }} &nbsp;·&nbsp;
+                    Target Quiz: <strong>{{ quiz.title }}</strong>
+                </p>
             </div>
+            <a href="?cancel=1{% if request.GET.quiz %}&quiz={{ request.GET.quiz }}{% endif %}" class="btn btn-secondary btn-small">
+                <i class="fa-solid fa-xmark"></i> Cancel
+            </a>
         </div>
 
-        <!-- Options -->
-        <div class="map-section">
-            <div class="map-section-title"><i class="fa-solid fa-list-check" style="color:var(--primary);"></i> Answer Options <span style="font-weight:400;color:rgba(255,255,255,0.4);font-size:0.82rem;">— map a text column and optionally an image column for each option</span></div>
-            <div class="option-rows-container" id="optionRowsContainer">
-                {% for letter in "ABCD" %}
-                <div class="option-row-block" data-opt-index="{{ forloop.counter0 }}">
-                    <div class="option-row-header">
-                        <span>Option {{ letter }}</span>
-                        {% if not forloop.first %}
-                        <button type="button" class="btn-small danger remove-opt-row" style="padding:4px 10px;font-size:0.78rem;"><i class="fa-solid fa-trash"></i></button>
-                        {% else %}
-                        <span style="font-size:0.75rem;color:rgba(255,255,255,0.35);">At least one required</span>
-                        {% endif %}
-                    </div>
-                    <div class="option-row-fields">
-                        <div class="option-field">
-                            <label>Text Column</label>
-                            <select name="map_option_{{ forloop.counter0 }}">
-                                <option value="">— None —</option>
-                                {% for col in columns %}
-                                <option value="{{ col.index }}">{{ col.label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="option-field">
-                            <label>Image Column <span style="color:rgba(255,255,255,0.3);font-size:0.75rem;">optional</span></label>
-                            <select name="map_option_image_{{ forloop.counter0 }}">
-                                <option value="">— None —</option>
-                                {% for col in columns %}
-                                <option value="{{ col.index }}">{{ col.label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            <button type="button" class="add-option-btn" id="addOptionBtn">
-                <i class="fa-solid fa-plus"></i> Add Another Option Column
-            </button>
-        </div>
-
-        <!-- Preview -->
-        {% if preview %}
-        <div class="map-section">
-            <div class="map-section-title"><i class="fa-solid fa-table" style="color:var(--primary);"></i> Data Preview <span style="font-weight:400;color:rgba(255,255,255,0.4);font-size:0.82rem;">(first {{ preview|length }} rows)</span></div>
-            <div style="overflow-x:auto;border-radius:10px;border:1px solid rgba(255,255,255,0.08);">
-                <table class="data-table" style="font-size:0.8rem;margin:0;">
-                    <thead>
-                        <tr>
-                            {% if preview_headers %}
-                                {% for h in preview_headers %}<th>{{ h|default:"—" }}</th>{% endfor %}
-                            {% else %}
-                                {% for col in columns %}<th>{{ col.label }}</th>{% endfor %}
-                            {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in preview %}
-                        <tr>{% for cell in row %}<td>{{ cell|truncatechars:36|default:"—" }}</td>{% endfor %}</tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        {% if supports_color %}
+        <div class="pill success" style="margin-bottom: 20px; font-size: var(--text-xs); padding: 8px 14px; border-radius: var(--radius-sm);"><i class="fa-solid fa-palette"></i> Excel color highlighting detected: highlighted answer cells are automatically marked correct.</div>
+        {% else %}
+        <div class="pill warning" style="margin-bottom: 20px; font-size: var(--text-xs); padding: 8px 14px; border-radius: var(--radius-sm);"><i class="fa-solid fa-circle-info"></i> CSV Mode: Map a <strong>Correct Option</strong> column (values: 1, 2, 3, 4) to specify the correct answer.</div>
         {% endif %}
 
-        <div style="margin-top:8px;">
-            <button type="submit" class="dash-btn primary"><i class="fa-solid fa-file-import"></i> Import {{ row_count }} Question{{ row_count|pluralize }}</button>
-        </div>
-    </form>
-</div>
+        <form method="post" id="mapForm">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="import">
+
+            <!-- Question Fields -->
+            <div class="map-section">
+                <div class="map-section-title"><i class="fa-solid fa-question-circle" style="color: var(--accent-primary);"></i> Question Fields</div>
+                <div style="border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--surface);">
+                    <div class="map-row">
+                        <label>Question Text <span class="req">*</span></label>
+                        <select name="map_text" required>
+                            <option value="">— Select column —</option>
+                            {% for col in columns %}
+                            <option value="{{ col.index }}">{{ col.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="map-row">
+                        <label>Question Image <span class="opt">optional</span></label>
+                        <select name="map_question_image">
+                            <option value="">— None —</option>
+                            {% for col in columns %}
+                            <option value="{{ col.index }}">{{ col.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="map-row">
+                        <label>Correct Option <span class="opt">optional*</span></label>
+                        <select name="map_correct_option">
+                            <option value="">— None / Auto-detect —</option>
+                            {% for col in columns %}
+                            <option value="{{ col.index }}">{{ col.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="map-row">
+                        <label>Subtopic <span class="opt">optional</span></label>
+                        <select name="map_subtopic">
+                            <option value="">— None —</option>
+                            {% for col in columns %}
+                            <option value="{{ col.index }}">{{ col.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="map-row">
+                        <label>Order <span class="opt">optional</span></label>
+                        <select name="map_order">
+                            <option value="">— None —</option>
+                            {% for col in columns %}
+                            <option value="{{ col.index }}">{{ col.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Options -->
+            <div class="map-section">
+                <div class="map-section-title"><i class="fa-solid fa-list-check" style="color: var(--accent-primary);"></i> Answer Option Columns</div>
+                <div class="option-rows-container" id="optionRowsContainer">
+                    {% for letter in "ABCD" %}
+                    <div class="option-row-block" data-opt-index="{{ forloop.counter0 }}">
+                        <div class="option-row-header">
+                            <span>Option {{ letter }}</span>
+                            {% if not forloop.first %}
+                            <button type="button" class="btn-small danger remove-opt-row" style="padding:4px 8px; font-size:10px;"><i class="fa-solid fa-trash"></i></button>
+                            {% else %}
+                            <span style="font-size:11px; color:var(--text-muted);">At least one option required</span>
+                            {% endif %}
+                        </div>
+                        <div class="option-row-fields">
+                            <div class="option-field">
+                                <label>Option Text Column</label>
+                                <select name="map_option_{{ forloop.counter0 }}">
+                                    <option value="">— None —</option>
+                                    {% for col in columns %}
+                                    <option value="{{ col.index }}">{{ col.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="option-field">
+                                <label>Option Image Column <span style="color:var(--text-muted); font-size:10px;">optional</span></label>
+                                <select name="map_option_image_{{ forloop.counter0 }}">
+                                    <option value="">— None —</option>
+                                    {% for col in columns %}
+                                    <option value="{{ col.index }}">{{ col.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="add-option-btn" id="addOptionBtn">
+                    <i class="fa-solid fa-plus"></i> Add Another Option Column
+                </button>
+            </div>
+
+            <!-- Preview -->
+            {% if preview %}
+            <div class="map-section">
+                <div class="map-section-title"><i class="fa-solid fa-table" style="color: var(--accent-primary);"></i> Spreadsheet Preview <span style="font-weight:400; color:var(--text-muted); font-size:var(--text-xs);">(first {{ preview|length }} rows)</span></div>
+                <div class="table-wrapper">
+                    <table class="data-table" style="font-size: var(--text-xs);">
+                        <thead>
+                            <tr>
+                                {% if preview_headers %}
+                                    {% for h in preview_headers %}<th>{{ h|default:"—" }}</th>{% endfor %}
+                                {% else %}
+                                    {% for col in columns %}<th>{{ col.label }}</th>{% endfor %}
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in preview %}
+                            <tr>{% for cell in row %}<td>{{ cell|truncatechars:36|default:"—" }}</td>{% endfor %}</tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <div style="margin-top: 16px;">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-file-import"></i> Ingest {{ row_count }} Question{{ row_count|pluralize }}</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}
 
@@ -208,7 +210,7 @@ document.getElementById('addOptionBtn').addEventListener('click', function() {
     block.innerHTML = `
         <div class="option-row-header">
             <span>Option ${optionLetters[index] || (index+1)}</span>
-            <button type="button" class="btn-small danger remove-opt-row" style="padding:4px 10px;font-size:0.78rem;"><i class="fa-solid fa-trash"></i></button>
+            <button type="button" class="btn-small danger remove-opt-row" style="padding:4px 8px; font-size:10px;"><i class="fa-solid fa-trash"></i></button>
         </div>
         <div class="option-row-fields">
             <div class="option-field">
@@ -216,7 +218,7 @@ document.getElementById('addOptionBtn').addEventListener('click', function() {
                 <select name="map_option_${index}">${columnOptionsHTML}</select>
             </div>
             <div class="option-field">
-                <label>Image Column <span style="color:rgba(255,255,255,0.3);font-size:0.75rem;">optional</span></label>
+                <label>Image Column <span style="color:var(--text-muted); font-size:10px;">optional</span></label>
                 <select name="map_option_image_${index}">${columnOptionsHTML}</select>
             </div>
         </div>`;

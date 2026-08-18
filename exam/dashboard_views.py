@@ -1069,6 +1069,18 @@ def student_bulk_action(request):
                     profile.save()
             messages.success(request, f"Successfully promoted selected students to {class_obj.name if class_obj else 'No Class'}.")
             
+        elif action == 'delete':
+            User.objects.filter(id__in=student_ids, is_staff=False).delete()
+            messages.success(request, "Successfully deleted selected students.")
+            
+        elif action == 'disable':
+            User.objects.filter(id__in=student_ids, is_staff=False).update(is_active=False)
+            messages.success(request, "Successfully disabled selected students.")
+            
+        elif action == 'enable':
+            User.objects.filter(id__in=student_ids, is_staff=False).update(is_active=True)
+            messages.success(request, "Successfully activated selected students.")
+            
     return redirect('dashboard_students')
 
 
@@ -1761,6 +1773,7 @@ def analytics_detail(request, chart_type):
         'text_metrics': text_metrics,
         'table_data': table_data,
         'chart_type': chart_type,
+        'attempt_count': len(percentages),
         'all_classes': Class.objects.prefetch_related('sections').all(),
     })
 

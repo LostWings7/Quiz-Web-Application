@@ -1,178 +1,698 @@
+/* ==========================================================================
+   "Modern Academic Interface" - Reusable Component System
+   ========================================================================== */
 
-/* ---------- Glass Cards ---------- */
-
-.glass-card,
-.info-box,
-.question-box,
-.code-container,
-.result-card{
-    background:var(--glass);
-    border:1px solid var(--glass-border);
-    backdrop-filter:blur(22px);
-    border-radius:30px;
-    box-shadow:var(--shadow);
-    padding:28px;
-    transition:var(--transition);
+/* --------------------------------------------------------------------------
+   0. Theme Checkbox
+   -------------------------------------------------------------------------- */
+.theme-checkbox {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-strong);
+    border-radius: 4px;
+    background: var(--surface);
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--duration-fast) var(--ease-primary);
+    outline: none;
+    margin: 0;
+    vertical-align: middle;
+}
+.theme-checkbox:hover {
+    border-color: var(--accent-primary);
+}
+.theme-checkbox:checked {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+.theme-checkbox:checked::after {
+    content: '\2713';
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
 }
 
-.glass-card:hover,
-.result-card:hover{
-    transform:translateY(-6px);
-}
-
-/* ---------- Buttons ---------- */
-
+/* --------------------------------------------------------------------------
+   1. Unified Button System
+   -------------------------------------------------------------------------- */
 .btn,
-.submit-button,
-button[type="submit"]{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
-    padding:14px 24px;
-    border:none;
-    border-radius:999px;
-    cursor:pointer;
-    color:#06201c;
-    font-weight:600;
-    background:linear-gradient(135deg,var(--primary),var(--secondary));
-    transition:var(--transition);
-    box-shadow:0 14px 34px rgba(45,212,191,.24);
+.dash-btn,
+.submit-btn,
+.login-btn,
+.btn-small,
+button[type="submit"]:not(.unstyled-btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: 10px 20px;
+    min-height: 42px;
+    border-radius: var(--radius-md);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: transform var(--duration-micro) var(--ease-primary),
+                background-color var(--transition-fast),
+                border-color var(--transition-fast),
+                box-shadow var(--transition-fast),
+                opacity var(--transition-fast);
+    user-select: none;
+    white-space: nowrap;
+    outline: none;
+}
+
+/* Primary Button (Default) */
+.btn,
+.dash-btn,
+.submit-btn,
+.login-btn,
+.btn-primary,
+button[type="submit"]:not(.secondary):not(.danger):not(.unstyled-btn) {
+    background-color: var(--accent-primary);
+    color: var(--text-inverse);
+    border-color: var(--accent-primary);
+    box-shadow: 0 1px 2px rgba(24, 24, 27, 0.06);
 }
 
 .btn:hover,
-.submit-button:hover,
-button[type="submit"]:hover{
-    transform:translateY(-3px) scale(1.02);
-    box-shadow:0 20px 42px rgba(45,212,191,.32);
+.dash-btn:hover,
+.submit-btn:hover,
+.login-btn:hover,
+.btn-primary:hover,
+button[type="submit"]:not(.secondary):not(.danger):not(.unstyled-btn):hover {
+    background-color: var(--accent-primary-hover);
+    border-color: var(--accent-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 91, 255, 0.22);
 }
 
-.btn-outline{
-    color:#fff;
-    background:rgba(255,255,255,.08);
-    border:1px solid var(--glass-border);
-    box-shadow:none;
+/* Secondary / Outline Button */
+.btn.secondary,
+.dash-btn.secondary,
+.btn-secondary,
+.btn-outline {
+    background-color: var(--surface);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-xs);
 }
 
-/* ---------- Inputs ---------- */
+.btn.secondary:hover,
+.dash-btn.secondary:hover,
+.btn-secondary:hover,
+.btn-outline:hover {
+    background-color: var(--surface-hover);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
 
-input[type=text],
-input[type=password],
-input[type=email],
+/* Ghost Button */
+.btn-ghost {
+    background-color: transparent;
+    color: var(--text-secondary);
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.btn-ghost:hover {
+    background-color: var(--surface-hover);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+/* Danger Button */
+.btn.danger,
+.dash-btn.danger,
+.btn-danger {
+    background-color: var(--error);
+    color: var(--text-inverse);
+    border-color: var(--error);
+    box-shadow: 0 1px 2px rgba(217, 87, 99, 0.15);
+}
+
+.btn.danger:hover,
+.dash-btn.danger:hover,
+.btn-danger:hover {
+    background-color: var(--error-hover);
+    border-color: var(--error-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(217, 87, 99, 0.28);
+}
+
+/* Success Button */
+.btn.success,
+.dash-btn.success,
+.btn-success {
+    background-color: var(--success);
+    color: var(--text-inverse);
+    border-color: var(--success);
+}
+
+.btn.success:hover,
+.dash-btn.success:hover,
+.btn-success:hover {
+    background-color: var(--success-hover);
+    border-color: var(--success-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(46, 155, 103, 0.28);
+}
+
+/* Warning Button */
+.btn.warning,
+.dash-btn.warning,
+.btn-warning {
+    background-color: var(--warning);
+    color: var(--text-inverse);
+    border-color: var(--warning);
+}
+
+.btn.warning:hover,
+.dash-btn.warning:hover,
+.btn-warning:hover {
+    background-color: var(--warning-hover);
+    border-color: var(--warning-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(217, 154, 50, 0.28);
+}
+
+/* Active / Pressed state */
+.btn:active,
+.dash-btn:active,
+.submit-btn:active,
+.login-btn:active,
+.btn-small:active {
+    transform: scale(0.97) !important;
+}
+
+/* Focus styles */
+.btn:focus-visible,
+.dash-btn:focus-visible,
+.btn-small:focus-visible {
+    box-shadow: 0 0 0 3px var(--ring-focus) !important;
+}
+
+/* Disabled state */
+.btn:disabled,
+.btn.disabled,
+.dash-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+    pointer-events: none;
+}
+
+/* Sizes */
+.btn-small {
+    min-height: 34px;
+    padding: 6px 14px;
+    font-size: var(--text-xs);
+    border-radius: var(--radius-sm);
+}
+
+.btn-small.secondary {
+    background-color: var(--surface);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-xs);
+}
+
+.btn-small.secondary:hover {
+    background-color: var(--surface-hover);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-small.danger {
+    background-color: var(--error);
+    color: var(--text-inverse);
+    border-color: var(--error);
+    box-shadow: 0 1px 2px rgba(217, 87, 99, 0.15);
+}
+
+.btn-small.danger:hover {
+    background-color: var(--error-hover);
+    border-color: var(--error-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(217, 87, 99, 0.28);
+}
+
+.btn-small.success {
+    background-color: var(--success);
+    color: var(--text-inverse);
+    border-color: var(--success);
+}
+
+.btn-small.success:hover {
+    background-color: var(--success-hover);
+    border-color: var(--success-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(46, 155, 103, 0.28);
+}
+
+.btn-small.warning {
+    background-color: var(--warning);
+    color: var(--text-inverse);
+    border-color: var(--warning);
+}
+
+.btn-small.warning:hover {
+    background-color: var(--warning-hover);
+    border-color: var(--warning-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(217, 154, 50, 0.28);
+}
+
+.btn-lg {
+    min-height: 48px;
+    padding: 14px 28px;
+    font-size: var(--text-md);
+    border-radius: var(--radius-md);
+}
+
+.btn-icon {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    min-height: 38px;
+    border-radius: var(--radius-sm);
+}
+
+.btn-icon.btn-small {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Card System
+   -------------------------------------------------------------------------- */
+.card,
+.dashboard-card,
+.glass-card,
+.info-card,
+.metric-card,
+.result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-6);
+    position: relative;
+    transition: transform var(--transition-fast),
+                box-shadow var(--transition-fast),
+                border-color var(--transition-fast);
+}
+
+.card-elevated {
+    box-shadow: var(--shadow-md);
+}
+
+.interactive-card,
+.card-interactive {
+    cursor: pointer;
+}
+
+.interactive-card:hover,
+.card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+    border-color: var(--border-strong);
+}
+
+.section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.section-heading h2,
+.section-heading h3 {
+    font-size: var(--text-lg);
+    font-weight: 700;
+}
+
+/* Metric / Stat Card */
+.metric-card {
+    padding: var(--space-5);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.metric-card span {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.metric-card strong {
+    font-size: var(--text-3xl);
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.1;
+    font-family: var(--font-heading);
+}
+
+.metric-card-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   3. Form Inputs & Controls
+   -------------------------------------------------------------------------- */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    position: relative;
+}
+
+.form-label,
+label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="search"],
 textarea,
-select{
-    width:100%;
-    padding:15px 18px;
-    border-radius:16px;
-    border:1px solid rgba(255,255,255,.18);
-    background:rgba(255,255,255,.08);
-    color:#fff;
-    outline:none;
-    transition:var(--transition);
+select {
+    width: 100%;
+    padding: 11px 14px;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    background-color: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    outline: none;
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast),
+                background-color var(--transition-fast);
 }
 
 input::placeholder,
-textarea::placeholder{
-    color:rgba(255,255,255,.55);
+textarea::placeholder {
+    color: var(--text-muted);
+}
+
+input:hover,
+textarea:hover,
+select:hover {
+    border-color: var(--border-hover);
 }
 
 input:focus,
 textarea:focus,
-select:focus{
-    border-color:rgba(255,255,255,.45);
-    background:rgba(255,255,255,.12);
+select:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--ring-focus);
 }
 
-option {
-    background-color: #1a1e23;
-    color: #fff;
-}
-/* ---------- Sidebar ---------- */
-
-.sidebar{
-    background:var(--glass);
-    border:1px solid var(--glass-border);
-    border-radius:24px;
-    backdrop-filter:blur(20px);
-    padding:22px;
-    box-shadow:var(--shadow);
+input:disabled,
+textarea:disabled,
+select:disabled {
+    background-color: var(--surface-subtle);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    border-color: var(--border);
 }
 
-.question-grid{
-    display:grid;
-    grid-template-columns:repeat(5,1fr);
-    gap:12px;
+select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 14px;
+    padding-right: 36px;
+    cursor: pointer;
 }
 
-.question-number{
-    width:46px;
-    height:46px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    border-radius:50%;
-    color:#fff;
-    background:rgba(255,255,255,.08);
-    transition:var(--transition);
+/* Search Bar Component */
+.search-bar-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
 }
 
-.question-number:hover{
-    transform:scale(1.08);
+.search-bar-wrapper i {
+    position: absolute;
+    left: 14px;
+    color: var(--text-muted);
+    font-size: 14px;
+    pointer-events: none;
+    transition: color var(--transition-fast);
 }
 
-.current-question{
-    background:linear-gradient(135deg,var(--primary),var(--secondary));
+.search-bar-wrapper input {
+    padding-left: 38px;
 }
 
-.attended-question{
-    background:rgba(52,211,153,.35);
+.search-bar-wrapper input:focus + i,
+.search-bar-wrapper:focus-within i {
+    color: var(--accent-primary);
 }
 
-/* ---------- Tables ---------- */
-
-table{
-    width:100%;
-    border-collapse:collapse;
-    overflow:hidden;
-    border-radius:20px;
-    background:rgba(255,255,255,.06);
+/* --------------------------------------------------------------------------
+   4. Badges, Pills & Status System
+   -------------------------------------------------------------------------- */
+.pill,
+.badge,
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    line-height: 1.2;
+    background: var(--surface-subtle);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    white-space: nowrap;
 }
 
-th{
-    text-align:left;
-    padding:16px;
-    font-family:'Outfit',sans-serif;
+.pill.success,
+.badge.success,
+.badge-success,
+.status-badge.active,
+.status-badge.success {
+    background: var(--success-light);
+    color: var(--success);
+    border-color: var(--success-border);
 }
 
-td{
-    padding:16px;
-    border-top:1px solid rgba(255,255,255,.08);
+.pill.warning,
+.badge.warning,
+.badge-warning,
+.status-badge.draft,
+.status-badge.warning {
+    background: var(--warning-light);
+    color: var(--warning);
+    border-color: var(--warning-border);
 }
 
-/* ---------- Badges ---------- */
-
-.badge{
-    display:inline-block;
-    padding:8px 14px;
-    border-radius:999px;
-    font-size:.85rem;
-    background:rgba(255,255,255,.12);
+.pill.danger,
+.badge.danger,
+.badge-danger,
+.status-badge.danger {
+    background: var(--error-light);
+    color: var(--error);
+    border-color: var(--error-border);
 }
 
-.badge-success{background:rgba(52,211,153,.25);}
-.badge-warning{background:rgba(251,191,36,.25);}
-.badge-danger{background:rgba(251,113,133,.25);}
-
-/* ---------- Utility ---------- */
-
-.center{
-    display:flex;
-    justify-content:center;
-    align-items:center;
+.pill.accent,
+.badge.accent {
+    background: var(--accent-primary-light);
+    color: var(--accent-primary);
+    border-color: var(--accent-primary-border);
 }
 
-.stack{
-    display:flex;
-    flex-direction:column;
-    gap:20px;
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+/* --------------------------------------------------------------------------
+   5. Tables
+   -------------------------------------------------------------------------- */
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+}
+
+.data-table,
+.glass-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+    text-align: left;
+}
+
+.data-table th,
+.glass-table th {
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.data-table td,
+.glass-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.data-table tbody tr:last-child td,
+.glass-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table tbody tr,
+.glass-table tbody tr {
+    transition: background-color var(--transition-fast);
+}
+
+.data-table tbody tr:hover,
+.glass-table tbody tr:hover {
+    background-color: var(--surface-hover);
+}
+
+.data-table td:last-child,
+.glass-table td:last-child {
+    white-space: nowrap;
+}
+
+.data-table th:last-child,
+.glass-table th:last-child {
+    text-align: right;
+}
+
+.table-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   6. Empty States
+   -------------------------------------------------------------------------- */
+.empty-state {
+    padding: var(--space-12) var(--space-6);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    color: var(--text-secondary);
+}
+
+.empty-state-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-xl);
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    display: grid;
+    place-items: center;
+    font-size: 1.5rem;
+    margin-bottom: var(--space-2);
+}
+
+.empty-state-title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.empty-state-desc {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    max-width: 420px;
+    line-height: 1.5;
+}
+
+.empty-state-actions {
+    margin-top: var(--space-3);
+    display: flex;
+    gap: var(--space-3);
+}
+
+/* --------------------------------------------------------------------------
+   7. Progress Bars
+   -------------------------------------------------------------------------- */
+.progress-bar-track {
+    width: 100%;
+    height: 8px;
+    background: var(--surface-sunken);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+    border-radius: var(--radius-pill);
+    transition: width var(--duration-data) var(--ease-primary);
+}
+
+.progress-bar-fill.success {
+    background: var(--success);
+}
+
+.progress-bar-fill.warning {
+    background: var(--warning);
+}
+
+.progress-bar-fill.danger {
+    background: var(--error);
 }

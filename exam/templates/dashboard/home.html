@@ -1,95 +1,191 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
-{% block heading %}Dashboard{% endblock %}
-{% block subtitle %}A live overview of quizzes, students, attempts, and recent activity.{% endblock %}
+
+{% block title %}Dashboard Overview | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
+{% block eyebrow %}Control Center{% endblock %}
+{% block heading %}Dashboard Overview{% endblock %}
+{% block subtitle %}Real-time summary of examination activity, enrollments, and academic performance.{% endblock %}
+
 {% block actions %}
-<a class="dash-btn" href="{% url 'dashboard_quiz_create' %}"><i class="fa-solid fa-plus"></i>Create Quiz</a>
-<a class="dash-btn secondary" href="{% url 'dashboard_student_create' %}"><i class="fa-solid fa-user-plus"></i>Create Student</a>
+<a class="btn btn-primary" href="{% url 'dashboard_quiz_create' %}">
+    <i class="fa-solid fa-plus"></i>
+    <span>Create Quiz</span>
+</a>
+<a class="btn btn-secondary" href="{% url 'dashboard_student_create' %}">
+    <i class="fa-solid fa-user-plus"></i>
+    <span>Add Student</span>
+</a>
 {% endblock %}
 
 {% block content %}
+<!-- Metric Cards with Count-up -->
 <section class="metric-grid">
-    <div class="metric-card"><span>Total quizzes</span><strong>{{ total_quizzes }}</strong></div>
-    <div class="metric-card"><span>Total students</span><strong>{{ total_students }}</strong></div>
-    <div class="metric-card"><span>Total classes</span><strong>{{ total_classes }}</strong></div>
-    <div class="metric-card"><span>Total questions</span><strong>{{ total_questions }}</strong></div>
-    <div class="metric-card"><span>Total attempts</span><strong>{{ total_attempts }}</strong></div>
+    <div class="metric-card fade-up stagger-1">
+        <span>Total Quizzes</span>
+        <strong data-count-to="{{ total_quizzes }}">{{ total_quizzes }}</strong>
+    </div>
+    <div class="metric-card fade-up stagger-2">
+        <span>Enrolled Students</span>
+        <strong data-count-to="{{ total_students }}">{{ total_students }}</strong>
+    </div>
+    <div class="metric-card fade-up stagger-3">
+        <span>Class Groups</span>
+        <strong data-count-to="{{ total_classes }}">{{ total_classes }}</strong>
+    </div>
+    <div class="metric-card fade-up stagger-4">
+        <span>Question Bank</span>
+        <strong data-count-to="{{ total_questions }}">{{ total_questions }}</strong>
+    </div>
+    <div class="metric-card fade-up stagger-5">
+        <span>Total Attempts</span>
+        <strong data-count-to="{{ total_attempts }}" style="color: var(--accent-primary);">{{ total_attempts }}</strong>
+    </div>
 </section>
 
+<!-- Content Grid -->
 <section class="content-grid">
-    <div class="dashboard-card">
+    <!-- Left Column: Recent Quiz Attempts -->
+    <div class="card fade-up" style="padding: 24px;">
         <div class="section-heading">
-            <h2>Recent Quiz Attempts</h2>
-            <a class="btn-small secondary" href="{% url 'dashboard_results' %}">View all</a>
+            <h2>Recent Submissions</h2>
+            <a class="btn-small secondary" href="{% url 'dashboard_results' %}">View all &rarr;</a>
         </div>
-        <table class="glass-table">
-            <thead><tr><th>Student</th><th>Quiz</th><th>Score</th><th>Submitted</th></tr></thead>
-            <tbody>
-            {% for attempt in recent_attempts %}
-            <tr>
-                <td>{% if attempt.user.first_name %}{{ attempt.user.first_name }} {{ attempt.user.last_name }}{% else %}{{ attempt.user.username }}{% endif %}</td>
-                <td>{{ attempt.quiz.title }}</td>
-                <td>{{ attempt.score }}</td>
-                <td>{{ attempt.submitted_at|date:"M j, Y g:i A" }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4"><div class="empty-state">No quiz attempts yet.</div></td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Examination</th>
+                        <th>Score</th>
+                        <th>Submitted At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for attempt in recent_attempts %}
+                <tr>
+                    <td style="font-weight: 600;">{% if attempt.user.first_name %}{{ attempt.user.first_name }} {{ attempt.user.last_name }}{% else %}{{ attempt.user.username }}{% endif %}</td>
+                    <td>{{ attempt.quiz.title }}</td>
+                    <td>
+                        <span class="pill accent" style="font-weight: 700;">
+                            {{ attempt.score }} / {{ attempt.quiz.questions.count }}
+                        </span>
+                    </td>
+                    <td style="font-size: var(--text-xs); color: var(--text-secondary);">{{ attempt.submitted_at|date:"M j, Y g:i A" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">
+                        <div class="empty-state" style="padding: 32px 16px;">
+                            <div class="empty-state-icon" style="width: 44px; height: 44px; font-size: 1.1rem; margin-bottom: 8px;">
+                                <i class="fa-solid fa-square-poll-vertical"></i>
+                            </div>
+                            <div class="empty-state-title" style="font-size: var(--text-base);">No submissions yet</div>
+                            <div class="empty-state-desc" style="font-size: var(--text-xs);">When students complete quizzes, their score logs will appear here.</div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <div>
-        <div class="dashboard-card">
+    <!-- Right Column: Recent Users, Classes, Actions -->
+    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <!-- Recent Users -->
+        <div class="card fade-up stagger-2" style="padding: 24px;">
             <div class="section-heading">
-                <h2>Recent Users</h2>
-                <a class="btn-small secondary" href="{% url 'dashboard_students' %}">Manage</a>
+                <h2>Recent Students</h2>
+                <a class="btn-small secondary" href="{% url 'dashboard_students' %}">Manage &rarr;</a>
             </div>
-            <table class="glass-table">
-                <thead><tr><th>Name</th><th>Status</th></tr></thead>
-                <tbody>
-                {% for student in recent_users %}
-                <tr>
-                    <td>{% if student.first_name %}{{ student.first_name }} {{ student.last_name }}{% else %}{{ student.username }}{% endif %}</td>
-                    <td><span class="pill {% if student.is_active %}success{% else %}warning{% endif %}">{% if student.is_active %}Active{% else %}Disabled{% endif %}</span></td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="2"><div class="empty-state">No students yet.</div></td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for student in recent_users %}
+                    <tr>
+                        <td style="font-weight: 600;">{% if student.first_name %}{{ student.first_name }} {{ student.last_name }}{% else %}{{ student.username }}{% endif %}</td>
+                        <td>
+                            <span class="pill {% if student.is_active %}success{% else %}warning{% endif %}" style="font-size: 11px;">
+                                <span class="status-dot"></span>
+                                {% if student.is_active %}Active{% else %}Disabled{% endif %}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2">
+                            <div class="empty-state" style="padding: 24px 16px; font-size: var(--text-xs);">No students enrolled yet.</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <div class="dashboard-card" style="margin-top: 20px;">
+        <!-- Class Enrollments -->
+        <div class="card fade-up stagger-3" style="padding: 24px;">
             <div class="section-heading">
-                <h2>Class Enrollments</h2>
-                <a class="btn-small secondary" href="{% url 'dashboard_classes' %}">Manage</a>
+                <h2>Class Distribution</h2>
+                <a class="btn-small secondary" href="{% url 'dashboard_classes' %}">Manage &rarr;</a>
             </div>
-            <table class="glass-table">
-                <thead><tr><th>Class Group</th><th>Enrollment</th></tr></thead>
-                <tbody>
-                {% for item in students_per_class %}
-                <tr>
-                    <td>{{ item.name }}</td>
-                    <td>{{ item.count }} Student{{ item.count|pluralize }}</td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="2"><div class="empty-state">No classes created.</div></td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Class</th>
+                            <th>Enrolled</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in students_per_class %}
+                    <tr>
+                        <td style="font-weight: 600;">{{ item.name }}</td>
+                        <td>
+                            <span class="pill neutral" style="font-size: 11px;">
+                                {{ item.count }} student{{ item.count|pluralize }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2">
+                            <div class="empty-state" style="padding: 24px 16px; font-size: var(--text-xs);">No classes created yet.</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <div class="dashboard-card" style="margin-top: 20px;">
-            <div class="section-heading"><h2>Quick Actions</h2></div>
-            <div class="dashboard-actions" style="justify-content:flex-start; gap: 8px;">
-                <a class="dash-btn" href="{% url 'dashboard_question_create' %}"><i class="fa-solid fa-plus"></i>Add Question</a>
-                <a class="dash-btn secondary" href="{% url 'dashboard_question_import' %}"><i class="fa-solid fa-file-import"></i>Import Questions</a>
-                <a class="dash-btn secondary" href="{% url 'dashboard_student_import' %}"><i class="fa-solid fa-file-csv"></i>Import Students</a>
-                <a class="dash-btn secondary" href="/admin/"><i class="fa-solid fa-screwdriver-wrench"></i>Django Admin</a>
+        <!-- Quick Actions -->
+        <div class="card fade-up stagger-4" style="padding: 24px;">
+            <div class="section-heading" style="margin-bottom: 14px;">
+                <h2>Quick Actions</h2>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <a class="btn btn-primary btn-small" href="{% url 'dashboard_question_create' %}">
+                    <i class="fa-solid fa-plus"></i> Add Question
+                </a>
+                <a class="btn btn-secondary btn-small" href="{% url 'dashboard_question_import' %}">
+                    <i class="fa-solid fa-file-import"></i> Import Questions
+                </a>
+                <a class="btn btn-secondary btn-small" href="{% url 'dashboard_student_import' %}">
+                    <i class="fa-solid fa-file-csv"></i> Import Students
+                </a>
+                <a class="btn btn-secondary btn-small" href="/admin/">
+                    <i class="fa-solid fa-screwdriver-wrench"></i> Django Admin
+                </a>
             </div>
         </div>
     </div>
 </section>
 {% endblock %}
-

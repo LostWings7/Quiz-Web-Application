@@ -1,21 +1,25 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
+
+{% block title %}Map Student Columns | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
+{% block eyebrow %}Candidate Onboarding{% endblock %}
 {% block heading %}Map Student Columns{% endblock %}
-{% block subtitle %}Match spreadsheet columns to student account fields.{% endblock %}
+{% block subtitle %}Match spreadsheet headers to candidate profile and authentication fields.{% endblock %}
 
 {% block content %}
-<div class="dashboard-card">
-    <p class="dashboard-subtitle" style="margin-bottom:16px;">
-        File: <strong>{{ filename }}</strong> &middot; {{ row_count }} data row{{ row_count|pluralize }}
+<div class="card fade-up" style="padding: 32px; max-width: 800px;">
+    <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 20px;">
+        File: <strong>{{ filename }}</strong> &middot; {{ row_count }} candidate record{{ row_count|pluralize }}
     </p>
 
     <form class="dash-form" method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="import">
 
-        <div class="import-mapping-grid">
-            <div class="mapping-row required">
-                <label>Username</label>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; background: var(--bg-secondary);">
+            <div class="form-group">
+                <label class="form-label">Username <span style="color: var(--error);">*</span></label>
                 <select name="map_username" required>
                     <option value="">— Select column —</option>
                     {% for col in columns %}
@@ -24,8 +28,8 @@
                 </select>
             </div>
 
-            <div class="mapping-row">
-                <label>First name <span class="optional">optional</span></label>
+            <div class="form-group">
+                <label class="form-label">First Name <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional)</span></label>
                 <select name="map_first_name">
                     <option value="">— None —</option>
                     {% for col in columns %}
@@ -34,8 +38,8 @@
                 </select>
             </div>
 
-            <div class="mapping-row">
-                <label>Last name <span class="optional">optional</span></label>
+            <div class="form-group">
+                <label class="form-label">Last Name <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional)</span></label>
                 <select name="map_last_name">
                     <option value="">— None —</option>
                     {% for col in columns %}
@@ -44,8 +48,8 @@
                 </select>
             </div>
 
-            <div class="mapping-row">
-                <label>Email <span class="optional">optional</span></label>
+            <div class="form-group">
+                <label class="form-label">Email Address <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional)</span></label>
                 <select name="map_email">
                     <option value="">— None —</option>
                     {% for col in columns %}
@@ -54,8 +58,8 @@
                 </select>
             </div>
 
-            <div class="mapping-row">
-                <label>Password <span class="optional">optional</span></label>
+            <div class="form-group">
+                <label class="form-label">Password <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional, default 'password123')</span></label>
                 <select name="map_password">
                     <option value="">— None —</option>
                     {% for col in columns %}
@@ -64,8 +68,8 @@
                 </select>
             </div>
 
-            <div class="mapping-row">
-                <label>Class <span class="optional">optional</span></label>
+            <div class="form-group">
+                <label class="form-label">Class Group <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional)</span></label>
                 <select name="map_class">
                     <option value="">— None —</option>
                     {% for col in columns %}
@@ -74,8 +78,8 @@
                 </select>
             </div>
 
-            <div class="mapping-row">
-                <label>Section <span class="optional">optional</span></label>
+            <div class="form-group">
+                <label class="form-label">Section <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional)</span></label>
                 <select name="map_section">
                     <option value="">— None —</option>
                     {% for col in columns %}
@@ -86,11 +90,11 @@
         </div>
 
         {% if preview %}
-        <div class="section-heading" style="margin-top:28px;">
-            <h2>Preview</h2>
+        <div class="section-heading" style="margin-top: 28px; margin-bottom: 12px;">
+            <h2>Roster Data Preview</h2>
         </div>
-        <div class="import-preview-wrap">
-            <table class="glass-table import-preview-table">
+        <div class="table-wrapper">
+            <table class="data-table" style="font-size: var(--text-xs);">
                 <thead>
                     <tr>
                         {% if preview_headers %}
@@ -117,11 +121,10 @@
         </div>
         {% endif %}
 
-        <div class="dashboard-actions" style="justify-content:flex-start;margin-top:24px;">
-            <button class="dash-btn" type="submit"><i class="fa-solid fa-file-import"></i> Import Students</button>
-            <a class="dash-btn secondary" href="{% url 'dashboard_student_import' %}?cancel=1">Start Over</a>
+        <div style="display: flex; gap: 12px; margin-top: 24px; align-items: center;">
+            <button class="btn btn-primary" type="submit"><i class="fa-solid fa-file-import"></i> Ingest {{ row_count }} Students</button>
+            <a class="btn btn-secondary" href="{% url 'dashboard_student_import' %}?cancel=1">Start Over</a>
         </div>
     </form>
 </div>
 {% endblock %}
-

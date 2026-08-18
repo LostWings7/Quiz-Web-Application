@@ -1,29 +1,172 @@
-:root{
---bg1:#172033;
---bg2:#164e63;
---bg3:#0f766e;
+/* ==========================================================================
+   "Modern Academic Interface" - Design Tokens
+   Warm-Light Educational Platform System
+   ========================================================================== */
 
---glass:rgba(255,255,255,.13);
---glass-strong:rgba(255,255,255,.2);
---glass-border:rgba(255,255,255,.22);
+:root {
+    /* ----------------------------------------------------------------------
+       1. Core Color Palette (Warm-Light Aesthetic)
+       ---------------------------------------------------------------------- */
+    --bg-primary: #F7F7F4;
+    --bg-secondary: #FBFBF9;
+    --surface: #FFFFFF;
+    --surface-hover: #F4F4F0;
+    --surface-active: #ECECE7;
+    --surface-subtle: #F2F2EE;
+    --surface-sunken: #EDEDE8;
 
---text:#f8fbff;
---text-soft:rgba(248,251,255,.72);
+    /* Text Colors */
+    --text-primary: #18181B;
+    --text-secondary: #71717A;
+    --text-muted: #A1A1AA;
+    --text-inverse: #FFFFFF;
 
---primary:#60a5fa;
---secondary:#2dd4bf;
---accent:#a78bfa;
+    /* Primary Accent (Refined Indigo) */
+    --accent-primary: #635BFF;
+    --accent-primary-hover: #5247E6;
+    --accent-primary-active: #4338CA;
+    --accent-primary-light: rgba(99, 91, 255, 0.08);
+    --accent-primary-subtle: rgba(99, 91, 255, 0.04);
+    --accent-primary-border: rgba(99, 91, 255, 0.25);
+    --accent-primary-rgb: 99, 91, 255;
 
---success:#34d399;
---warning:#fbbf24;
---danger:#fb7185;
+    /* Secondary & Subtle Accents */
+    --accent-secondary: #7C6FFF;
+    --accent-secondary-light: rgba(124, 111, 255, 0.08);
+    --accent-cyan: #22B8C7;
+    --accent-cyan-light: rgba(34, 184, 199, 0.08);
+    --accent-cyan-border: rgba(34, 184, 199, 0.25);
 
---shadow:0 24px 70px rgba(15,23,42,.28);
---radius:30px;
---radius-sm:18px;
+    /* State & Semantic Colors */
+    --success: #2E9B67;
+    --success-hover: #268557;
+    --success-light: #EBF8F1;
+    --success-border: rgba(46, 155, 103, 0.24);
 
---transition:.3s cubic-bezier(.2,.8,.2,1);
+    --warning: #D99A32;
+    --warning-hover: #B87F25;
+    --warning-light: #FEF6EA;
+    --warning-border: rgba(217, 154, 50, 0.24);
 
---nav-height:84px;
---content-width:1240px;
+    --error: #D95763;
+    --error-hover: #BF434F;
+    --error-light: #FDF1F2;
+    --error-border: rgba(217, 87, 99, 0.24);
+
+    /* Neutral Borders & Dividers */
+    --border: rgba(24, 24, 27, 0.08);
+    --border-subtle: rgba(24, 24, 27, 0.05);
+    --border-strong: rgba(24, 24, 27, 0.14);
+    --border-hover: rgba(24, 24, 27, 0.18);
+    --border-focus: #635BFF;
+    --ring-focus: rgba(99, 91, 255, 0.18);
+
+    /* ----------------------------------------------------------------------
+       2. Typography (Inter)
+       ---------------------------------------------------------------------- */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-heading: 'Inter', var(--font-sans);
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+
+    /* Typographic Scale */
+    --text-xs: 0.75rem;     /* 12px */
+    --text-sm: 0.8125rem;   /* 13px */
+    --text-base: 0.875rem;  /* 14px */
+    --text-md: 0.9375rem;   /* 15px */
+    --text-lg: 1.0625rem;   /* 17px */
+    --text-xl: 1.25rem;     /* 20px */
+    --text-2xl: 1.5rem;     /* 24px */
+    --text-3xl: 1.875rem;   /* 30px */
+    --text-4xl: 2.25rem;    /* 36px */
+    --text-5xl: 2.75rem;    /* 44px */
+
+    /* ----------------------------------------------------------------------
+       3. Spacing Scale
+       ---------------------------------------------------------------------- */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    /* ----------------------------------------------------------------------
+       4. Border Radii
+       ---------------------------------------------------------------------- */
+    --radius-xs: 6px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 22px;
+    --radius-pill: 9999px;
+
+    /* ----------------------------------------------------------------------
+       5. Shadows & Elevations
+       ---------------------------------------------------------------------- */
+    --shadow-xs: 0 1px 2px rgba(24, 24, 27, 0.03);
+    --shadow-sm: 0 1px 3px rgba(24, 24, 27, 0.04), 0 1px 2px rgba(24, 24, 27, 0.02);
+    --shadow-md: 0 4px 16px rgba(24, 24, 27, 0.05), 0 2px 4px rgba(24, 24, 27, 0.02);
+    --shadow-lg: 0 14px 32px rgba(24, 24, 27, 0.06), 0 4px 8px rgba(24, 24, 27, 0.02);
+    --shadow-floating: 0 20px 48px rgba(24, 24, 27, 0.09), 0 4px 12px rgba(24, 24, 27, 0.03);
+    --shadow-modal: 0 24px 64px rgba(24, 24, 27, 0.15), 0 8px 16px rgba(24, 24, 27, 0.04);
+    --shadow-card-hover: 0 8px 24px rgba(24, 24, 27, 0.06), 0 2px 6px rgba(24, 24, 27, 0.02);
+
+    /* ----------------------------------------------------------------------
+       6. Glass & Translucency
+       ---------------------------------------------------------------------- */
+    --glass-bg: rgba(255, 255, 255, 0.88);
+    --glass-bg-subtle: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(24, 24, 27, 0.08);
+    --glass-blur: 16px;
+    --modal-backdrop: rgba(15, 15, 18, 0.45);
+    --modal-backdrop-blur: 10px;
+
+    /* ----------------------------------------------------------------------
+       7. Layout Dimensions
+       ---------------------------------------------------------------------- */
+    --sidebar-width: 250px;
+    --sidebar-collapsed-width: 76px;
+    --topbar-height: 64px;
+    --content-max-width: 1320px;
+    --content-compact-width: 880px;
+
+    /* ----------------------------------------------------------------------
+       8. Animation & Transitions
+       ---------------------------------------------------------------------- */
+    --ease-primary: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+    --duration-micro: 140ms;
+    --duration-fast: 200ms;
+    --duration-normal: 280ms;
+    --duration-large: 450ms;
+    --duration-data: 800ms;
+    --duration-ambient: 14s;
+
+    --transition-micro: var(--duration-micro) var(--ease-primary);
+    --transition-fast: var(--duration-fast) var(--ease-primary);
+    --transition-normal: var(--duration-normal) var(--ease-primary);
+    --transition-large: var(--duration-large) var(--ease-primary);
+
+    /* ----------------------------------------------------------------------
+       9. Legacy Aliases (Preserve full backward compatibility)
+       ---------------------------------------------------------------------- */
+    --primary: var(--accent-primary);
+    --secondary: var(--accent-secondary);
+    --accent: var(--accent-primary);
+    --bg1: var(--bg-primary);
+    --bg2: var(--bg-secondary);
+    --bg3: var(--surface-subtle);
+    --text: var(--text-primary);
+    --text-soft: var(--text-secondary);
+    --shadow: var(--shadow-md);
+    --radius: var(--radius-xl);
+    --transition: var(--transition-normal);
+    --nav-height: var(--topbar-height);
+    --content-width: var(--content-max-width);
 }

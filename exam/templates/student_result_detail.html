@@ -1,88 +1,144 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}Detailed Feedback: {{ quiz.title }}{% endblock %}
+
+{% block title %}Performance Feedback: {{ quiz.title }} | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
 
 {% block content %}
-<style>
-.detail-page { max-width: 900px; margin: auto; padding-top: 26px; }
-.detail-header { text-align: center; margin-bottom: 32px; }
-.detail-header h1 { font-size: 2.5rem; margin-bottom: 10px; }
-.score-badge { display: inline-block; padding: 12px 24px; background: rgba(255,255,255,0.05); border-radius: 9999px; font-size: 1.25rem; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 24px; }
-.question-card { background: rgba(255,255,255,0.03); border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.05); }
-.question-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.question-icon { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; }
-.question-icon.correct { background: rgba(16, 185, 129, 0.2); color: #10b981; }
-.question-icon.incorrect { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-.question-text { font-size: 1.15rem; font-weight: 500; }
-.options-list { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
-.option-item { padding: 16px 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.2); }
-.option-item.selected { border-color: rgba(255,255,255,0.3); }
-.option-item.correct { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
-.option-item.incorrect-selected { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); }
-.option-marker { width: 24px; font-weight: bold; color: rgba(255,255,255,0.5); }
-.option-text { flex: 1; }
-.option-badge { font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
-.option-badge.correct { background: #10b981; color: #000; }
-.option-badge.your-answer { background: rgba(255,255,255,0.2); color: #fff; }
-</style>
+<div style="max-width: 880px; margin: 0 auto;">
+    <!-- Breadcrumbs -->
+    <nav class="app-breadcrumbs" aria-label="Breadcrumb">
+        {% if user.is_staff %}
+        <a href="{% url 'dashboard_home' %}">Dashboard</a>
+        <span class="crumb-sep"><i class="fa-solid fa-chevron-right"></i></span>
+        <a href="{% url 'dashboard_results' %}">Results</a>
+        <span class="crumb-sep"><i class="fa-solid fa-chevron-right"></i></span>
+        <span class="crumb-current">Performance Feedback</span>
+        {% else %}
+        <a href="/home">Dashboard</a>
+        <span class="crumb-sep"><i class="fa-solid fa-chevron-right"></i></span>
+        <a href="/quiz-results/">My Results</a>
+        <span class="crumb-sep"><i class="fa-solid fa-chevron-right"></i></span>
+        <span class="crumb-current">Performance Feedback</span>
+        {% endif %}
+    </nav>
 
-<div class="back-button-container" style="position: sticky; top: 100px; z-index: 50; padding: 0 24px; margin-bottom: -40px;">
-    <a href="javascript:history.back()" class="btn btn-secondary" style="border-radius: 9999px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); backdrop-filter: blur(8px);"><i class="fa-solid fa-arrow-left"></i> Back</a>
-</div>
-
-<div class="detail-page">
-    <div class="detail-header">
-        <h1>{{ quiz.title }}</h1>
-        <div class="score-badge">Your Score: <span style="color: var(--primary);">{{ result.score }} / {{ quiz.questions.count }}</span></div>
-        <p style="color: var(--text-soft);">Submitted on {{ result.submitted_at|date:"F j, Y g:i A" }}</p>
+    <!-- Page Header -->
+    <div class="page-header" style="margin-bottom: var(--space-6);">
+        <div>
+            <div class="eyebrow">Detailed Analysis</div>
+            <h1 class="page-header-title">{{ quiz.title }}</h1>
+            <p class="page-header-subtitle">Submitted on {{ result.submitted_at|date:"F j, Y \a\t g:i A" }}</p>
+        </div>
+        <div class="page-header-actions">
+            {% if user.is_staff %}
+            <a href="{% url 'dashboard_results' %}" class="btn btn-secondary btn-small">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Back to Results</span>
+            </a>
+            {% else %}
+            <a href="/quiz-results/" class="btn btn-secondary btn-small">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Back to Results</span>
+            </a>
+            {% endif %}
+        </div>
     </div>
 
-    {% for item in response_data %}
-    <div class="question-card">
-        <div class="question-header">
-            <div class="question-icon {% if item.is_correct %}correct{% else %}incorrect{% endif %}">
-                <i class="fa-solid {% if item.is_correct %}fa-check{% else %}fa-xmark{% endif %}"></i>
+    <!-- Score Summary Hero Card -->
+    <div class="card fade-up" style="padding: 28px; margin-bottom: var(--space-6); background: var(--surface);">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-4);">
+            <div class="metric-card" style="padding: 16px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                <span>Score Achieved</span>
+                <strong style="color: var(--accent-primary);">{{ result.score }} <span style="font-size: var(--text-base); color: var(--text-muted); font-weight: 500;">/ {{ quiz.questions.count }}</span></strong>
             </div>
-            <div class="question-text">
-                {{ forloop.counter }}. {{ item.question.text|striptags }}
+            <div class="metric-card" style="padding: 16px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                <span>Total Questions</span>
+                <strong>{{ quiz.questions.count }}</strong>
+            </div>
+            <div class="metric-card" style="padding: 16px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                <span>Candidate</span>
+                <strong style="font-size: var(--text-md); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{% if user.first_name %}{{ user.first_name }} {{ user.last_name }}{% else %}{{ user.username }}{% endif %}</strong>
             </div>
         </div>
-        
-        {% if item.question.get_all_images %}
-        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; margin-bottom: 12px;">
-            {% for img in item.question.get_all_images %}
-            <img src="{{ img.url }}" class="zoomable-img" style="max-height: 180px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in;" />
-            {% endfor %}
-        </div>
-        {% endif %}
-        
-        <div class="options-list">
-            {% for opt in item.options %}
-            <div class="option-item {% if opt.is_correct %}correct{% elif opt.is_selected %}incorrect-selected{% endif %} {% if opt.is_selected %}selected{% endif %}">
-                <div class="option-marker">{{ opt.value }}</div>
-                <div class="option-text">
-                    {{ opt.text|striptags }}
-                    {% if opt.image_urls %}
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
-                        {% for img_url in opt.image_urls %}
-                        <img src="{{ img_url }}" class="zoomable-img" style="max-height: 100px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); cursor: zoom-in;" />
+    </div>
+
+    <!-- Question by Question Breakdown -->
+    <div style="display: grid; gap: var(--space-4);">
+        {% for item in response_data %}
+        <div class="card fade-up" style="padding: 24px 28px;">
+            <!-- Question Heading -->
+            <div style="display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; flex-shrink: 0; margin-top: 2px;
+                    {% if item.is_correct %}background: var(--success-light); color: var(--success); border: 1px solid var(--success-border);
+                    {% else %}background: var(--error-light); color: var(--error); border: 1px solid var(--error-border);{% endif %}">
+                    <i class="fa-solid {% if item.is_correct %}fa-check{% else %}fa-xmark{% endif %}"></i>
+                </div>
+                <div style="flex: 1;">
+                    <div style="font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px;">
+                        Question {{ forloop.counter }}
+                    </div>
+                    <div style="font-size: var(--text-md); font-weight: 600; color: var(--text-primary); line-height: 1.5;">
+                        {{ item.question.text|striptags }}
+                    </div>
+
+                    {% if item.question.get_all_images %}
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px;">
+                        {% for img in item.question.get_all_images %}
+                        <img src="{{ img.url }}" alt="Question illustration" style="max-height: 160px; border-radius: var(--radius-sm); border: 1px solid var(--border); cursor: zoom-in;" />
                         {% endfor %}
                     </div>
                     {% endif %}
                 </div>
-                
-                {% if opt.is_correct %}
-                <div class="option-badge correct"><i class="fa-solid fa-check"></i> Correct Answer</div>
-                {% endif %}
-                
-                {% if opt.is_selected %}
-                <div class="option-badge your-answer">Your Answer</div>
-                {% endif %}
             </div>
-            {% endfor %}
+
+            <!-- Options Breakdown -->
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px; padding-left: 46px;">
+                {% for opt in item.options %}
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid
+                    {% if opt.is_correct %}var(--success-border); background: var(--success-light);
+                    {% elif opt.is_selected %}var(--error-border); background: var(--error-light);
+                    {% else %}var(--border-subtle); background: var(--bg-secondary);{% endif %}; flex-wrap: wrap;">
+
+                    <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 200px;">
+                        <span style="font-family: var(--font-mono); font-weight: 700; font-size: var(--text-xs); color: var(--text-secondary); width: 18px;">{{ opt.value }}</span>
+                        <div style="font-size: var(--text-sm); color: var(--text-primary);">
+                            {{ opt.text|striptags }}
+                            {% if opt.image_urls %}
+                            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                                {% for img_url in opt.image_urls %}
+                                <img src="{{ img_url }}" alt="Option illustration" style="max-height: 80px; border-radius: 4px; border: 1px solid var(--border); cursor: zoom-in;" />
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        {% if opt.is_correct %}
+                        <span class="pill success" style="font-size: 11px;">
+                            <i class="fa-solid fa-check"></i> Correct Answer
+                        </span>
+                        {% endif %}
+                        {% if opt.is_selected %}
+                        <span class="pill {% if opt.is_correct %}success{% else %}danger{% endif %}" style="font-size: 11px;">
+                            Your Selection
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+
+    {% if not user.is_staff %}
+    <div style="margin-top: 32px; text-align: center;">
+        <a href="/quiz-results/" class="btn btn-secondary">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Return to Results</span>
+        </a>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
-

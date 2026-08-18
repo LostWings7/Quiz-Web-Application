@@ -1,148 +1,146 @@
-/* ==========================================
-   ANIMATIONS.CSS
-   QuizX Glass UI
-==========================================*/
+/* ==========================================================================
+   "Modern Academic Interface" - Animations & Micro-Interactions
+   ========================================================================== */
 
-/* ========= KEYFRAMES ========= */
-
-@keyframes gradientMove {
-    0%{background-position:0% 50%;}
-    50%{background-position:100% 50%;}
-    100%{background-position:0% 50%;}
+/* --------------------------------------------------------------------------
+   1. Keyframes
+   -------------------------------------------------------------------------- */
+@keyframes pageFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-@keyframes floatBlob{
-    0%{transform:translate(0,0) scale(1);}
-    25%{transform:translate(40px,-35px) scale(1.08);}
-    50%{transform:translate(10px,30px) scale(.94);}
-    75%{transform:translate(-30px,-20px) scale(1.05);}
-    100%{transform:translate(0,0) scale(1);}
+@keyframes modalBackdropFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
-@keyframes fadeUp{
-    from{opacity:0;transform:translateY(35px);}
-    to{opacity:1;transform:translateY(0);}
+@keyframes modalDialogEnter {
+    from {
+        opacity: 0;
+        transform: scale(0.97) translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
-@keyframes fadeLeft{
-    from{opacity:0;transform:translateX(-40px);}
-    to{opacity:1;transform:translateX(0);}
+@keyframes dropdownEnter {
+    from {
+        opacity: 0;
+        transform: scale(0.98) translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
-@keyframes fadeRight{
-    from{opacity:0;transform:translateX(40px);}
-    to{opacity:1;transform:translateX(0);}
+@keyframes ambientFloat {
+    0% {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+        transform: translate3d(24px, -18px, 0) scale(1.04);
+    }
+    100% {
+        transform: translate3d(-16px, 12px, 0) scale(0.98);
+    }
 }
 
-@keyframes pop{
-    0%{transform:scale(.8);opacity:0;}
-    70%{transform:scale(1.05);}
-    100%{transform:scale(1);opacity:1;}
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
 }
 
-@keyframes shimmer{
-    from{transform:translateX(-120%);}
-    to{transform:translateX(120%);}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
-@keyframes pulse{
-    0%{transform:scale(1);}
-    50%{transform:scale(1.04);}
-    100%{transform:scale(1);}
+@keyframes pulseGlow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
 }
 
-/* ===== Default ===== */
-
-.page-wrapper{animation:fadeUp .8s ease;}
-.hero-card{animation:fadeLeft .8s ease;}
-.info-card{animation:fadeRight .8s ease;}
-.question-panel{animation:fadeLeft .6s ease;}
-.progress-panel{animation:fadeRight .6s ease;}
-.login-card{animation:pop .65s ease;}
-.result-card{animation:fadeUp .5s ease;}
-.blob{animation:floatBlob 14s ease-in-out infinite;}
-
-/* ===== Buttons ===== */
-
-.btn,
-.submit-button{
-    position:relative;
-    overflow:hidden;
+/* --------------------------------------------------------------------------
+   2. Animation Utilities & Stagger
+   -------------------------------------------------------------------------- */
+.fade-in {
+    animation: pageFadeIn var(--duration-normal) var(--ease-primary) forwards;
 }
 
-.btn::before,
-.submit-button::before{
-    content:"";
-    position:absolute;
-    top:0;
-    left:-130%;
-    width:60%;
-    height:100%;
-    background:linear-gradient(
-        120deg,
-        transparent,
-        rgba(255,255,255,.45),
-        transparent
-    );
-    transform:skewX(-25deg);
+.fade-up {
+    animation: pageFadeIn var(--duration-normal) var(--ease-primary) forwards;
 }
 
-.btn:hover::before,
-.submit-button:hover::before{
-    animation:shimmer .9s ease;
+.stagger-1 { animation-delay: 40ms !important; }
+.stagger-2 { animation-delay: 80ms !important; }
+.stagger-3 { animation-delay: 120ms !important; }
+.stagger-4 { animation-delay: 160ms !important; }
+.stagger-5 { animation-delay: 200ms !important; }
+
+/* Skeleton Loader */
+.skeleton {
+    background: linear-gradient(90deg, var(--surface-sunken) 25%, var(--surface-subtle) 50%, var(--surface-sunken) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: var(--radius-sm);
 }
 
-.btn:hover,
-.submit-button:hover{
-    animation:pulse .4s ease;
+.skeleton-text {
+    height: 14px;
+    margin-bottom: 8px;
 }
 
-/* ===== Glass Cards ===== */
-
-.glass-card,
-.question-panel,
-.progress-panel,
-.info-card,
-.result-card{
-    transition:
-    transform .35s ease,
-    box-shadow .35s ease,
-    border-color .35s ease;
+.skeleton-title {
+    height: 24px;
+    width: 60%;
+    margin-bottom: 12px;
 }
 
-.glass-card:hover,
-.question-panel:hover,
-.progress-panel:hover,
-.info-card:hover,
-.result-card:hover{
-    transform:translateY(-6px);
+.skeleton-card {
+    height: 120px;
+    width: 100%;
 }
 
-/* ===== Inputs ===== */
+/* --------------------------------------------------------------------------
+   3. Accessibility: Reduced Motion
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 
-input{
-    transition:border-color .3s,box-shadow .3s,background .3s;
-}
+    .ambient-blob {
+        animation: none !important;
+    }
 
-input:focus{
-    box-shadow:0 0 0 4px rgba(255,255,255,.08);
-}
-
-/* ===== Scrollbar ===== */
-
-::-webkit-scrollbar{
-    width:10px;
-}
-
-::-webkit-scrollbar-track{
-    background:transparent;
-}
-
-::-webkit-scrollbar-thumb{
-    background:rgba(255,255,255,.18);
-    border-radius:50px;
-}
-
-::-webkit-scrollbar-thumb:hover{
-    background:rgba(255,255,255,.35);
+    .fade-in,
+    .fade-up,
+    .app-page-content {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
 }
