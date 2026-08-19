@@ -15,17 +15,21 @@
             <h2><i class="fa-solid fa-school" style="color: var(--accent-primary); margin-right: 8px;"></i> Institution Branding</h2>
         </div>
 
-        <form method="post" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 20px;">
+        <form class="dash-form" method="post" enctype="multipart/form-data">
             {% csrf_token %}
 
             <div class="form-group">
-                <label for="school_name" class="form-label">Institution Name</label>
+                <label for="school_name" class="form-label">
+                    Institution Name <span class="optional">(optional)</span>
+                </label>
                 <input type="text" id="school_name" name="school_name" value="{{ school_profile.school_name }}" placeholder="e.g. Springfield Academy">
-                <small style="color: var(--text-muted); font-size: var(--text-xs); margin-top: 4px;">This name replaces the default QuizX title across the student and admin interface.</small>
+                <span class="helptext">This name replaces the default QuizX title across the student and admin interface.</span>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Header Banner Image</label>
+                <label class="form-label" for="school_banner_image">
+                    Header Banner Image <span class="optional">(optional)</span>
+                </label>
                 {% if school_profile.school_banner_image %}
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 14px; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border);">
                     <img src="{{ school_profile.school_banner_image.url }}" alt="Header Banner" style="max-height: 44px; max-width: 240px; object-fit: contain; border-radius: 4px;">
@@ -33,10 +37,13 @@
                 </div>
                 {% endif %}
                 <input type="file" id="school_banner_image" name="school_banner_image" accept="image/*">
+                <span class="helptext">Recommended dimensions: 1200x240px or high resolution banner.</span>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Institution Logo</label>
+                <label class="form-label" for="school_logo">
+                    Institution Logo <span class="optional">(optional)</span>
+                </label>
                 {% if school_profile.school_logo %}
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 14px; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--border);">
                     <img src="{{ school_profile.school_logo.url }}" alt="School Logo" style="max-height: 48px; max-width: 120px; object-fit: contain; border-radius: 4px;">
@@ -44,19 +51,22 @@
                 </div>
                 {% endif %}
                 <input type="file" id="school_logo" name="school_logo" accept="image/*">
+                <span class="helptext">Square or compact transparent PNG logo recommended.</span>
             </div>
 
-            <div style="margin-top: 8px;">
-                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Branding Settings</button>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Branding Settings
+                </button>
             </div>
         </form>
     </div>
 
     <!-- System Access Card -->
     <div class="card fade-up stagger-1" style="padding: 32px;">
-        <div class="section-heading"><h2>System Access &amp; Fallback</h2></div>
+        <div class="section-heading"><h2><i class="fa-solid fa-screwdriver-wrench" style="color: var(--accent-primary); margin-right: 8px;"></i> System Access &amp; Fallback</h2></div>
         <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 20px;">Direct access to the core Django administrative console for low-level database operations.</p>
-        <a class="btn btn-secondary" href="/admin/"><i class="fa-solid fa-screwdriver-wrench"></i> Open Django Admin</a>
+        <a class="btn btn-secondary" href="/admin/"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Django Admin</a>
     </div>
 </div>
 {% endblock %}

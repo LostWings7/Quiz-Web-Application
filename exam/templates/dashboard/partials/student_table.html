@@ -23,7 +23,7 @@
                     </th>
                     <th>Candidate Name</th>
                     <th>Username</th>
-                    <th>Enrolled Class &amp; Section</th>
+                    <th style="text-align: center;">Enrolled Class &amp; Section</th>
                     <th style="text-align: center;">Status</th>
                     <th style="text-align: right;">Actions</th>
                 </tr>
@@ -36,7 +36,7 @@
                 </td>
                 <td style="font-weight: 600;">{% if student.first_name %}{{ student.first_name }} {{ student.last_name }}{% else %}{{ student.username }}{% endif %}</td>
                 <td style="font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-secondary);">{{ student.username }}</td>
-            <td>
+            <td style="text-align: center;">
                 {% with cg=student.profile.class_group sec=student.profile.section %}
                 {% if cg and sec %}
                 <span class="pill accent" style="font-size: 11px;">{{ cg.name }} &rsaquo; {{ sec.name }}</span>

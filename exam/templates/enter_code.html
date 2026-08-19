@@ -26,17 +26,17 @@
         <form method="post" id="examCodeForm">
             {% csrf_token %}
             <div class="form-group" style="margin-bottom: var(--space-5);">
-                <label for="id_code" class="form-label">Access Code</label>
+                <label for="id_code" class="form-label">Access Code <span class="optional">(case-sensitive)</span></label>
                 <div class="search-bar-wrapper">
                     <i class="fa-solid fa-key" style="left: 16px;"></i>
-                    <input type="text" name="code" id="id_code" placeholder="e.g. MATH101" required autocomplete="off" autofocus style="height: 50px; font-family: var(--font-mono); font-size: var(--text-lg); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding-left: 44px;">
+                    <input type="text" name="code" id="id_code" placeholder="e.g. Math101" required autocomplete="off" autofocus style="height: 50px; font-family: var(--font-mono); font-size: var(--text-lg); font-weight: 700; letter-spacing: 0.08em; padding-left: 44px;">
                 </div>
             </div>
 
-            {% if error %}
+            {% if form.code.errors or error %}
             <div class="pill danger" style="width: 100%; padding: 12px 16px; border-radius: var(--radius-md); font-size: var(--text-sm); margin-bottom: var(--space-5); display: flex; align-items: center; gap: 10px;">
                 <i class="fa-solid fa-circle-exclamation" style="font-size: 14px;"></i>
-                <span>{{ error }}</span>
+                <span>{% if form.code.errors %}{{ form.code.errors.0 }}{% else %}{{ error }}{% endif %}</span>
             </div>
             {% endif %}
 

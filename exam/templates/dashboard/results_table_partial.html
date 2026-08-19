@@ -7,7 +7,7 @@
             {{ result.score }} / {{ result.quiz.questions.count }}
         </span>
     </td>
-    <td style="font-size: var(--text-xs); color: var(--text-secondary);">{{ result.submitted_at|date:"M j, Y g:i A" }}</td>
+    <td style="text-align: center; font-size: var(--text-xs); color: var(--text-secondary);">{{ result.submitted_at|date:"M j, Y g:i A" }}</td>
     <td>
         <div style="display: flex; gap: 6px; justify-content: flex-end;">
             <a class="btn-small secondary" href="{% url 'student_result_detail' result.id %}">View Breakdown</a>

@@ -176,8 +176,10 @@
             </div>
             {% endif %}
 
-            <div style="margin-top: 16px;">
-                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-file-import"></i> Ingest {{ row_count }} Question{{ row_count|pluralize }}</button>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-file-import"></i> Ingest {{ row_count }} Question{{ row_count|pluralize }}
+                </button>
             </div>
         </form>
     </div>

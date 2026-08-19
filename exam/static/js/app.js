@@ -75,13 +75,12 @@
         activeAnimation: null,
 
         getCoords(link, nav) {
-            const navRect = nav.getBoundingClientRect();
-            const linkRect = link.getBoundingClientRect();
+            if (!link) return { top: 0, left: 0, width: 0, height: 0 };
             return {
-                top: linkRect.top - navRect.top + nav.scrollTop,
-                left: linkRect.left - navRect.left,
-                width: linkRect.width,
-                height: linkRect.height
+                top: link.offsetTop,
+                left: link.offsetLeft,
+                width: link.offsetWidth,
+                height: link.offsetHeight
             };
         },
 
@@ -93,8 +92,21 @@
                 this.activeAnimation = null;
             }
 
+            const deltaY = endCoords.top - startCoords.top;
+            const shell = document.getElementById('appShell') || document.getElementById('dashboardShell');
+            const isCollapsed = shell ? shell.classList.contains('sidebar-collapsed') : false;
+
+            // Distance intensity ratio (0.2 to 1.0)
+            const distRatio = Math.min(1.0, Math.max(0.2, Math.abs(deltaY) / 180));
+
+            // Liquid deformation limits:
+            // Collapsed: stretch up to +18% vertically, squeeze -10% horizontally
+            // Expanded: stretch up to +14% vertically, squeeze -6% horizontally
+            const maxStretchY = (isCollapsed ? 0.18 : 0.14) * distRatio;
+            const maxSqueezeX = (isCollapsed ? 0.10 : 0.06) * distRatio;
+
             // Immediately position at start point
-            pill.style.transform = `translate3d(${startCoords.left}px, ${startCoords.top}px, 0)`;
+            pill.style.transform = `translate3d(${startCoords.left}px, ${startCoords.top}px, 0) scale(1, 1)`;
             pill.style.width = `${startCoords.width}px`;
             pill.style.height = `${startCoords.height}px`;
             pill.style.opacity = '1';
@@ -105,7 +117,7 @@
                 let t = (now - startTime) / duration;
                 if (t > 1) t = 1;
 
-                // Custom cubic spring-like easing from reference
+                // Motion translation curve (cubic spring ease)
                 const ease = 1 + 1.5 * Math.pow(t - 1, 3) + 0.5 * Math.pow(t - 1, 2);
 
                 const currentTop = startCoords.top + (endCoords.top - startCoords.top) * ease;
@@ -113,14 +125,33 @@
                 const currentWidth = startCoords.width + (endCoords.width - startCoords.width) * ease;
                 const currentHeight = startCoords.height + (endCoords.height - startCoords.height) * ease;
 
-                pill.style.transform = `translate3d(${currentLeft}px, ${currentTop}px, 0)`;
+                // Liquid deformation physics:
+                // During flight (t < 0.72): stretches vertically and squeezes horizontally
+                // On arrival (t >= 0.72): gentle elastic landing rebound before settling
+                let scaleY = 1.0;
+                let scaleX = 1.0;
+
+                if (Math.abs(deltaY) > 8) {
+                    if (t < 0.72) {
+                        const morphPhase = Math.sin((t / 0.72) * Math.PI);
+                        scaleY = 1.0 + maxStretchY * morphPhase;
+                        scaleX = 1.0 - maxSqueezeX * morphPhase;
+                    } else {
+                        const reboundT = (t - 0.72) / 0.28;
+                        const reboundPhase = Math.sin(reboundT * Math.PI) * Math.exp(-2.2 * reboundT);
+                        scaleY = 1.0 - (maxStretchY * 0.25) * reboundPhase;
+                        scaleX = 1.0 + (maxSqueezeX * 0.25) * reboundPhase;
+                    }
+                }
+
+                pill.style.transform = `translate3d(${currentLeft}px, ${currentTop}px, 0) scale(${scaleX.toFixed(4)}, ${scaleY.toFixed(4)})`;
                 pill.style.width = `${currentWidth}px`;
                 pill.style.height = `${currentHeight}px`;
 
                 if (t < 1) {
                     this.activeAnimation = requestAnimationFrame(step);
                 } else {
-                    pill.style.transform = `translate3d(${endCoords.left}px, ${endCoords.top}px, 0)`;
+                    pill.style.transform = `translate3d(${endCoords.left}px, ${endCoords.top}px, 0) scale(1, 1)`;
                     pill.style.width = `${endCoords.width}px`;
                     pill.style.height = `${endCoords.height}px`;
                     this.activeAnimation = null;
@@ -141,7 +172,7 @@
             }
 
             const coords = this.getCoords(targetLink, nav);
-            pill.style.transform = `translate3d(${coords.left}px, ${coords.top}px, 0)`;
+            pill.style.transform = `translate3d(${coords.left}px, ${coords.top}px, 0) scale(1, 1)`;
             pill.style.width = `${coords.width}px`;
             pill.style.height = `${coords.height}px`;
             pill.style.opacity = '1';
@@ -157,7 +188,7 @@
                     btn.addEventListener('click', () => {
                         shell.classList.toggle('sidebar-collapsed');
                         const isCollapsed = shell.classList.contains('sidebar-collapsed');
-                        localStorage.setItem('quizx_sidebar_collapsed', isCollapsed ? '1' : '0');
+                        sessionStorage.setItem('quizx_sidebar_collapsed', isCollapsed ? '1' : '0');
 
                         // Animate pill smoothly during the sidebar width CSS transition (280ms)
                         const pill = nav ? nav.querySelector('.nav-active-pill') : null;
@@ -181,7 +212,7 @@
                     });
                 });
 
-                if (localStorage.getItem('quizx_sidebar_collapsed') === '1' && window.innerWidth > 992) {
+                if (sessionStorage.getItem('quizx_sidebar_collapsed') === '1' && window.innerWidth > 992) {
                     shell.classList.add('sidebar-collapsed');
                 }
             }
@@ -269,25 +300,12 @@
                     try { sessionStorage.removeItem('quizx_previous_sidebar_path'); } catch (e) {}
                 }
 
-                // Record clicked path and animate on click
+                // Record clicked path before navigation
                 links.forEach(link => {
                     link.addEventListener('click', () => {
                         try {
                             sessionStorage.setItem('quizx_previous_sidebar_path', window.location.pathname);
                         } catch (e) {}
-
-                        const currentActive = nav.querySelector('.app-nav-item.active');
-                        if (currentActive && currentActive !== link) {
-                            links.forEach(l => l.classList.remove('active'));
-                            link.classList.add('active');
-                            const startCoords = this.getCoords(currentActive, nav);
-                            const endCoords = this.getCoords(link, nav);
-                            this.animateBlob(pill, startCoords, endCoords, 380);
-                        } else {
-                            links.forEach(l => l.classList.remove('active'));
-                            link.classList.add('active');
-                            this.updatePillPosition(pill, link);
-                        }
                     });
                 });
 
@@ -297,7 +315,7 @@
                     if (!link || !link.href) return;
                     try {
                         const url = new URL(link.href, window.location.origin);
-                        if (url.origin === window.location.origin) {
+                        if (url.origin === window.location.origin && url.pathname !== window.location.pathname) {
                             sessionStorage.setItem('quizx_previous_sidebar_path', window.location.pathname);
                         }
                     } catch (err) {}
@@ -317,29 +335,33 @@
     // --------------------------------------------------------------------------
     const StatCounters = {
         init() {
-            // Check prefers-reduced-motion
             if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 return;
             }
 
-            const elements = document.querySelectorAll('[data-count-to]');
+            const elements = document.querySelectorAll('[data-count-to]:not([data-counted="true"])');
             elements.forEach(el => {
+                el.setAttribute('data-counted', 'true');
                 const targetStr = el.getAttribute('data-count-to');
                 const target = parseFloat(targetStr);
                 if (isNaN(target)) return;
 
+                if (target === 0) {
+                    const prefix = el.getAttribute('data-prefix') || '';
+                    const suffix = el.getAttribute('data-suffix') || '';
+                    el.textContent = `${prefix}0${suffix}`;
+                    return;
+                }
+
                 const decimals = (targetStr.split('.')[1] || '').length;
-                const duration = parseInt(el.getAttribute('data-duration') || '750', 10);
+                const duration = parseInt(el.getAttribute('data-duration') || '600', 10);
                 const prefix = el.getAttribute('data-prefix') || '';
                 const suffix = el.getAttribute('data-suffix') || '';
 
                 let startTime = null;
+                const easeOutExpo = (t) => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
 
-                function easeOutExpo(t) {
-                    return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-                }
-
-                function step(timestamp) {
+                const step = (timestamp) => {
                     if (!startTime) startTime = timestamp;
                     const elapsed = timestamp - startTime;
                     const progress = Math.min(elapsed / duration, 1);
@@ -352,7 +374,7 @@
                     } else {
                         el.textContent = `${prefix}${target.toFixed(decimals)}${suffix}`;
                     }
-                }
+                };
 
                 requestAnimationFrame(step);
             });
@@ -609,43 +631,12 @@
                 const sidebarKey = 'scroll_sidebar';
                 const savedScroll = sessionStorage.getItem(sidebarKey);
                 if (savedScroll) {
-                    // Slight delay to override native browser restoration sometimes
-                    setTimeout(() => {
-                        sidebar.scrollTop = parseInt(savedScroll, 10);
-                    }, 10);
+                    sidebar.scrollTop = parseInt(savedScroll, 10);
                 }
                 sidebar.addEventListener('scroll', () => {
                     sessionStorage.setItem(sidebarKey, sidebar.scrollTop);
                 }, { passive: true });
             });
-
-            // Restore and save page scroll
-            const pageKey = 'scroll_page_' + window.location.pathname;
-            
-            // Check window scroll
-            const savedWindowScroll = sessionStorage.getItem(pageKey + '_win');
-            if (savedWindowScroll) {
-                setTimeout(() => {
-                    window.scrollTo(0, parseInt(savedWindowScroll, 10));
-                }, 50);
-            }
-            window.addEventListener('scroll', () => {
-                sessionStorage.setItem(pageKey + '_win', window.scrollY);
-            }, { passive: true });
-
-            // Check main container scroll (if layout uses overflow-y on .app-main-layout)
-            const mainLayout = document.querySelector('.app-main-layout');
-            if (mainLayout) {
-                const savedMainScroll = sessionStorage.getItem(pageKey + '_main');
-                if (savedMainScroll) {
-                    setTimeout(() => {
-                        mainLayout.scrollTop = parseInt(savedMainScroll, 10);
-                    }, 50);
-                }
-                mainLayout.addEventListener('scroll', () => {
-                    sessionStorage.setItem(pageKey + '_main', mainLayout.scrollTop);
-                }, { passive: true });
-            }
         }
     };
 

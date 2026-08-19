@@ -29,8 +29,8 @@ class QuizDashboardForm(forms.ModelForm):
 		model=Quiz
 		fields=['title','code','is_active','randomize_questions','timer_enabled','duration_minutes']
 		widgets={
-			'title': forms.TextInput(attrs={'placeholder':'Quiz name'}),
-			'code': forms.TextInput(attrs={'placeholder':'QUIZ2026'}),
+			'title': forms.TextInput(attrs={'placeholder':'e.g. Midterm Examination'}),
+			'code': forms.TextInput(attrs={'placeholder':'e.g. Math101'}),
 			'duration_minutes': forms.NumberInput(attrs={'min':1}),
 		}
 

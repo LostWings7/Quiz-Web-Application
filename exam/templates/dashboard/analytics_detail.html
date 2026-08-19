@@ -81,23 +81,23 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Rank</th>
+                    <th style="text-align: center;">Rank</th>
                     <th>Student Name</th>
-                    <th>Score</th>
-                    <th>Submitted At</th>
+                    <th style="text-align: center;">Score</th>
+                    <th style="text-align: center;">Submitted At</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in table_data %}
                 <tr>
-                    <td style="font-weight: 700; font-family: var(--font-mono);">#{{ forloop.counter }}</td>
+                    <td style="text-align: center; font-weight: 700; font-family: var(--font-mono);">#{{ forloop.counter }}</td>
                     <td style="font-weight: 600;">{{ item.name }}</td>
-                    <td>
+                    <td style="text-align: center;">
                         <span class="pill {% if item.percentage >= 40 %}success{% else %}warning{% endif %}" style="font-size: 11px;">
                             {{ item.percentage }}%
                         </span>
                     </td>
-                    <td style="font-size: var(--text-xs); color: var(--text-secondary);">{{ item.submitted_at|date:"M d, Y h:i A" }}</td>
+                    <td style="text-align: center; font-size: var(--text-xs); color: var(--text-secondary);">{{ item.submitted_at|date:"M d, Y h:i A" }}</td>
                 </tr>
                 {% empty %}
                 <tr>
@@ -209,20 +209,20 @@ function executeExport(sortParam) {
         <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width: 10%;">Q#</th>
+                    <th style="width: 10%; text-align: center;">Q#</th>
                     <th style="width: 50%;">Question Text</th>
-                    <th style="width: 15%;">Accuracy</th>
-                    <th style="width: 20%;">Category</th>
+                    <th style="width: 15%; text-align: center;">Accuracy</th>
+                    <th style="width: 20%; text-align: center;">Category</th>
                     <th style="width: 5%;"></th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in table_data %}
                 <tr class="accordion-row" onclick="toggleAccordion('acc-{{ item.id }}', this)">
-                    <td style="font-weight: 700; font-family: var(--font-mono);">Q{{ item.id }}</td>
+                    <td style="text-align: center; font-weight: 700; font-family: var(--font-mono);">Q{{ item.id }}</td>
                     <td><div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;">{{ item.text|striptags }}</div></td>
-                    <td style="font-weight: 700;">{{ item.accuracy }}%</td>
-                    <td>
+                    <td style="text-align: center; font-weight: 700;">{{ item.accuracy }}%</td>
+                    <td style="text-align: center;">
                         <span class="pill" style="background: {{ item.color }}; border-color: {{ item.color }}; color: {{ item.text_color }}; font-size: 11px;">
                             <i class="{{ item.icon }}"></i> {{ item.category }}
                         </span>
@@ -284,6 +284,9 @@ function toggleAccordion(id, rowElement) {
 {{ chart_data|json_script:"chart-data" }}
 <script src="{% static 'js/vendor/chart.min.js' %}"></script>
 <script>
+{% if selected_quiz %}
+sessionStorage.setItem('analytics_selected_quiz_id', '{{ selected_quiz.id }}');
+{% endif %}
 const chartData = JSON.parse(document.getElementById("chart-data").textContent);
 const lightGrid = { color: "rgba(24, 24, 27, 0.06)" };
 const lightTicks = { color: "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
@@ -395,7 +398,6 @@ if (ctx && window.Chart) {
 }
 </script>
 {% endif %}
-{% endif %}
 {% endblock %}
 
 {% block modals %}
@@ -451,6 +453,5 @@ if (ctx && window.Chart) {
         </div>
     </div>
 </div>
-{% endif %}
 {% endif %}
 {% endblock %}

@@ -26,34 +26,53 @@
 <div style="display: flex; flex-direction: column; gap: 24px; max-width: 960px;">
 
     <!-- Upload Form -->
-    <div class="card fade-up" style="padding: 28px;">
+    <div class="card fade-up" style="padding: 32px;">
         <div class="section-heading" style="margin-bottom: 20px;">
-            <h2><i class="fa-solid fa-file-arrow-up" style="color: var(--accent-primary); margin-right: 8px;"></i> Upload Questions File</h2>
+            <h2><i class="fa-solid fa-file-arrow-up" style="color: var(--accent-primary); margin-right: 8px;"></i> Upload Assessment File</h2>
         </div>
-        <form method="post" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 18px;">
+        <form class="dash-form" method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" name="action" value="upload">
 
             <div class="form-group">
-                <label class="form-label">Target Examination</label>
+                <label class="form-label" for="{{ form.quiz.id_for_label }}">
+                    Target Examination <span class="required">*</span>
+                </label>
                 {{ form.quiz }}
+                {% if form.quiz.errors %}
+                <div class="errorlist">
+                    {% for e in form.quiz.errors %}<div>{{ e }}</div>{% endfor %}
+                </div>
+                {% endif %}
             </div>
 
             <div class="form-group">
-                <label class="form-label">Spreadsheet or Archive File</label>
+                <label class="form-label" for="{{ form.file.id_for_label }}">
+                    Spreadsheet or Bundled Media Archive <span class="required">*</span>
+                </label>
                 {{ form.file }}
-                <small style="color: var(--text-muted); margin-top: 6px; display: block; font-size: var(--text-xs);">
+                <span class="helptext">
                     Accepted formats: <strong>.csv</strong>, <strong>.xlsx</strong>, or bundled <strong>.zip</strong> (containing spreadsheet and referenced question/option images).
-                </small>
+                </span>
+                {% if form.file.errors %}
+                <div class="errorlist">
+                    {% for e in form.file.errors %}<div>{{ e }}</div>{% endfor %}
+                </div>
+                {% endif %}
             </div>
 
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <label class="toggle-card" for="{{ form.has_header.id_for_label }}">
+                <div class="toggle-card-info">
+                    <div class="toggle-card-title">First row contains column headers</div>
+                    <div class="toggle-card-desc">Check if your spreadsheet row 1 contains headers like question_text, option_1, etc.</div>
+                </div>
                 {{ form.has_header }}
-                <label style="color: var(--text-primary); cursor: pointer; font-size: var(--text-sm);">First row contains column headers</label>
-            </div>
+            </label>
 
-            <div style="display: flex; gap: 12px; align-items: center; margin-top: 8px; flex-wrap: wrap;">
-                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-arrow-up-from-bracket"></i> Upload &amp; Preview</button>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-arrow-up-from-bracket"></i> Upload &amp; Preview
+                </button>
                 <a href="{% url 'dashboard_question_import_sample' %}" class="btn btn-secondary" download>
                     <i class="fa-solid fa-file-csv"></i> Download Sample Template
                 </a>

@@ -8,90 +8,96 @@
 {% block subtitle %}Match spreadsheet headers to candidate profile and authentication fields.{% endblock %}
 
 {% block content %}
-<div class="card fade-up" style="padding: 32px; max-width: 800px;">
-    <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 20px;">
-        File: <strong>{{ filename }}</strong> &middot; {{ row_count }} candidate record{{ row_count|pluralize }}
+<div class="card fade-up" style="padding: 32px; max-width: 860px;">
+    <div class="section-heading" style="margin-bottom: 8px;">
+        <h2><i class="fa-solid fa-table-columns" style="color: var(--accent-primary); margin-right: 8px;"></i> Column Mapping Configuration</h2>
+    </div>
+
+    <p style="color: var(--text-secondary); font-size: var(--text-xs); margin-bottom: 24px;">
+        File: <strong>{{ filename }}</strong> &middot; {{ row_count }} candidate record{{ row_count|pluralize }} detected
     </p>
 
     <form class="dash-form" method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="import">
 
-        <div style="display: grid; grid-template-columns: 1fr; gap: 14px; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; background: var(--bg-secondary);">
-            <div class="form-group">
-                <label class="form-label">Username <span style="color: var(--error);">*</span></label>
-                <select name="map_username" required>
-                    <option value="">— Select column —</option>
-                    {% for col in columns %}
-                    <option value="{{ col.index }}">{{ col.label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+        <div style="border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; background: var(--bg-secondary);">
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="form-label">Username / ID <span class="required">*</span></label>
+                    <select name="map_username" required>
+                        <option value="">— Select column —</option>
+                        {% for col in columns %}
+                        <option value="{{ col.index }}">{{ col.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">First Name <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional)</span></label>
-                <select name="map_first_name">
-                    <option value="">— None —</option>
-                    {% for col in columns %}
-                    <option value="{{ col.index }}">{{ col.label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address <span class="optional">(optional)</span></label>
+                    <select name="map_email">
+                        <option value="">— None —</option>
+                        {% for col in columns %}
+                        <option value="{{ col.index }}">{{ col.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">Last Name <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional)</span></label>
-                <select name="map_last_name">
-                    <option value="">— None —</option>
-                    {% for col in columns %}
-                    <option value="{{ col.index }}">{{ col.label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <div class="form-group">
+                    <label class="form-label">First Name <span class="optional">(optional)</span></label>
+                    <select name="map_first_name">
+                        <option value="">— None —</option>
+                        {% for col in columns %}
+                        <option value="{{ col.index }}">{{ col.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">Email Address <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional)</span></label>
-                <select name="map_email">
-                    <option value="">— None —</option>
-                    {% for col in columns %}
-                    <option value="{{ col.index }}">{{ col.label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <div class="form-group">
+                    <label class="form-label">Last Name <span class="optional">(optional)</span></label>
+                    <select name="map_last_name">
+                        <option value="">— None —</option>
+                        {% for col in columns %}
+                        <option value="{{ col.index }}">{{ col.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">Password <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional, default 'password123')</span></label>
-                <select name="map_password">
-                    <option value="">— None —</option>
-                    {% for col in columns %}
-                    <option value="{{ col.index }}">{{ col.label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <div class="form-group">
+                    <label class="form-label">Password <span class="optional">(optional, default 'password123')</span></label>
+                    <select name="map_password">
+                        <option value="">— None —</option>
+                        {% for col in columns %}
+                        <option value="{{ col.index }}">{{ col.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">Class Group <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional)</span></label>
-                <select name="map_class">
-                    <option value="">— None —</option>
-                    {% for col in columns %}
-                    <option value="{{ col.index }}">{{ col.label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+                <div class="form-group">
+                    <label class="form-label">Class Group <span class="optional">(optional)</span></label>
+                    <select name="map_class">
+                        <option value="">— None —</option>
+                        {% for col in columns %}
+                        <option value="{{ col.index }}">{{ col.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">Section <span style="color: var(--text-muted); font-weight: 400; font-size: var(--text-xs);">(optional)</span></label>
-                <select name="map_section">
-                    <option value="">— None —</option>
-                    {% for col in columns %}
-                    <option value="{{ col.index }}">{{ col.label }}</option>
-                    {% endfor %}
-                </select>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label">Section <span class="optional">(optional)</span></label>
+                    <select name="map_section">
+                        <option value="">— None —</option>
+                        {% for col in columns %}
+                        <option value="{{ col.index }}">{{ col.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
         </div>
 
         {% if preview %}
         <div class="section-heading" style="margin-top: 28px; margin-bottom: 12px;">
-            <h2>Roster Data Preview</h2>
+            <h2><i class="fa-solid fa-eye" style="color: var(--accent-primary); margin-right: 8px;"></i> Roster Data Preview</h2>
         </div>
         <div class="table-wrapper">
             <table class="data-table" style="font-size: var(--text-xs);">
@@ -121,9 +127,13 @@
         </div>
         {% endif %}
 
-        <div style="display: flex; gap: 12px; margin-top: 24px; align-items: center;">
-            <button class="btn btn-primary" type="submit"><i class="fa-solid fa-file-import"></i> Ingest {{ row_count }} Students</button>
-            <a class="btn btn-secondary" href="{% url 'dashboard_student_import' %}?cancel=1">Start Over</a>
+        <div class="form-actions">
+            <button class="btn btn-primary" type="submit">
+                <i class="fa-solid fa-file-import"></i> Ingest {{ row_count }} Students
+            </button>
+            <a class="btn btn-secondary" href="{% url 'dashboard_student_import' %}?cancel=1">
+                Start Over
+            </a>
         </div>
     </form>
 </div>

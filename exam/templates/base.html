@@ -32,7 +32,7 @@
       }
     };
     </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script id="MathJax-script" async src="{% static 'js/vendor/tex-mml-chtml.js' %}"></script>
     <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -44,7 +44,7 @@
     </script>
     <script>
     try {
-      if (localStorage.getItem('quizx_sidebar_collapsed') === '1' && window.innerWidth > 992) {
+      if (sessionStorage.getItem('quizx_sidebar_collapsed') === '1' && window.innerWidth > 992) {
         document.documentElement.classList.add('sidebar-collapsed-preload');
       }
     } catch(e) {}
@@ -61,7 +61,7 @@
 <div class="app-shell" id="appShell">
     <script>
     try {
-      if (localStorage.getItem('quizx_sidebar_collapsed') === '1' && window.innerWidth > 992) {
+      if (sessionStorage.getItem('quizx_sidebar_collapsed') === '1' && window.innerWidth > 992) {
         document.getElementById('appShell').classList.add('sidebar-collapsed');
       }
     } catch(e) {}

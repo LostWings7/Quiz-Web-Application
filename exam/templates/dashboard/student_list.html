@@ -228,8 +228,8 @@
                     </th>
                     <th>Candidate Name</th>
                     <th>Username</th>
-                    <th>Enrolled Class &amp; Section</th>
-                    <th>Status</th>
+                    <th style="text-align: center;">Enrolled Class &amp; Section</th>
+                    <th style="text-align: center;">Status</th>
                     <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
@@ -249,8 +249,8 @@
                     <td class="bulk-select-col" style="text-align:center;"><input type="checkbox" name="student_ids" value="${s.id}" class="theme-checkbox student-row-checkbox"></td>
                     <td style="font-weight:600;">${s.name}</td>
                     <td style="color:var(--text-secondary); font-family:var(--font-mono); font-size:var(--text-xs);">${s.username}</td>
-                    <td>${groupHtml}</td>
-                    <td><span class="pill ${statusClass}" style="font-size:11px;"><span class="status-dot"></span>${statusLabel}</span></td>
+                    <td style="text-align: center;">${groupHtml}</td>
+                    <td style="text-align: center;"><span class="pill ${statusClass}" style="font-size:11px;"><span class="status-dot"></span>${statusLabel}</span></td>
                     <td>
                         <div style="display:flex; gap:6px; justify-content:flex-end; align-items:center; flex-wrap:wrap;">
                             <a class="btn-small secondary" href="${s.edit_url}" title="Edit"><i class="fa-solid fa-pen"></i></a>

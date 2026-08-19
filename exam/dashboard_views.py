@@ -1458,7 +1458,10 @@ def analytics(request):
 
     quiz_id = request.GET.get('quiz')
     if quiz_id:
-        selected_quiz = get_object_or_404(Quiz, id=quiz_id)
+        try:
+            selected_quiz = Quiz.objects.filter(id=quiz_id).first() or quizzes.first()
+        except (ValueError, TypeError):
+            selected_quiz = quizzes.first()
     else:
         selected_quiz = quizzes.first()
 
@@ -1537,7 +1540,13 @@ def analytics_detail(request, chart_type):
     if not quiz_id:
         return redirect('dashboard_analytics')
     
-    selected_quiz = get_object_or_404(Quiz, id=quiz_id)
+    try:
+        selected_quiz = Quiz.objects.filter(id=quiz_id).first()
+    except (ValueError, TypeError):
+        selected_quiz = None
+
+    if not selected_quiz:
+        return redirect('dashboard_analytics')
     results = QuizResult.objects.filter(quiz=selected_quiz).select_related('user')
     total_questions = selected_quiz.questions.count() or 1
 

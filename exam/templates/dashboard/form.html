@@ -107,58 +107,85 @@
 {% endblock %}
 
 {% block content %}
-<div class="card fade-up" style="padding: 32px; max-width: 960px;">
+<div class="card fade-up" style="padding: 32px; max-width: 960px; margin: 0 auto;">
     <form class="dash-form" method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        {% if title == "Edit Question" or title == "Create Question" %}
 
+        {% if form.non_field_errors %}
+        <div class="errorlist" style="margin-bottom: 20px;">
+            {% for error in form.non_field_errors %}
+            <div><i class="fa-solid fa-circle-exclamation"></i> {{ error }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if title == "Edit Question" or title == "Create Question" %}
+            <!-- ===============================================================
+                 QUESTION CREATION / EDITING
+                 =============================================================== -->
             {% if form.quiz %}
             {% if form.quiz.is_hidden %}
                 {{ form.quiz }}
             {% else %}
             <div class="form-group">
-                {{ form.quiz.label_tag }}
+                <label class="form-label" for="{{ form.quiz.id_for_label }}">
+                    Target Examination <span class="required">*</span>
+                </label>
                 {{ form.quiz }}
+                {% if form.quiz.errors %}<div class="errorlist">{% for e in form.quiz.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
             </div>
             {% endif %}
             {% endif %}
 
             <div class="form-group">
-                {{ form.text.label_tag }}
+                <label class="form-label" for="{{ form.text.id_for_label }}">
+                    Question Prompt / Statement <span class="required">*</span>
+                </label>
                 {{ form.text }}
+                {% if form.text.errors %}<div class="errorlist">{% for e in form.text.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
             </div>
 
-            <!-- Drag & Drop Question Images -->
-            <div class="drop-zone" id="questionImageDropZone" style="margin-top: 10px; margin-bottom: 20px;">
-                <div class="drop-zone-content">
-                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.8rem; color: var(--accent-primary); margin-bottom: 6px;"></i>
-                    <p style="font-size: var(--text-sm); font-weight: 600; margin-bottom: 4px; color: var(--text-primary);">Drag &amp; Drop Question Images here, or <span style="color: var(--accent-primary); text-decoration: underline;">Browse</span></p>
-                    <span style="font-size: var(--text-xs); color: var(--text-muted);">Supported Formats: PNG, JPG, JPEG, WEBP, GIF</span>
-                </div>
-                <input type="file" name="extra_question_images" id="extraQuestionImagesInput" multiple accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" style="display:none;">
-                <div class="file-list-preview" id="questionFilesPreview" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; justify-content:center;"></div>
-
-                {% if question_images %}
-                <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:12px; justify-content:center;" onclick="event.stopPropagation();">
-                    {% for img in question_images %}
-                    <div class="image-manage-card" id="questionImgCard_{{ img.id_val }}" style="display:flex; flex-direction:column; align-items:center; gap:6px; background:var(--surface); padding:8px 12px; border-radius:var(--radius-sm); border:1px solid var(--border);">
-                        <img src="{{ img.url }}" style="height:70px; object-fit:contain; border-radius:4px;">
-                        <button type="button" class="btn-small danger" style="padding:4px 10px; font-size:11px; margin-top:4px;" onclick="promptDeleteExistingQuestionImage('{{ img.id_val }}')">
-                            <i class="fa-solid fa-trash-can"></i> Delete
-                        </button>
+            <!-- Question Images Drop Zone -->
+            <div class="form-group" style="margin-top: 8px;">
+                <label class="form-label">Question Attachments &amp; Images <span class="optional">(optional)</span></label>
+                <div class="drop-zone" id="questionImageDropZone" style="margin-top: 4px;">
+                    <div class="drop-zone-content">
+                        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 1.8rem; color: var(--accent-primary); margin-bottom: 8px;"></i>
+                        <p style="font-size: var(--text-sm); font-weight: 600; margin-bottom: 4px; color: var(--text-primary);">
+                            Drag &amp; Drop question images here, or <span style="color: var(--accent-primary); text-decoration: underline;">Browse</span>
+                        </p>
+                        <span style="font-size: var(--text-xs); color: var(--text-muted);">Supported Formats: PNG, JPG, JPEG, WEBP, GIF</span>
                     </div>
-                    {% endfor %}
+                    <input type="file" name="extra_question_images" id="extraQuestionImagesInput" multiple accept="image/png, image/jpeg, image/jpg, image/webp, image/gif" style="display:none;">
+                    <div class="file-list-preview" id="questionFilesPreview" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; justify-content:center;"></div>
+
+                    {% if question_images %}
+                    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; justify-content:center;" onclick="event.stopPropagation();">
+                        {% for img in question_images %}
+                        <div class="image-manage-card" id="questionImgCard_{{ img.id_val }}" style="display:flex; flex-direction:column; align-items:center; gap:6px; background:var(--surface); padding:8px 12px; border-radius:var(--radius-sm); border:1px solid var(--border);">
+                            <img src="{{ img.url }}" style="height:70px; object-fit:contain; border-radius:4px;">
+                            <button type="button" class="btn-small danger" style="padding:4px 10px; font-size:11px; margin-top:4px;" onclick="promptDeleteExistingQuestionImage('{{ img.id_val }}')">
+                                <i class="fa-solid fa-trash-can"></i> Delete
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
 
-            <div class="form-group" style="margin-top: 16px;">
-                {{ form.subtopic.label_tag }}
+            <div class="form-group" style="margin-top: 14px;">
+                <label class="form-label" for="{{ form.subtopic.id_for_label }}">
+                    Subtopic / Curriculum Classification <span class="optional">(optional)</span>
+                </label>
                 {{ form.subtopic }}
+                {% if form.subtopic.errors %}<div class="errorlist">{% for e in form.subtopic.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
             </div>
 
-            <div class="section-heading" style="margin-top: 24px; margin-bottom: 16px;">
-                <h2>Answer Options</h2>
+            <hr style="margin: 28px 0; border: 0; border-top: 1px solid var(--border-subtle);">
+
+            <div class="section-heading" style="margin-bottom: 16px;">
+                <h2><i class="fa-solid fa-list-check" style="color: var(--accent-primary); margin-right: 8px;"></i> Answer Options</h2>
                 <button class="btn btn-secondary btn-small" id="addOption" type="button">
                     <i class="fa-solid fa-plus"></i>
                     <span>Add Option</span>
@@ -209,15 +236,81 @@
                 {% endfor %}
             </div>
 
-            {% else %}
+        {% elif title == "Create Quiz" or title == "Edit Quiz" %}
+            <!-- ===============================================================
+                 QUIZ CREATION / EDITING
+                 =============================================================== -->
+            <div class="section-heading" style="margin-bottom: 16px;">
+                <h2><i class="fa-solid fa-file-pen" style="color: var(--accent-primary); margin-right: 8px;"></i> Assessment Information</h2>
+            </div>
 
-            {{ form.as_p }}
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.title.id_for_label }}">
+                        Assessment Title <span class="required">*</span>
+                    </label>
+                    {{ form.title }}
+                    {% if form.title.help_text %}<span class="helptext">{{ form.title.help_text }}</span>{% endif %}
+                    {% if form.title.errors %}<div class="errorlist">{% for e in form.title.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+                </div>
 
-            {% if title == "Create Quiz" or title == "Edit Quiz" %}
-            <hr style="margin:28px 0; border:0; border-top:1px solid var(--border);">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.code.id_for_label }}">
+                        Passkey / Access Code <span class="required">*</span>
+                    </label>
+                    {{ form.code }}
+                    <span class="helptext">Candidates use this unique code to start the test.</span>
+                    {% if form.code.errors %}<div class="errorlist">{% for e in form.code.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+                </div>
+            </div>
 
-            <div class="section-heading" style="margin-bottom:8px;">
-                <h2>Class &amp; Section Visibility Assignment</h2>
+            <hr style="margin: 28px 0; border: 0; border-top: 1px solid var(--border-subtle);">
+
+            <div class="section-heading" style="margin-bottom: 16px;">
+                <h2><i class="fa-solid fa-sliders" style="color: var(--accent-primary); margin-right: 8px;"></i> Assessment Parameters &amp; Timing</h2>
+            </div>
+
+            <div class="form-grid-2" style="margin-bottom: 16px;">
+                <label class="toggle-card" for="{{ form.is_active.id_for_label }}">
+                    <div class="toggle-card-info">
+                        <div class="toggle-card-title">Active Status</div>
+                        <div class="toggle-card-desc">Enable candidate access to this examination</div>
+                    </div>
+                    {{ form.is_active }}
+                </label>
+
+                <label class="toggle-card" for="{{ form.randomize_questions.id_for_label }}">
+                    <div class="toggle-card-info">
+                        <div class="toggle-card-title">Randomize Order</div>
+                        <div class="toggle-card-desc">Shuffle questions per candidate attempt</div>
+                    </div>
+                    {{ form.randomize_questions }}
+                </label>
+            </div>
+
+            <div class="form-grid-2">
+                <label class="toggle-card" for="{{ form.timer_enabled.id_for_label }}">
+                    <div class="toggle-card-info">
+                        <div class="toggle-card-title">Timed Assessment</div>
+                        <div class="toggle-card-desc">Enforce maximum countdown timer</div>
+                    </div>
+                    {{ form.timer_enabled }}
+                </label>
+
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.duration_minutes.id_for_label }}">
+                        Duration (Minutes)
+                    </label>
+                    {{ form.duration_minutes }}
+                    {% if form.duration_minutes.help_text %}<span class="helptext">{{ form.duration_minutes.help_text }}</span>{% endif %}
+                    {% if form.duration_minutes.errors %}<div class="errorlist">{% for e in form.duration_minutes.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+                </div>
+            </div>
+
+            <hr style="margin: 28px 0; border: 0; border-top: 1px solid var(--border-subtle);">
+
+            <div class="section-heading" style="margin-bottom: 8px;">
+                <h2><i class="fa-solid fa-users-rectangle" style="color: var(--accent-primary); margin-right: 8px;"></i> Class &amp; Section Visibility Assignment</h2>
             </div>
             <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 20px;">
                 Select the classes assigned to this examination. Optionally check specific sections to restrict access.
@@ -278,31 +371,153 @@
                     </tbody>
                 </table>
             </div>
+
+            {% if title == "Edit Quiz" and form.instance.id %}
+            <hr style="margin: 28px 0; border: 0; border-top: 1px solid var(--border-subtle);">
+            <div class="section-heading" style="margin-bottom: 8px;">
+                <h2><i class="fa-solid fa-cubes-stacked" style="color: var(--accent-primary); margin-right: 8px;"></i> Question Sequence &amp; Bank</h2>
+            </div>
+            <p style="color:var(--text-secondary); font-size:var(--text-sm); margin-bottom:16px;">
+                Configure the ordered question sequence, points, and items for this examination.
+            </p>
+            <a class="btn btn-secondary" href="{% url 'dashboard_quiz_questions' form.instance.id %}">
+                <i class="fa-solid fa-list-ol"></i> Manage Assessment Questions ({{ form.instance.questions.count }})
+            </a>
             {% endif %}
 
+        {% elif title == "Create Student" or title == "Edit Student" %}
+            <!-- ===============================================================
+                 STUDENT CREATION / EDITING
+                 =============================================================== -->
+            <div class="section-heading" style="margin-bottom: 16px;">
+                <h2><i class="fa-solid fa-user-graduate" style="color: var(--accent-primary); margin-right: 8px;"></i> Candidate Information</h2>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.first_name.id_for_label }}">
+                        First Name <span class="optional">(optional)</span>
+                    </label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}<div class="errorlist">{% for e in form.first_name.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.last_name.id_for_label }}">
+                        Last Name <span class="optional">(optional)</span>
+                    </label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}<div class="errorlist">{% for e in form.last_name.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.username.id_for_label }}">
+                        Username / Candidate ID <span class="required">*</span>
+                    </label>
+                    {{ form.username }}
+                    <span class="helptext">Required for candidate authentication and login.</span>
+                    {% if form.username.errors %}<div class="errorlist">{% for e in form.username.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.email.id_for_label }}">
+                        Email Address <span class="optional">(optional)</span>
+                    </label>
+                    {{ form.email }}
+                    {% if form.email.errors %}<div class="errorlist">{% for e in form.email.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+                </div>
+            </div>
+
+            {% if form.password %}
+            <div class="form-group">
+                <label class="form-label" for="{{ form.password.id_for_label }}">
+                    Account Password {% if title == "Create Student" %}<span class="required">*</span>{% else %}<span class="optional">(leave blank to keep unchanged)</span>{% endif %}
+                </label>
+                {{ form.password }}
+                <span class="helptext">Set a secure password for student login access.</span>
+                {% if form.password.errors %}<div class="errorlist">{% for e in form.password.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+            </div>
             {% endif %}
 
-        <div style="display: flex; gap: 12px; align-items: center; margin-top: 24px;">
+            <hr style="margin: 28px 0; border: 0; border-top: 1px solid var(--border-subtle);">
+
+            <div class="section-heading" style="margin-bottom: 16px;">
+                <h2><i class="fa-solid fa-chalkboard-user" style="color: var(--accent-primary); margin-right: 8px;"></i> Academic Cohort &amp; Section</h2>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.class_group.id_for_label }}">
+                        Assigned Class <span class="optional">(optional)</span>
+                    </label>
+                    {{ form.class_group }}
+                    {% if form.class_group.errors %}<div class="errorlist">{% for e in form.class_group.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="{{ form.section.id_for_label }}">
+                        Assigned Section <span class="optional">(optional)</span>
+                    </label>
+                    {{ form.section }}
+                    {% if form.section.errors %}<div class="errorlist">{% for e in form.section.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+                </div>
+            </div>
+
+            {% if form.is_active %}
+            <hr style="margin: 28px 0; border: 0; border-top: 1px solid var(--border-subtle);">
+            <label class="toggle-card" for="{{ form.is_active.id_for_label }}">
+                <div class="toggle-card-info">
+                    <div class="toggle-card-title">Active Account</div>
+                    <div class="toggle-card-desc">Enable student login and examination privileges</div>
+                </div>
+                {{ form.is_active }}
+            </label>
+            {% endif %}
+
+        {% else %}
+            <!-- ===============================================================
+                 GENERIC FORM FALLBACK
+                 =============================================================== -->
+            {% for field in form.visible_fields %}
+            <div class="form-group">
+                {% if field.field.widget.input_type == "checkbox" %}
+                <label class="toggle-card" for="{{ field.id_for_label }}">
+                    <div class="toggle-card-info">
+                        <div class="toggle-card-title">{{ field.label }}</div>
+                        {% if field.help_text %}<div class="toggle-card-desc">{{ field.help_text }}</div>{% endif %}
+                    </div>
+                    {{ field }}
+                </label>
+                {% else %}
+                <label class="form-label" for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                    {% if field.field.required %}<span class="required">*</span>{% else %}<span class="optional">(optional)</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+                {% endif %}
+                {% if field.errors %}
+                <div class="errorlist">
+                    {% for e in field.errors %}<div>{{ e }}</div>{% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% for hidden in form.hidden_fields %}
+            {{ hidden }}
+            {% endfor %}
+        {% endif %}
+
+        <div class="form-actions">
             <button class="btn btn-primary" type="submit">
-                <i class="fa-solid fa-check"></i> {{ submit_label }}
+                <i class="fa-solid fa-check"></i> {{ submit_label|default:"Save Changes" }}
             </button>
             <a class="btn btn-secondary" href="{{ request.META.HTTP_REFERER|default:'/dashboard/' }}">
                 Cancel
             </a>
         </div>
-
-        {% if title == "Edit Quiz" %}
-        <hr style="margin:32px 0; border:0; border-top:1px solid var(--border);">
-        <div class="section-heading">
-            <h2>Question Management</h2>
-        </div>
-        <p style="color:var(--text-secondary); font-size:var(--text-sm); margin-bottom:16px;">
-            Manage and configure the ordered question sequence for this assessment.
-        </p>
-        <a class="btn btn-secondary" href="{% url 'dashboard_quiz_questions' form.instance.id %}">
-            <i class="fa-solid fa-list"></i> Edit Questions ({{ form.instance.questions.count }})
-        </a>
-        {% endif %}
     </form>
 </div>
 {% endblock %}

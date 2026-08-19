@@ -81,12 +81,9 @@
 /* --------------------------------------------------------------------------
    2. Animation Utilities & Stagger
    -------------------------------------------------------------------------- */
-.fade-in {
-    animation: pageFadeIn var(--duration-normal) var(--ease-primary) forwards;
-}
-
+.fade-in,
 .fade-up {
-    animation: pageFadeIn var(--duration-normal) var(--ease-primary) forwards;
+    animation: pageFadeIn 300ms var(--ease-primary) both;
 }
 
 .stagger-1 { animation-delay: 40ms !important; }

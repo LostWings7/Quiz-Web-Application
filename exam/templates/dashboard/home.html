@@ -19,7 +19,7 @@
 {% endblock %}
 
 {% block content %}
-<!-- Metric Cards with Count-up -->
+<!-- Metric Cards -->
 <section class="metric-grid">
     <div class="metric-card fade-up stagger-1">
         <span>Total Quizzes</span>
@@ -57,8 +57,8 @@
                     <tr>
                         <th>Student</th>
                         <th>Examination</th>
-                        <th>Score</th>
-                        <th>Submitted At</th>
+                        <th style="text-align: center;">Score</th>
+                        <th style="text-align: center;">Submitted At</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -66,12 +66,12 @@
                 <tr>
                     <td style="font-weight: 600;">{% if attempt.user.first_name %}{{ attempt.user.first_name }} {{ attempt.user.last_name }}{% else %}{{ attempt.user.username }}{% endif %}</td>
                     <td>{{ attempt.quiz.title }}</td>
-                    <td>
+                    <td style="text-align: center;">
                         <span class="pill accent" style="font-weight: 700;">
                             {{ attempt.score }} / {{ attempt.quiz.questions.count }}
                         </span>
                     </td>
-                    <td style="font-size: var(--text-xs); color: var(--text-secondary);">{{ attempt.submitted_at|date:"M j, Y g:i A" }}</td>
+                    <td style="text-align: center; font-size: var(--text-xs); color: var(--text-secondary);">{{ attempt.submitted_at|date:"M j, Y g:i A" }}</td>
                 </tr>
                 {% empty %}
                 <tr>
@@ -104,14 +104,14 @@
                     <thead>
                         <tr>
                             <th>Student</th>
-                            <th>Status</th>
+                            <th style="text-align: center;">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                     {% for student in recent_users %}
                     <tr>
                         <td style="font-weight: 600;">{% if student.first_name %}{{ student.first_name }} {{ student.last_name }}{% else %}{{ student.username }}{% endif %}</td>
-                        <td>
+                        <td style="text-align: center;">
                             <span class="pill {% if student.is_active %}success{% else %}warning{% endif %}" style="font-size: 11px;">
                                 <span class="status-dot"></span>
                                 {% if student.is_active %}Active{% else %}Disabled{% endif %}
@@ -141,14 +141,14 @@
                     <thead>
                         <tr>
                             <th>Class</th>
-                            <th>Enrolled</th>
+                            <th style="text-align: center;">Enrolled</th>
                         </tr>
                     </thead>
                     <tbody>
                     {% for item in students_per_class %}
                     <tr>
                         <td style="font-weight: 600;">{{ item.name }}</td>
-                        <td>
+                        <td style="text-align: center;">
                             <span class="pill neutral" style="font-size: 11px;">
                                 {{ item.count }} student{{ item.count|pluralize }}
                             </span>

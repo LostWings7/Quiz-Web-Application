@@ -100,7 +100,7 @@
                 <tr>
                     <th>Quiz Title</th>
                     <th style="text-align: center;">Passkey Code</th>
-                    <th>Assigned Target</th>
+                    <th style="text-align: center;">Assigned Target</th>
                     <th style="text-align: center;">Submissions</th>
                     <th style="text-align: center;">Status</th>
                     <th style="text-align: right;">Actions</th>
@@ -119,7 +119,7 @@
                         {{ row.quiz.code }}
                     </span>
                 </td>
-                <td>
+                <td style="text-align: center;">
                     {% with v=row.quiz.get_visibility_preview %}
                     {% if v == "All Classes" %}
                     <span class="visibility-pill open-access"><i class="fa-solid fa-globe" style="margin-right:5px; font-size:11px;"></i>All Classes</span>
@@ -265,7 +265,7 @@
     }
 
     function renderQuizzes(quizzes) {
-        let html = `<table class="data-table"><thead><tr><th>Quiz Title</th><th style="text-align: center;">Passkey Code</th><th>Assigned Target</th><th style="text-align: center;">Submissions</th><th style="text-align: center;">Status</th><th style="text-align:right;">Actions</th></tr></thead><tbody>`;
+        let html = `<table class="data-table"><thead><tr><th>Quiz Title</th><th style="text-align: center;">Passkey Code</th><th style="text-align: center;">Assigned Target</th><th style="text-align: center;">Submissions</th><th style="text-align: center;">Status</th><th style="text-align:right;">Actions</th></tr></thead><tbody>`;
         if (!quizzes.length) {
             html += '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-clipboard-question"></i></div><div class="empty-state-title">No Quizzes Found</div><div class="empty-state-desc">No examination quizzes match your current criteria.</div></div></td></tr>';
         } else {
@@ -281,7 +281,7 @@
                 html += `<tr>
                     <td><a href="${q.edit_url}" style="font-weight:700;color:var(--text-primary);">${q.title}</a></td>
                     <td style="text-align: center;"><span class="pill" style="font-family:var(--font-mono);font-weight:700;letter-spacing:0.05em;">${q.code}</span></td>
-                    <td>${vis}</td>
+                    <td style="text-align: center;">${vis}</td>
                     <td style="text-align: center;"><span style="font-weight:600;color:var(--text-primary);">${q.participants}</span></td>
                     <td style="text-align: center;"><span class="pill ${statusCls}" style="font-size:11px;"><span class="status-dot"></span>${statusLbl}</span></td>
                     <td>

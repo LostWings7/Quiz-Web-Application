@@ -173,8 +173,9 @@ def enter_code_view(request):
             code = form.cleaned_data["code"]
 
             try:
-
                 quiz = Quiz.objects.get(code=code, is_active=True)
+                if quiz.code != code:
+                    raise Quiz.DoesNotExist
 
                 if not is_eligible_for_quiz(request.user, quiz):
                     return render(request, "quiz_not_assigned.html")
@@ -192,10 +193,9 @@ def enter_code_view(request):
                 )
 
             except Quiz.DoesNotExist:
-
                 form.add_error(
                     "code",
-                    "Invalid code. Please try again."
+                    "Invalid exam code. Please check for exact uppercase and lowercase letters and try again."
                 )
 
     else:

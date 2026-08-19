@@ -33,8 +33,8 @@
                 <tr>
                     <th>Candidate</th>
                     <th>Username</th>
-                    <th>Score</th>
-                    <th>Submitted At</th>
+                    <th style="text-align: center;">Score</th>
+                    <th style="text-align: center;">Submitted At</th>
                     <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
@@ -43,12 +43,12 @@
             <tr class="quiz-result-row">
                 <td style="font-weight: 600;">{% if result.user.first_name %}{{ result.user.first_name }} {{ result.user.last_name }}{% else %}{{ result.user.username }}{% endif %}</td>
                 <td style="font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-secondary);">{{ result.user.username }}</td>
-                <td>
+                <td style="text-align: center;">
                     <span class="pill accent" style="font-weight: 700;">
                         {{ result.score }} / {{ quiz.questions.count }}
                     </span>
                 </td>
-                <td style="font-size: var(--text-xs); color: var(--text-secondary);">{{ result.submitted_at|date:"M j, Y g:i A" }}</td>
+                <td style="text-align: center; font-size: var(--text-xs); color: var(--text-secondary);">{{ result.submitted_at|date:"M j, Y g:i A" }}</td>
                 <td>
                     <div style="display: flex; gap: 6px; justify-content: flex-end;">
                         <a class="btn-small secondary" href="{% url 'student_result_detail' result.id %}">View Feedback</a>

@@ -53,15 +53,15 @@
 <section class="metric-grid">
     <div class="metric-card fade-up stagger-1">
         <span>Average Score</span>
-        <strong>{{ average_score }}%</strong>
+        <strong data-count-to="{{ average_score }}" data-suffix="%">{{ average_score }}%</strong>
     </div>
     <div class="metric-card fade-up stagger-2">
         <span>Pass Rate</span>
-        <strong style="color: var(--success);">{{ pass_rate }}%</strong>
+        <strong data-count-to="{{ pass_rate }}" data-suffix="%" style="color: var(--success);">{{ pass_rate }}%</strong>
     </div>
     <div class="metric-card fade-up stagger-3">
         <span>Total Attempts</span>
-        <strong style="color: var(--accent-primary);">{{ attempt_count }}</strong>
+        <strong data-count-to="{{ attempt_count }}" style="color: var(--accent-primary);">{{ attempt_count }}</strong>
     </div>
 </section>
 
@@ -129,17 +129,17 @@
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Rank</th>
+                        <th style="text-align: center;">Rank</th>
                         <th>Student Name</th>
-                        <th>Score</th>
+                        <th style="text-align: center;">Score</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in scorecard|slice:":3" %}
                     <tr>
-                        <td style="font-weight: 700; font-family: var(--font-mono);">#{{ forloop.counter }}</td>
+                        <td style="text-align: center; font-weight: 700; font-family: var(--font-mono);">#{{ forloop.counter }}</td>
                         <td style="font-weight: 600;">{{ item.name }}</td>
-                        <td>
+                        <td style="text-align: center;">
                             <span class="pill {% if item.percentage >= 40 %}success{% else %}warning{% endif %}" style="font-size: 11px;">
                                 {{ item.percentage }}%
                             </span>
@@ -178,6 +178,25 @@
 {{ chart_data|json_script:"chart-data" }}
 <script src="{% static 'js/vendor/chart.min.js' %}"></script>
 <script>
+(function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const quizParam = urlParams.get('quiz');
+    if (quizParam) {
+        sessionStorage.setItem('analytics_selected_quiz_id', quizParam);
+    } else {
+        const savedQuizId = sessionStorage.getItem('analytics_selected_quiz_id');
+        {% if selected_quiz %}
+        const currentSelectedId = '{{ selected_quiz.id }}';
+        if (savedQuizId && savedQuizId !== currentSelectedId) {
+            window.location.replace('?quiz=' + savedQuizId);
+            return;
+        } else {
+            sessionStorage.setItem('analytics_selected_quiz_id', currentSelectedId);
+        }
+        {% endif %}
+    }
+})();
+
 const chartData = JSON.parse(document.getElementById("chart-data").textContent);
 const lightGrid = { color: "rgba(24, 24, 27, 0.06)", borderColor: "rgba(24, 24, 27, 0.1)" };
 const lightTicks = { color: "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
@@ -403,6 +422,7 @@ function filterQuizzes(query) {
 }
 
 function selectQuiz(id, title) {
+    sessionStorage.setItem('analytics_selected_quiz_id', id);
     const trigger = document.getElementById('quizPickerTrigger');
     const label   = document.getElementById('triggerLabel');
     if (label) label.textContent = title;
