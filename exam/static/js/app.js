@@ -69,9 +69,84 @@
     };
 
     // --------------------------------------------------------------------------
-    // 2. Sidebar Navigation & Active Moving Pill
+    // 2. Sidebar Navigation & Sliding Blob Indicator
     // --------------------------------------------------------------------------
     const Navigation = {
+        activeAnimation: null,
+
+        getCoords(link, nav) {
+            const navRect = nav.getBoundingClientRect();
+            const linkRect = link.getBoundingClientRect();
+            return {
+                top: linkRect.top - navRect.top + nav.scrollTop,
+                left: linkRect.left - navRect.left,
+                width: linkRect.width,
+                height: linkRect.height
+            };
+        },
+
+        animateBlob(pill, startCoords, endCoords, duration = 380, onComplete = null) {
+            if (!pill || !startCoords || !endCoords) return;
+
+            if (this.activeAnimation) {
+                cancelAnimationFrame(this.activeAnimation);
+                this.activeAnimation = null;
+            }
+
+            // Immediately position at start point
+            pill.style.transform = `translate3d(${startCoords.left}px, ${startCoords.top}px, 0)`;
+            pill.style.width = `${startCoords.width}px`;
+            pill.style.height = `${startCoords.height}px`;
+            pill.style.opacity = '1';
+
+            const startTime = performance.now();
+
+            const step = (now) => {
+                let t = (now - startTime) / duration;
+                if (t > 1) t = 1;
+
+                // Custom cubic spring-like easing from reference
+                const ease = 1 + 1.5 * Math.pow(t - 1, 3) + 0.5 * Math.pow(t - 1, 2);
+
+                const currentTop = startCoords.top + (endCoords.top - startCoords.top) * ease;
+                const currentLeft = startCoords.left + (endCoords.left - startCoords.left) * ease;
+                const currentWidth = startCoords.width + (endCoords.width - startCoords.width) * ease;
+                const currentHeight = startCoords.height + (endCoords.height - startCoords.height) * ease;
+
+                pill.style.transform = `translate3d(${currentLeft}px, ${currentTop}px, 0)`;
+                pill.style.width = `${currentWidth}px`;
+                pill.style.height = `${currentHeight}px`;
+
+                if (t < 1) {
+                    this.activeAnimation = requestAnimationFrame(step);
+                } else {
+                    pill.style.transform = `translate3d(${endCoords.left}px, ${endCoords.top}px, 0)`;
+                    pill.style.width = `${endCoords.width}px`;
+                    pill.style.height = `${endCoords.height}px`;
+                    this.activeAnimation = null;
+                    if (typeof onComplete === 'function') onComplete();
+                }
+            };
+
+            this.activeAnimation = requestAnimationFrame(step);
+        },
+
+        updatePillPosition(pill, targetLink) {
+            const nav = targetLink.closest('.app-sidebar-nav, .dashboard-nav');
+            if (!nav || !pill) return;
+
+            if (this.activeAnimation) {
+                cancelAnimationFrame(this.activeAnimation);
+                this.activeAnimation = null;
+            }
+
+            const coords = this.getCoords(targetLink, nav);
+            pill.style.transform = `translate3d(${coords.left}px, ${coords.top}px, 0)`;
+            pill.style.width = `${coords.width}px`;
+            pill.style.height = `${coords.height}px`;
+            pill.style.opacity = '1';
+        },
+
         init() {
             const shell = document.getElementById('appShell') || document.getElementById('dashboardShell');
             const toggleBtns = document.querySelectorAll('#sidebarToggle, #sidebarExpandTab, #collapseSidebar');
@@ -84,21 +159,24 @@
                         const isCollapsed = shell.classList.contains('sidebar-collapsed');
                         localStorage.setItem('quizx_sidebar_collapsed', isCollapsed ? '1' : '0');
 
-                        // Animate pill smoothly with the sidebar transition.
-                        // We poll during the sidebar CSS transition (280ms) so the pill
-                        // tracks the expanding/collapsing width in real time.
+                        // Animate pill smoothly during the sidebar width CSS transition (280ms)
                         const pill = nav ? nav.querySelector('.nav-active-pill') : null;
                         const activeItem = nav ? nav.querySelector('.app-nav-item.active') : null;
                         if (pill && activeItem) {
+                            if (this.activeAnimation) cancelAnimationFrame(this.activeAnimation);
                             const start = performance.now();
                             const duration = 280; // matches sidebar CSS transition duration
                             const tick = (now) => {
                                 const elapsed = now - start;
-                                this.updatePillPosition(pill, activeItem, true); // no-anim so pill follows sidebar directly
-                                if (elapsed < duration) requestAnimationFrame(tick);
-                                else this.updatePillPosition(pill, activeItem, true);
+                                this.updatePillPosition(pill, activeItem);
+                                if (elapsed < duration) {
+                                    this.activeAnimation = requestAnimationFrame(tick);
+                                } else {
+                                    this.updatePillPosition(pill, activeItem);
+                                    this.activeAnimation = null;
+                                }
                             };
-                            requestAnimationFrame(tick);
+                            this.activeAnimation = requestAnimationFrame(tick);
                         }
                     });
                 });
@@ -158,49 +236,78 @@
 
                 if (activeLink) {
                     activeLink.classList.add('active');
-                    // Position instantly on page load (no animation)
-                    this.updatePillPosition(pill, activeLink, true);
+
+                    // Check for previous sidebar navigation path from sessionStorage
+                    let previousPath = null;
+                    try {
+                        previousPath = sessionStorage.getItem('quizx_previous_sidebar_path');
+                    } catch (e) {}
+
+                    let previousLink = null;
+                    if (previousPath) {
+                        const prevNorm = normalizePath(previousPath);
+                        previousLink = links.find(l => {
+                            const linkNorm = normalizePath(new URL(l.href, window.location.origin).pathname);
+                            return linkNorm === prevNorm;
+                        });
+                    }
+
+                    if (previousLink && previousLink !== activeLink) {
+                        // Animate blob smoothly across page load from previous position to active position
+                        const startCoords = this.getCoords(previousLink, nav);
+                        const endCoords = this.getCoords(activeLink, nav);
+                        this.animateBlob(pill, startCoords, endCoords, 380, () => {
+                            try { sessionStorage.removeItem('quizx_previous_sidebar_path'); } catch (e) {}
+                        });
+                    } else {
+                        // Position instantly on page load without animation (no flash)
+                        this.updatePillPosition(pill, activeLink);
+                        try { sessionStorage.removeItem('quizx_previous_sidebar_path'); } catch (e) {}
+                    }
                 } else {
                     pill.style.opacity = '0';
+                    try { sessionStorage.removeItem('quizx_previous_sidebar_path'); } catch (e) {}
                 }
 
-                // Smooth micro-interaction on click
+                // Record clicked path and animate on click
                 links.forEach(link => {
                     link.addEventListener('click', () => {
-                        links.forEach(l => l.classList.remove('active'));
-                        link.classList.add('active');
-                        this.updatePillPosition(pill, link, false);
+                        try {
+                            sessionStorage.setItem('quizx_previous_sidebar_path', window.location.pathname);
+                        } catch (e) {}
+
+                        const currentActive = nav.querySelector('.app-nav-item.active');
+                        if (currentActive && currentActive !== link) {
+                            links.forEach(l => l.classList.remove('active'));
+                            link.classList.add('active');
+                            const startCoords = this.getCoords(currentActive, nav);
+                            const endCoords = this.getCoords(link, nav);
+                            this.animateBlob(pill, startCoords, endCoords, 380);
+                        } else {
+                            links.forEach(l => l.classList.remove('active'));
+                            link.classList.add('active');
+                            this.updatePillPosition(pill, link);
+                        }
                     });
                 });
 
-                // Recalculate on resize
+                // Also record previous path for general internal link navigation
+                document.addEventListener('click', (e) => {
+                    const link = e.target.closest('a');
+                    if (!link || !link.href) return;
+                    try {
+                        const url = new URL(link.href, window.location.origin);
+                        if (url.origin === window.location.origin) {
+                            sessionStorage.setItem('quizx_previous_sidebar_path', window.location.pathname);
+                        }
+                    } catch (err) {}
+                });
+
+                // Recalculate on window resize
                 window.addEventListener('resize', () => {
                     const currentActive = nav.querySelector('.app-nav-item.active');
-                    if (currentActive) this.updatePillPosition(pill, currentActive, true);
+                    if (currentActive) this.updatePillPosition(pill, currentActive);
                 });
-            }
-        },
-        updatePillPosition(pill, targetLink, skipAnimation) {
-            const nav = targetLink.closest('.app-sidebar-nav, .dashboard-nav');
-            if (!nav || !pill) return;
-
-            const top = targetLink.offsetTop;
-            const left = targetLink.offsetLeft;
-            const height = targetLink.offsetHeight;
-            const width = targetLink.offsetWidth;
-
-            if (skipAnimation) {
-                pill.style.transition = 'none';
-            }
-
-            pill.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-            pill.style.width = `${width}px`;
-            pill.style.height = `${height}px`;
-            pill.style.opacity = '1';
-
-            if (skipAnimation) {
-                pill.offsetHeight; // force reflow
-                pill.style.transition = '';
             }
         },
     };

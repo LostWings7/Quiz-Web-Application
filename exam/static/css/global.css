@@ -321,17 +321,15 @@ button, input, textarea, select {
     left: 0;
     top: 0;
     margin: 0;
-    background: var(--accent-primary-light);
+    background: linear-gradient(135deg, rgba(99, 91, 255, 0.15) 0%, rgba(34, 184, 199, 0.08) 100%);
     border-radius: var(--radius-md);
     pointer-events: none;
     z-index: 0;
-    /* Snappier animation: 160ms vs 280ms, and transition width too for sidebar toggle */
-    transition: transform 160ms var(--ease-primary),
-                width 280ms var(--ease-primary),
-                height 160ms var(--ease-primary),
-                opacity 120ms ease;
-    border: 1px solid rgba(99, 91, 255, 0.16);
+    border: 1px solid rgba(99, 91, 255, 0.22);
+    box-shadow: 0 4px 14px rgba(99, 91, 255, 0.08);
     box-sizing: border-box;
+    will-change: transform, width, height;
+    transition: opacity 120ms ease;
 }
 
 .app-nav-item {
