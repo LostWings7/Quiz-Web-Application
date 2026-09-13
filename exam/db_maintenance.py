@@ -178,8 +178,11 @@ def get_pyodbc_connection(
     timeout: int = 5
 ) -> pyodbc.Connection:
     """Create a direct pyodbc connection using Windows Authentication."""
-    srv = server or os.getenv('DB_HOST', DEFAULT_SERVER)
-    drv = driver or os.getenv('DB_OPTIONS_DRIVER', DEFAULT_DRIVER)
+    raw_srv = (server or os.getenv('DB_HOST', DEFAULT_SERVER)).strip()
+    # Normalize forward slashes in instance name (e.g. localhost/SQLEXPRESS01 -> localhost\SQLEXPRESS01)
+    srv = raw_srv.replace('/', '\\')
+    raw_drv = (driver or os.getenv('DB_OPTIONS_DRIVER', DEFAULT_DRIVER)).strip()
+    drv = DEFAULT_DRIVER if (not raw_drv or raw_drv.upper() == 'N/A') else raw_drv
     tc = trust_cert or os.getenv('DB_TRUST_SERVER_CERTIFICATE', DEFAULT_TRUST_CERT)
     extra = 'TrustServerCertificate=yes;' if str(tc).strip().lower() in ('yes', 'true', '1') else ''
 
@@ -999,13 +1002,14 @@ def update_env_database_config(
     Uses atomic write via temporary file.
     """
     target_env = env_path or os.path.join(settings.BASE_DIR, '.env')
-    driver = db_driver or DEFAULT_DRIVER
+    raw_driver = (db_driver or DEFAULT_DRIVER).strip()
+    driver = DEFAULT_DRIVER if (not raw_driver or raw_driver.upper() == 'N/A') else raw_driver
     tc = trust_cert or DEFAULT_TRUST_CERT
 
     new_db_keys = {
         'DB_ENGINE': 'mssql',
         'DB_NAME': db_name.strip(),
-        'DB_HOST': db_host.strip(),
+        'DB_HOST': db_host.strip().replace('/', '\\'),
         'DB_PORT': '',
         'DB_USER': '',
         'DB_PASSWORD': '',

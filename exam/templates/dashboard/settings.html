@@ -422,17 +422,18 @@
         <form id="changeDbForm" onsubmit="event.preventDefault();">
             <div class="form-group" style="margin-bottom: 14px;">
                 <label class="form-label" for="inputDbServer">Server / Instance Name</label>
-                <input type="text" id="inputDbServer" value="{{ db_status.server }}" required placeholder="e.g. localhost\SQLEXPRESS01">
+                <input type="text" id="inputDbServer" value="{% if db_status.engine_code == 'mssql' and db_status.server != 'Local Filesystem' %}{{ db_status.server }}{% else %}localhost\SQLEXPRESS01{% endif %}" required placeholder="e.g. localhost\SQLEXPRESS01">
+                <span class="helptext">Use backslash format, e.g. <code>localhost\SQLEXPRESS01</code> or <code>.\SQLEXPRESS01</code></span>
             </div>
 
             <div class="form-group" style="margin-bottom: 14px;">
                 <label class="form-label" for="inputDbName">Target Database Name</label>
-                <input type="text" id="inputDbName" value="{{ db_status.database }}" required placeholder="e.g. QuizX">
+                <input type="text" id="inputDbName" value="{% if db_status.engine_code == 'mssql' and db_status.database != 'db.sqlite3' %}{{ db_status.database }}{% else %}QuizX{% endif %}" required placeholder="e.g. QuizX">
             </div>
 
             <div class="form-group" style="margin-bottom: 14px;">
                 <label class="form-label" for="inputDbDriver">ODBC Driver</label>
-                <input type="text" id="inputDbDriver" value="{{ db_status.driver }}" required>
+                <input type="text" id="inputDbDriver" value="{% if db_status.engine_code == 'mssql' and db_status.driver != 'N/A' %}{{ db_status.driver }}{% else %}ODBC Driver 18 for SQL Server{% endif %}" required>
             </div>
 
             <div style="margin-bottom: 18px; padding: 12px; background: var(--surface-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: var(--text-xs); color: var(--text-secondary);">
@@ -646,9 +647,12 @@ async function runValidateTargetDb() {
     const btn = document.getElementById('btnTestProposedDb');
     const applyBtn = document.getElementById('btnApplyProposedDb');
     const resultBox = document.getElementById('targetValidationBox');
-    const server = document.getElementById('inputDbServer').value.trim();
+    let server = document.getElementById('inputDbServer').value.trim().replace(/\//g, '\\');
     const database = document.getElementById('inputDbName').value.trim();
-    const driver = document.getElementById('inputDbDriver').value.trim();
+    let driver = document.getElementById('inputDbDriver').value.trim();
+    if (!driver || driver.toUpperCase() === 'N/A') {
+        driver = 'ODBC Driver 18 for SQL Server';
+    }
 
     if (!server || !database) {
         window.showToast('Please enter both Server and Database name.', 'warning');
@@ -707,9 +711,12 @@ async function runValidateTargetDb() {
 // 3. Apply Database Configuration (Stage 2)
 async function runApplyDbConfig() {
     const applyBtn = document.getElementById('btnApplyProposedDb');
-    const server = document.getElementById('inputDbServer').value.trim();
+    let server = document.getElementById('inputDbServer').value.trim().replace(/\//g, '\\');
     const database = document.getElementById('inputDbName').value.trim();
-    const driver = document.getElementById('inputDbDriver').value.trim();
+    let driver = document.getElementById('inputDbDriver').value.trim();
+    if (!driver || driver.toUpperCase() === 'N/A') {
+        driver = 'ODBC Driver 18 for SQL Server';
+    }
 
     applyBtn.disabled = true;
     applyBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Backing up current DB &amp; Saving...';

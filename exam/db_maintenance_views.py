@@ -5,7 +5,10 @@ Secure, superuser-only endpoints for database status, testing, switching, backup
 
 import os
 import json
+import shutil
+import datetime
 import logging
+from django.conf import settings
 from django.http import JsonResponse, HttpResponse, FileResponse, HttpResponseForbidden
 from django.core.exceptions import PermissionDenied
 from django.views.decorators.http import require_http_methods
@@ -172,12 +175,25 @@ def db_change_connection_ajax(request):
                 }, status=400)
 
             # Step 2: Create verified backup of CURRENT active DB
-            b_ok, b_meta = db_maintenance.create_database_backup(prefix=f"{db_maintenance.DEFAULT_DATABASE}_pre_switch")
-            if not b_ok:
-                return JsonResponse({
-                    'success': False,
-                    'error': f"Pre-switch backup failed: {b_meta.get('error')}. Aborting database switch for safety."
-                }, status=500)
+            current_engine = os.getenv('DB_ENGINE', '').strip().lower()
+            if current_engine == 'mssql':
+                b_ok, b_meta = db_maintenance.create_database_backup(prefix=f"{db_maintenance.DEFAULT_DATABASE}_pre_switch")
+                if not b_ok:
+                    return JsonResponse({
+                        'success': False,
+                        'error': f"Pre-switch backup failed: {b_meta.get('error')}. Aborting database switch for safety."
+                    }, status=500)
+            else:
+                # SQLite fallback: create a local backup copy of db.sqlite3
+                sqlite_src = os.path.join(settings.BASE_DIR, 'db.sqlite3')
+                ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+                backup_name = f"db_sqlite_pre_switch_{ts}.sqlite3"
+                if os.path.exists(sqlite_src):
+                    try:
+                        shutil.copy2(sqlite_src, os.path.join(settings.BASE_DIR, backup_name))
+                    except Exception as err:
+                        logger.warning(f"Could not create SQLite backup copy: {err}")
+                b_meta = {'filename': backup_name}
 
             # Step 3: Update .env configuration
             db_maintenance.update_env_database_config(
