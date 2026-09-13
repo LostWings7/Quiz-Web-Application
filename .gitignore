@@ -1,6 +1,7 @@
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # AI Reports Module (WIP)
 ai_reports/
@@ -23,6 +24,8 @@ db.sqlite3
 db.sqlite3-journal
 *_backup.sqlite3
 db_testdata_backup.sqlite3
+db_backups/
+*.bak
 media/*
 !media/.gitkeep
 

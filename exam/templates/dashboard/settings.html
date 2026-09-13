@@ -5,10 +5,11 @@
 
 {% block eyebrow %}System Configuration{% endblock %}
 {% block heading %}Platform Settings{% endblock %}
-{% block subtitle %}Configure dynamic institution branding, logos, header banners, and administrative access.{% endblock %}
+{% block subtitle %}Configure dynamic institution branding, administrative access, and native SQL Server database maintenance.{% endblock %}
 
 {% block content %}
-<div style="display: flex; flex-direction: column; gap: 24px; width: 100%; max-width: 800px;">
+<div style="display: flex; flex-direction: column; gap: 24px; width: 100%; max-width: 1040px;">
+
     <!-- Institution Branding Card -->
     <div class="card fade-up" style="padding: 32px;">
         <div class="section-heading" style="margin-bottom: 20px;">
@@ -62,8 +63,273 @@
         </form>
     </div>
 
+    {% if request.user.is_superuser %}
+    <!-- =================================================================== -->
+    <!-- SUPERUSER DATABASE & MAINTENANCE CENTER                             -->
+    <!-- =================================================================== -->
+    <div class="card fade-up stagger-1" style="padding: 32px;" id="dbMaintenanceSection">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border);">
+            <div>
+                <div class="section-heading" style="margin-bottom: 6px;">
+                    <h2><i class="fa-solid fa-database" style="color: var(--accent-primary); margin-right: 8px;"></i> Database &amp; Maintenance Center</h2>
+                </div>
+                <p style="color: var(--text-secondary); font-size: var(--text-sm); margin: 0;">
+                    Monitor live SQL Server health, manage connection targets, create annotated backups, and orchestrate client updates.
+                </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;" id="dbStatusBadgeContainer">
+                {% if is_maintenance_locked %}
+                <span class="badge" style="background: var(--warning-light); color: var(--warning); border: 1px solid var(--warning-border); padding: 6px 12px; border-radius: 9999px; font-size: var(--text-xs); font-weight: 600;">
+                    <i class="fa-solid fa-lock"></i> Maintenance Locked ({{ active_maintenance_op }})
+                </span>
+                {% endif %}
+                {% if db_status.connected %}
+                <span class="badge" id="mainDbBadge" style="background: var(--success-light); color: var(--success); border: 1px solid var(--success-border); padding: 6px 12px; border-radius: 9999px; font-size: var(--text-xs); font-weight: 600;">
+                    <i class="fa-solid fa-circle-check"></i> Connected
+                </span>
+                {% else %}
+                <span class="badge" id="mainDbBadge" style="background: var(--error-light); color: var(--error); border: 1px solid var(--error-border); padding: 6px 12px; border-radius: 9999px; font-size: var(--text-xs); font-weight: 600;">
+                    <i class="fa-solid fa-circle-xmark"></i> Disconnected
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 1. Current Database Status Grid (Polished Layout) -->
+        <div style="margin-bottom: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h3 style="font-size: var(--text-md); font-weight: 600; color: var(--text-primary); margin: 0;">
+                    <i class="fa-solid fa-circle-info" style="color: var(--accent-primary); margin-right: 6px;"></i> Active Database Configuration
+                </h3>
+                <button type="button" class="btn-small secondary" onclick="refreshDbStatus()" id="btnRefreshHealth" title="Refresh diagnostics">
+                    <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                </button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(235px, 1fr)); gap: 14px;">
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; min-height: 82px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">Engine</span>
+                    <strong style="color: var(--text-primary); font-size: var(--text-sm);" id="valDbEngine">{{ db_status.engine }}</strong>
+                </div>
+
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; min-height: 82px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">Server / Instance</span>
+                    <code style="color: var(--accent-primary); font-size: 13px; font-weight: 600;" id="valDbServer">{{ db_status.server }}</code>
+                </div>
+
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; min-height: 82px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">Active Database</span>
+                    <strong style="color: var(--text-primary); font-size: var(--text-sm);" id="valDbName">{{ db_status.database }}</strong>
+                </div>
+
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; min-height: 82px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">Authentication</span>
+                    <span style="color: var(--text-primary); font-size: 13px; font-weight: 500;" id="valDbAuth">{{ db_status.auth_method }}</span>
+                </div>
+
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; min-height: 82px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">ODBC Driver</span>
+                    <span style="color: var(--text-primary); font-size: 13px; font-weight: 500; word-break: normal; overflow-wrap: break-word;" id="valDbDriver">{{ db_status.driver }}</span>
+                </div>
+
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; min-height: 82px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">App Version</span>
+                    <span style="color: var(--text-primary); font-size: 13px; font-weight: 600;" id="valAppVer">v{{ db_status.app_version }}</span>
+                </div>
+
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; min-height: 82px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">Latest Migration</span>
+                    <span style="color: var(--text-primary); font-size: 13px; font-weight: 500; word-break: break-word;" id="valDbMig">{{ db_status.migration_status }}</span>
+                </div>
+
+                <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; min-height: 82px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <span style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">Last Verified Backup</span>
+                    <div id="valDbLastBackup" style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                        {% if db_status.last_backup %}
+                            <span style="font-family: monospace; font-size: 12px; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="{{ db_status.last_backup.filename }}">{{ db_status.last_backup.filename }}</span>
+                            <span class="badge" style="background: var(--surface-subtle); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap;">{{ db_status.last_backup.size_mb }} MB</span>
+                        {% else %}
+                            <em style="color: var(--text-muted); font-size: 13px;">None recorded</em>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Database Health & Entity Metrics -->
+        <div style="margin-bottom: 28px;">
+            <h3 style="font-size: var(--text-md); font-weight: 600; color: var(--text-primary); margin-bottom: 14px;">
+                <i class="fa-solid fa-heart-pulse" style="color: var(--accent-primary); margin-right: 6px;"></i> Health &amp; Record Inventory
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                <div style="padding: 16px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: var(--radius-sm); text-align: center;">
+                    <i class="fa-solid fa-users" style="color: var(--accent-primary); font-size: 18px; margin-bottom: 6px;"></i>
+                    <div style="font-size: 22px; font-weight: 700; color: var(--text-primary);" id="statUsers">{{ db_metrics.users_count|default:"0" }}</div>
+                    <div style="font-size: var(--text-xs); color: var(--text-secondary);">Total Users</div>
+                </div>
+                <div style="padding: 16px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: var(--radius-sm); text-align: center;">
+                    <i class="fa-solid fa-clipboard-list" style="color: var(--accent-primary); font-size: 18px; margin-bottom: 6px;"></i>
+                    <div style="font-size: 22px; font-weight: 700; color: var(--text-primary);" id="statQuizzes">{{ db_metrics.quizzes_count|default:"0" }}</div>
+                    <div style="font-size: var(--text-xs); color: var(--text-secondary);">Quizzes</div>
+                </div>
+                <div style="padding: 16px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: var(--radius-sm); text-align: center;">
+                    <i class="fa-solid fa-circle-question" style="color: var(--accent-primary); font-size: 18px; margin-bottom: 6px;"></i>
+                    <div style="font-size: 22px; font-weight: 700; color: var(--text-primary);" id="statQuestions">{{ db_metrics.questions_count|default:"0" }}</div>
+                    <div style="font-size: var(--text-xs); color: var(--text-secondary);">Questions</div>
+                </div>
+                <div style="padding: 16px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: var(--radius-sm); text-align: center;">
+                    <i class="fa-solid fa-ranking-star" style="color: var(--accent-primary); font-size: 18px; margin-bottom: 6px;"></i>
+                    <div style="font-size: 22px; font-weight: 700; color: var(--text-primary);" id="statResults">{{ db_metrics.results_count|default:"0" }}</div>
+                    <div style="font-size: var(--text-xs); color: var(--text-secondary);">Quiz Results</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Connection Operations -->
+        <div style="margin-bottom: 28px; padding: 20px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <h3 style="font-size: var(--text-md); font-weight: 600; color: var(--text-primary); margin: 0 0 4px 0;">
+                        <i class="fa-solid fa-plug" style="color: var(--accent-primary); margin-right: 6px;"></i> Connection Operations
+                    </h3>
+                    <p style="color: var(--text-secondary); font-size: var(--text-xs); margin: 0;">
+                        Verify current SQL Server connectivity or safely switch to another existing QuizX database with pre-switch backup snapshot.
+                    </p>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary" id="btnTestConn" onclick="runTestConnection()">
+                        <i class="fa-solid fa-bolt"></i> Test Connection
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnOpenChangeDb" onclick="showModal('changeDbModal')">
+                        <i class="fa-solid fa-network-wired"></i> Connect Existing Database
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live Inline Alert Box for Connection Testing -->
+            <div id="connTestAlert" style="display: none; margin-top: 16px; padding: 12px 16px; border-radius: var(--radius-sm); font-size: var(--text-sm);"></div>
+        </div>
+
+        <!-- 4. Backups & Recovery Area (Polished Header & Table) -->
+        <div style="margin-bottom: 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 16px;">
+                <div>
+                    <h3 style="font-size: var(--text-md); font-weight: 600; color: var(--text-primary); margin: 0 0 4px 0;">
+                        <i class="fa-solid fa-box-archive" style="color: var(--accent-primary); margin-right: 6px;"></i> Native SQL Server Backups &amp; Recovery
+                    </h3>
+                    <p style="color: var(--text-secondary); font-size: var(--text-xs); margin: 0;">
+                        Native SQL Server backups (.bak) created with RESTORE VERIFYONLY. Add custom tags, download, restore, or manage stored snapshots.
+                    </p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button type="button" class="btn btn-primary" id="btnOpenCreateBackup" onclick="showModal('createBackupModal')">
+                        <i class="fa-solid fa-plus"></i> Create Backup
+                    </button>
+                </div>
+            </div>
+
+            <!-- Backups Table -->
+            <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface);">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: var(--text-sm);">
+                    <thead>
+                        <tr style="background: var(--bg-secondary); border-bottom: 1px solid var(--border);">
+                            <th style="padding: 12px 16px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; width: 170px;">Date &amp; Time</th>
+                            <th style="padding: 12px 16px; font-weight: 600; color: var(--text-secondary);">Backup File &amp; Notes</th>
+                            <th style="padding: 12px 16px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; width: 100px;">Size</th>
+                            <th style="padding: 12px 16px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; width: 110px;">Status</th>
+                            <th style="padding: 12px 16px; font-weight: 600; color: var(--text-secondary); text-align: right; white-space: nowrap; width: 220px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="backupTableBody">
+                        {% if db_backups %}
+                            {% for b in db_backups %}
+                            <tr style="border-bottom: 1px solid var(--border);">
+                                <td style="padding: 14px 16px; color: var(--text-secondary); white-space: nowrap; font-size: 13px;">
+                                    <i class="fa-regular fa-clock" style="margin-right: 5px; opacity: 0.6;"></i>{{ b.timestamp }}
+                                </td>
+                                <td style="padding: 14px 16px;">
+                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                        <span style="font-family: monospace; font-size: 13px; font-weight: 600; color: var(--text-primary);">{{ b.filename }}</span>
+                                        {% if b.tag %}
+                                        <span class="badge" style="background: var(--accent-primary-light); color: var(--accent-primary); border: 1px solid var(--accent-primary-border); padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 600;">{{ b.tag }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if b.note %}
+                                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px; display: flex; align-items: center; gap: 5px;">
+                                        <i class="fa-regular fa-note-sticky" style="color: var(--accent-primary); font-size: 11px;"></i>
+                                        <span>{{ b.note }}</span>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 14px 16px; color: var(--text-primary); white-space: nowrap; font-weight: 600; font-size: 13px;">
+                                    {{ b.size_mb }} MB
+                                </td>
+                                <td style="padding: 14px 16px; white-space: nowrap;">
+                                    <span class="badge" style="background: var(--success-light); color: var(--success); border: 1px solid var(--success-border); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                                        <i class="fa-solid fa-check"></i> Verified
+                                    </span>
+                                </td>
+                                <td style="padding: 14px 16px; text-align: right; white-space: nowrap;">
+                                    <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end;">
+                                        <a href="{% url 'dashboard_settings_db_download' b.filename %}" class="btn-small secondary" style="padding: 6px 10px; font-size: 12px; text-decoration: none;" title="Download verified backup">
+                                            <i class="fa-solid fa-download"></i> Download
+                                        </a>
+                                        <button type="button" class="btn-small danger" style="padding: 6px 10px; font-size: 12px;" onclick="openRestoreModal('{{ b.filename }}', '{{ b.size_mb }} MB', '{{ b.timestamp }}')" title="Restore database from this backup">
+                                            <i class="fa-solid fa-clock-rotate-left"></i> Restore
+                                        </button>
+                                        <button type="button" class="btn-small secondary" style="padding: 6px 8px; font-size: 12px; color: var(--text-secondary);" onclick="openEditNoteModal('{{ b.filename }}', '{{ b.note|escapejs }}', '{{ b.tag|escapejs }}')" title="Add or edit note">
+                                            <i class="fa-regular fa-pen-to-square"></i>
+                                        </button>
+                                        <button type="button" class="btn-small danger" style="padding: 6px 8px; font-size: 12px; background: transparent; border: 1px solid var(--error-border); color: var(--error);" onclick="openDeleteModal('{{ b.filename }}', '{{ b.size_mb }} MB')" title="Delete backup file">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr id="emptyBackupRow">
+                                <td colspan="5" style="padding: 28px; text-align: center; color: var(--text-muted);">
+                                    No database backups recorded yet. Click "Create Backup" above to generate your first verified snapshot.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. Application Updates & Migration Workflow -->
+        <div style="padding: 20px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                <div>
+                    <h3 style="font-size: var(--text-md); font-weight: 600; color: var(--text-primary); margin: 0 0 4px 0;">
+                        <i class="fa-solid fa-wrench" style="color: var(--accent-primary); margin-right: 6px;"></i> QuizX Updates &amp; Migrations
+                    </h3>
+                    <p style="color: var(--text-secondary); font-size: var(--text-xs); margin: 0;">
+                        Inspect unapplied schema migrations safely without applying them, or run the production update workflow with automatic pre-update backup.
+                    </p>
+                </div>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary" id="btnCheckUpdates" onclick="runCheckUpdates()">
+                        <i class="fa-solid fa-magnifying-glass"></i> Check for Updates
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnRunUpdate" onclick="runExecuteUpdate()">
+                        <i class="fa-solid fa-play"></i> Run Update
+                    </button>
+                </div>
+            </div>
+
+            <!-- Update Output Panel (Hidden until triggered) -->
+            <div id="updateLogPanel" style="display: none; margin-top: 16px; padding: 16px; background: #18181B; color: #F4F4F5; border-radius: var(--radius-md); font-family: monospace; font-size: 13px; line-height: 1.6; max-height: 320px; overflow-y: auto;">
+                <div id="updateLogSteps"></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- System Access Card -->
-    <div class="card fade-up stagger-1" style="padding: 32px;">
+    <div class="card fade-up stagger-2" style="padding: 32px;">
         <div class="section-heading"><h2><i class="fa-solid fa-screwdriver-wrench" style="color: var(--accent-primary); margin-right: 8px;"></i> System Access &amp; Fallback</h2></div>
         <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 20px;">Direct access to the core Django administrative console for low-level database operations.</p>
         <a class="btn btn-secondary" href="/admin/"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Django Admin</a>
@@ -107,11 +373,188 @@
     </div>
 </div>
 {% endif %}
+
+{% if request.user.is_superuser %}
+<!-- MODAL: Create Database Backup with Tag and Note -->
+<div id="createBackupModal" class="modal-overlay">
+    <div class="glass-modal" style="max-width: 520px;">
+        <div class="modal-icon info"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+        <h2>Create Database Backup</h2>
+        <p style="margin-bottom: 18px; font-size: var(--text-sm); color: var(--text-secondary);">
+            Generate a verified SQL Server native backup snapshot (.bak). You can optionally assign a short name/tag and an annotation note.
+        </p>
+
+        <form id="createBackupForm" onsubmit="event.preventDefault(); runCreateBackup();">
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label class="form-label" for="inputBackupTag">
+                    Short Tag / Name <span class="optional">(optional)</span>
+                </label>
+                <input type="text" id="inputBackupTag" placeholder="e.g. Pre-Midterm, Release-v1.2, Batch4">
+                <span class="helptext">Appears in the backup filename and table label.</span>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" for="inputBackupNote">
+                    Backup Note / Description <span class="optional">(optional)</span>
+                </label>
+                <textarea id="inputBackupNote" rows="2" placeholder="e.g. Baseline snapshot prior to importing semester 2 class lists" style="width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; font-size: var(--text-sm); font-family: inherit; resize: vertical;"></textarea>
+            </div>
+
+            <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('createBackupModal')">Cancel</button>
+                <button type="submit" class="modal-btn primary" id="btnConfirmCreateBackup">
+                    <i class="fa-solid fa-floppy-disk"></i> Create &amp; Verify Backup
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Connect Existing Database -->
+<div id="changeDbModal" class="modal-overlay">
+    <div class="glass-modal" style="max-width: 580px;">
+        <div class="modal-icon info"><i class="fa-solid fa-network-wired"></i></div>
+        <h2>Connect Existing Database</h2>
+        <p style="margin-bottom: 20px;">
+            Safely switch QuizX to an existing SQL Server database. The system tests connection and schema compatibility first, then creates a verified backup of the current database before saving.
+        </p>
+
+        <form id="changeDbForm" onsubmit="event.preventDefault();">
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label class="form-label" for="inputDbServer">Server / Instance Name</label>
+                <input type="text" id="inputDbServer" value="{{ db_status.server }}" required placeholder="e.g. localhost\SQLEXPRESS01">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label class="form-label" for="inputDbName">Target Database Name</label>
+                <input type="text" id="inputDbName" value="{{ db_status.database }}" required placeholder="e.g. QuizX">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label class="form-label" for="inputDbDriver">ODBC Driver</label>
+                <input type="text" id="inputDbDriver" value="{{ db_status.driver }}" required>
+            </div>
+
+            <div style="margin-bottom: 18px; padding: 12px; background: var(--surface-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: var(--text-xs); color: var(--text-secondary);">
+                <i class="fa-solid fa-shield-halved" style="color: var(--accent-primary); margin-right: 4px;"></i>
+                <strong>Windows Authentication:</strong> The connection will use Trusted_Connection with the running service credentials.
+            </div>
+
+            <!-- Validation Result Box in Modal -->
+            <div id="targetValidationBox" style="display: none; margin-bottom: 18px; padding: 14px; border-radius: var(--radius-sm); font-size: var(--text-xs);"></div>
+
+            <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('changeDbModal')">Cancel</button>
+                <button type="button" class="modal-btn secondary" id="btnTestProposedDb" onclick="runValidateTargetDb()">
+                    <i class="fa-solid fa-vial"></i> 1. Test Proposed Connection
+                </button>
+                <button type="button" class="modal-btn primary" id="btnApplyProposedDb" disabled onclick="runApplyDbConfig()">
+                    <i class="fa-solid fa-floppy-disk"></i> 2. Apply Configuration
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: Restore Database Confirmation -->
+<div id="restoreConfirmModal" class="modal-overlay">
+    <div class="glass-modal" style="max-width: 540px;">
+        <div class="modal-icon danger"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h2>Restore Database Snapshot?</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+            You are about to restore a database backup into the active QuizX database.
+        </p>
+
+        <!-- Prominent Safety Warning -->
+        <div style="background: var(--error-light); border: 1px solid var(--error-border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 18px; color: var(--error); font-size: var(--text-xs); line-height: 1.5;">
+            <strong><i class="fa-solid fa-triangle-exclamation"></i> HIGH-RISK OPERATION:</strong><br>
+            Restoring will replace the current contents of the active database (<code>{{ db_status.database }}</code>). Any data created after this backup was taken may be permanently overwritten.<br><br>
+            <span style="color: var(--text-primary);">
+                <strong>Automatic Safety Snapshot:</strong> QuizX will automatically create and verify a fresh backup of the current database before executing the restore.
+            </span>
+        </div>
+
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 16px; font-size: var(--text-xs);">
+            <div style="margin-bottom: 4px;"><strong>Selected Backup:</strong> <span id="modalRestoreFilename" style="font-family: monospace;"></span></div>
+            <div style="margin-bottom: 4px;"><strong>Size:</strong> <span id="modalRestoreSize"></span></div>
+            <div><strong>Created:</strong> <span id="modalRestoreTimestamp"></span></div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 20px;">
+            <label class="form-label" for="restoreConfirmInput" style="font-size: var(--text-xs);">
+                Type <strong>RESTORE</strong> to confirm database replacement:
+            </label>
+            <input type="text" id="restoreConfirmInput" placeholder="RESTORE" autocomplete="off" oninput="checkRestoreInput()">
+        </div>
+
+        <div class="modal-actions">
+            <button type="button" class="modal-btn secondary" onclick="hideModal('restoreConfirmModal')">Cancel</button>
+            <button type="button" class="modal-btn primary" id="btnExecuteRestore" disabled style="background-color: var(--error); border-color: var(--error);" onclick="runExecuteRestore()">
+                <i class="fa-solid fa-triangle-exclamation"></i> I Understand, Restore Database
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Delete Backup Confirmation -->
+<div id="deleteBackupModal" class="modal-overlay">
+    <div class="glass-modal" style="max-width: 500px;">
+        <div class="modal-icon danger"><i class="fa-solid fa-trash-can"></i></div>
+        <h2>Delete Backup File?</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: var(--text-sm);">
+            Are you sure you want to permanently delete this backup snapshot from the storage directory?
+        </p>
+
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 18px; font-size: var(--text-xs);">
+            <div style="margin-bottom: 4px;"><strong>Filename:</strong> <code id="modalDeleteFilename" style="color: var(--text-primary);"></code></div>
+            <div><strong>File Size:</strong> <span id="modalDeleteSize"></span></div>
+        </div>
+
+        <div class="modal-actions">
+            <button type="button" class="modal-btn secondary" onclick="hideModal('deleteBackupModal')">Cancel</button>
+            <button type="button" class="modal-btn primary" id="btnConfirmDeleteBackup" style="background-color: var(--error); border-color: var(--error);" onclick="runExecuteDeleteBackup()">
+                <i class="fa-solid fa-trash-can"></i> Permanently Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Edit Backup Note -->
+<div id="editNoteModal" class="modal-overlay">
+    <div class="glass-modal" style="max-width: 500px;">
+        <div class="modal-icon info"><i class="fa-regular fa-note-sticky"></i></div>
+        <h2>Edit Backup Note</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: var(--text-sm);">
+            Add or update the annotation note for <code id="modalNoteFilename" style="font-size: 12px;"></code>.
+        </p>
+
+        <form id="editNoteForm" onsubmit="event.preventDefault(); runSaveBackupNote();">
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label class="form-label" for="inputEditTag">Short Tag</label>
+                <input type="text" id="inputEditTag" placeholder="e.g. Pre-Exam, Archived">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" for="inputEditNote">Annotation Note</label>
+                <textarea id="inputEditNote" rows="3" placeholder="Add description or context for this backup..." style="width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; font-size: var(--text-sm); font-family: inherit; resize: vertical;"></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="modal-btn secondary" onclick="hideModal('editNoteModal')">Cancel</button>
+                <button type="submit" class="modal-btn primary" id="btnConfirmSaveNote">
+                    <i class="fa-solid fa-check"></i> Save Note
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // Image previews
     function setupImagePreview(inputId, previewContainerId, maxHeight) {
         const input = document.getElementById(inputId);
         if (!input) return;
@@ -138,5 +581,570 @@ document.addEventListener('DOMContentLoaded', () => {
     setupImagePreview('school_banner_image', 'bannerPreviewBox', 44);
     setupImagePreview('school_logo', 'logoPreviewBox', 48);
 });
+
+// =============================================================================
+// Superuser Database Maintenance JavaScript Controller
+// =============================================================================
+function getCSRFToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    return cookieValue || '{{ csrf_token }}';
+}
+
+// 1. Test Current Connection
+async function runTestConnection() {
+    const btn = document.getElementById('btnTestConn');
+    const alertBox = document.getElementById('connTestAlert');
+    if (!btn) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Testing...';
+    if (alertBox) alertBox.style.display = 'none';
+
+    try {
+        const resp = await fetch("{% url 'dashboard_settings_db_test' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            window.showToast('SQL Server connection verified successfully!', 'success');
+            if (alertBox) {
+                alertBox.style.display = 'block';
+                alertBox.style.background = 'var(--success-light)';
+                alertBox.style.color = 'var(--success)';
+                alertBox.style.border = '1px solid var(--success-border)';
+                alertBox.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>Connection successful:</strong> Connected to ${data.server} (${data.version})`;
+            }
+        } else {
+            window.showToast('Connection failed: ' + data.message, 'error');
+            if (alertBox) {
+                alertBox.style.display = 'block';
+                alertBox.style.background = 'var(--error-light)';
+                alertBox.style.color = 'var(--error)';
+                alertBox.style.border = '1px solid var(--error-border)';
+                alertBox.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> <strong>Connection failed:</strong> ${data.message}`;
+            }
+        }
+    } catch (err) {
+        window.showToast('Network error while testing connection.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Test Connection';
+    }
+}
+
+// 2. Validate Target Database in Modal (Stage 1)
+async function runValidateTargetDb() {
+    const btn = document.getElementById('btnTestProposedDb');
+    const applyBtn = document.getElementById('btnApplyProposedDb');
+    const resultBox = document.getElementById('targetValidationBox');
+    const server = document.getElementById('inputDbServer').value.trim();
+    const database = document.getElementById('inputDbName').value.trim();
+    const driver = document.getElementById('inputDbDriver').value.trim();
+
+    if (!server || !database) {
+        window.showToast('Please enter both Server and Database name.', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Validating...';
+    applyBtn.disabled = true;
+    resultBox.style.display = 'none';
+
+    try {
+        const resp = await fetch("{% url 'dashboard_settings_db_validate_target' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ server, database, driver })
+        });
+        const data = await resp.json();
+
+        resultBox.style.display = 'block';
+        if (data.success) {
+            resultBox.style.background = 'var(--success-light)';
+            resultBox.style.color = 'var(--success)';
+            resultBox.style.border = '1px solid var(--success-border)';
+            resultBox.innerHTML = `
+                <div style="font-weight: 700; margin-bottom: 4px;"><i class="fa-solid fa-circle-check"></i> Target Database Verified Compatible</div>
+                <div>Server: <strong>${data.server}</strong> | Database: <strong>${data.database}</strong></div>
+                <div>Tables: <strong>${data.table_count}</strong> | Migrations applied: <strong>${data.migration_count}</strong></div>
+                <div>Latest migration: <code>${data.latest_migration}</code></div>
+                <div style="margin-top: 8px; font-weight: 600; color: var(--text-primary);">Stage 1 passed. You may now apply this configuration.</div>
+            `;
+            applyBtn.disabled = false;
+            window.showToast('Target database verified successfully!', 'success');
+        } else {
+            resultBox.style.background = 'var(--error-light)';
+            resultBox.style.color = 'var(--error)';
+            resultBox.style.border = '1px solid var(--error-border)';
+            resultBox.innerHTML = `
+                <div style="font-weight: 700; margin-bottom: 4px;"><i class="fa-solid fa-circle-xmark"></i> Validation Failed</div>
+                <div>${data.error || 'Database is not reachable or incompatible.'}</div>
+            `;
+            applyBtn.disabled = true;
+            window.showToast('Target database validation failed.', 'error');
+        }
+    } catch (err) {
+        window.showToast('Error validating target database.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-vial"></i> 1. Test Proposed Connection';
+    }
+}
+
+// 3. Apply Database Configuration (Stage 2)
+async function runApplyDbConfig() {
+    const applyBtn = document.getElementById('btnApplyProposedDb');
+    const server = document.getElementById('inputDbServer').value.trim();
+    const database = document.getElementById('inputDbName').value.trim();
+    const driver = document.getElementById('inputDbDriver').value.trim();
+
+    applyBtn.disabled = true;
+    applyBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Backing up current DB &amp; Saving...';
+
+    try {
+        const resp = await fetch("{% url 'dashboard_settings_db_change' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ server, database, driver })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            hideModal('changeDbModal');
+            window.showToast(data.message, 'success', 8000);
+            alert("Database configuration saved successfully!\n\nPre-switch backup created: " + data.pre_switch_backup + "\n\nIMPORTANT: You must restart the QuizX service/server process to establish the new database connection.");
+            refreshDbStatus();
+        } else {
+            window.showToast(data.error || 'Failed to apply configuration.', 'error', 6000);
+            applyBtn.disabled = false;
+            applyBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 2. Apply Configuration';
+        }
+    } catch (err) {
+        window.showToast('Unexpected error applying configuration.', 'error');
+        applyBtn.disabled = false;
+        applyBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 2. Apply Configuration';
+    }
+}
+
+// 4. Create Native SQL Server Backup with Tag and Note
+async function runCreateBackup() {
+    const btn = document.getElementById('btnConfirmCreateBackup');
+    const tag = document.getElementById('inputBackupTag').value.trim();
+    const note = document.getElementById('inputBackupNote').value.trim();
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Creating &amp; Verifying...';
+    }
+
+    try {
+        const resp = await fetch("{% url 'dashboard_settings_db_backup' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ custom_tag: tag, note: note })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            hideModal('createBackupModal');
+            document.getElementById('inputBackupTag').value = '';
+            document.getElementById('inputBackupNote').value = '';
+            window.showToast(`Backup created and verified: ${data.filename} (${data.size_mb} MB)`, 'success', 5000);
+            refreshDbStatus();
+        } else {
+            window.showToast('Backup failed: ' + (data.error || 'Unknown error'), 'error', 6000);
+        }
+    } catch (err) {
+        window.showToast('Network error while creating backup.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Create &amp; Verify Backup';
+        }
+    }
+}
+
+// 5. Delete Backup Controller
+let selectedDeleteFile = null;
+
+function openDeleteModal(filename, size) {
+    selectedDeleteFile = filename;
+    document.getElementById('modalDeleteFilename').innerText = filename;
+    document.getElementById('modalDeleteSize').innerText = size;
+    showModal('deleteBackupModal');
+}
+
+async function runExecuteDeleteBackup() {
+    const btn = document.getElementById('btnConfirmDeleteBackup');
+    if (!selectedDeleteFile) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Deleting...';
+
+    try {
+        const resp = await fetch("{% url 'dashboard_settings_db_delete_backup' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filename: selectedDeleteFile })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            hideModal('deleteBackupModal');
+            window.showToast(data.message, 'success');
+            refreshDbStatus();
+        } else {
+            window.showToast('Delete failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        window.showToast('Network error while deleting backup.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Permanently Delete';
+    }
+}
+
+// 6. Edit Backup Note Controller
+let selectedNoteFile = null;
+
+function openEditNoteModal(filename, currentNote, currentTag) {
+    selectedNoteFile = filename;
+    document.getElementById('modalNoteFilename').innerText = filename;
+    document.getElementById('inputEditTag').value = currentTag || '';
+    document.getElementById('inputEditNote').value = currentNote || '';
+    showModal('editNoteModal');
+}
+
+async function runSaveBackupNote() {
+    const btn = document.getElementById('btnConfirmSaveNote');
+    const tag = document.getElementById('inputEditTag').value.trim();
+    const note = document.getElementById('inputEditNote').value.trim();
+
+    if (!selectedNoteFile) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...';
+
+    try {
+        const resp = await fetch("{% url 'dashboard_settings_db_update_note' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filename: selectedNoteFile, tag: tag, note: note })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            hideModal('editNoteModal');
+            window.showToast('Note updated successfully!', 'success');
+            refreshDbStatus();
+        } else {
+            window.showToast('Failed to update note: ' + (data.error || ''), 'error');
+        }
+    } catch (err) {
+        window.showToast('Network error saving note.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Save Note';
+    }
+}
+
+// 7. Restore Modal Controller
+let selectedRestoreFile = null;
+
+function openRestoreModal(filename, size, timestamp) {
+    selectedRestoreFile = filename;
+    document.getElementById('modalRestoreFilename').innerText = filename;
+    document.getElementById('modalRestoreSize').innerText = size;
+    document.getElementById('modalRestoreTimestamp').innerText = timestamp;
+    document.getElementById('restoreConfirmInput').value = '';
+    document.getElementById('btnExecuteRestore').disabled = true;
+    showModal('restoreConfirmModal');
+}
+
+function checkRestoreInput() {
+    const val = document.getElementById('restoreConfirmInput').value.trim();
+    const btn = document.getElementById('btnExecuteRestore');
+    btn.disabled = (val !== 'RESTORE');
+}
+
+async function runExecuteRestore() {
+    const btn = document.getElementById('btnExecuteRestore');
+    if (!selectedRestoreFile) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Creating snapshot &amp; restoring...';
+
+    try {
+        const resp = await fetch("{% url 'dashboard_settings_db_restore' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                filename: selectedRestoreFile,
+                confirmation: 'RESTORE'
+            })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            hideModal('restoreConfirmModal');
+            window.showToast(data.message, 'success', 8000);
+            alert(`Database restore completed successfully!\n\nTarget: ${data.target_database}\nPre-restore snapshot: ${data.pre_restore_backup}\nTables verified: ${data.table_count}`);
+            refreshDbStatus();
+        } else {
+            window.showToast('Restore failed: ' + (data.error || 'Unknown error'), 'error', 8000);
+        }
+    } catch (err) {
+        window.showToast('Network error during restore execution.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> I Understand, Restore Database';
+    }
+}
+
+// 8. Check for Updates
+async function runCheckUpdates() {
+    const btn = document.getElementById('btnCheckUpdates');
+    const logPanel = document.getElementById('updateLogPanel');
+    const logSteps = document.getElementById('updateLogSteps');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Checking...';
+    logPanel.style.display = 'block';
+    logSteps.innerHTML = '<div style="color: #A1A1AA;">Inspecting migration plans and application release status...</div>';
+
+    try {
+        const resp = await fetch("{% url 'dashboard_settings_db_check_updates' %}");
+        const data = await resp.json();
+
+        if (data.success) {
+            let html = `<div><strong>Application Version:</strong> v${data.app_version}</div>`;
+            html += `<div><strong>Applied Migrations:</strong> ${data.total_applied}</div>`;
+
+            if (data.up_to_date) {
+                html += `<div style="color: #10B981; margin-top: 8px;"><i class="fa-solid fa-check"></i> Database schema is fully current. No migrations pending.</div>`;
+                window.showToast('QuizX database is up to date.', 'success');
+            } else {
+                html += `<div style="color: #F59E0B; margin-top: 8px;"><i class="fa-solid fa-circle-exclamation"></i> <strong>${data.pending_count} pending migration(s) detected:</strong></div>`;
+                html += '<ul style="margin: 6px 0 0 16px; padding: 0;">';
+                data.pending_migrations.forEach(m => {
+                    html += `<li><code>${m}</code></li>`;
+                });
+                html += '</ul>';
+                window.showToast(`${data.pending_count} pending migration(s) available. Click "Run Update" to apply.`, 'warning');
+            }
+            logSteps.innerHTML = html;
+        } else {
+            logSteps.innerHTML = `<div style="color: #EF4444;"><i class="fa-solid fa-circle-xmark"></i> Check failed: ${data.error}</div>`;
+        }
+    } catch (err) {
+        logSteps.innerHTML = '<div style="color: #EF4444;">Network error while checking updates.</div>';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Check for Updates';
+    }
+}
+
+// 9. Run Full QuizX Update
+async function runExecuteUpdate() {
+    const btn = document.getElementById('btnRunUpdate');
+    const logPanel = document.getElementById('updateLogPanel');
+    const logSteps = document.getElementById('updateLogSteps');
+
+    if (!confirm("Run QuizX Client Application & Database Update?\n\nThis will take a verified backup of the database, apply any pending migrations, and verify system integrity.")) {
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Updating...';
+    logPanel.style.display = 'block';
+    logSteps.innerHTML = '<div style="color: #A1A1AA;">Starting QuizX update orchestrator...</div>';
+
+    try {
+        const resp = await fetch("{% url 'dashboard_settings_db_run_update' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+        });
+        const data = await resp.json();
+
+        let html = '';
+        if (data.steps && data.steps.length > 0) {
+            data.steps.forEach((s, idx) => {
+                const color = s.status === 'success' ? '#10B981' : (s.status === 'warning' ? '#F59E0B' : '#EF4444');
+                const icon = s.status === 'success' ? 'fa-circle-check' : (s.status === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-xmark');
+                html += `<div style="margin-bottom: 4px; color: ${color};">
+                    <i class="fa-solid ${icon}"></i> [${idx + 1}/${data.steps.length}] <strong>${s.name}:</strong> ${s.detail}
+                </div>`;
+            });
+        }
+
+        if (data.success) {
+            html += '<div style="margin-top: 10px; font-weight: 700; color: #10B981;">UPDATE COMPLETE - QuizX is ready for production.</div>';
+            window.showToast('QuizX update completed successfully!', 'success');
+        } else {
+            html += `<div style="margin-top: 10px; font-weight: 700; color: #EF4444;">UPDATE FAILED: ${data.error || 'Inspect steps above.'}</div>`;
+            window.showToast('Update failed. Review logs.', 'error');
+        }
+        logSteps.innerHTML = html;
+        refreshDbStatus();
+    } catch (err) {
+        logSteps.innerHTML += '<div style="color: #EF4444;">Network error during update execution.</div>';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Run Update';
+    }
+}
+
+// 10. Refresh Health & Table
+async function refreshDbStatus() {
+    const btn = document.getElementById('btnRefreshHealth');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i>';
+    }
+
+    try {
+        const resp = await fetch("{% url 'dashboard_settings_db_status_ajax' %}");
+        const data = await resp.json();
+
+        if (data.success) {
+            const s = data.status;
+            const m = data.metrics;
+
+            // Status grid values
+            const elEngine = document.getElementById('valDbEngine');
+            const elServer = document.getElementById('valDbServer');
+            const elName = document.getElementById('valDbName');
+            const elAuth = document.getElementById('valDbAuth');
+            const elDriver = document.getElementById('valDbDriver');
+            const elMig = document.getElementById('valDbMig');
+            const elLast = document.getElementById('valDbLastBackup');
+
+            if (elEngine) elEngine.innerText = s.engine;
+            if (elServer) elServer.innerText = s.server;
+            if (elName) elName.innerText = s.database;
+            if (elAuth) elAuth.innerText = s.auth_method;
+            if (elDriver) elDriver.innerText = s.driver;
+            if (elMig) elMig.innerText = s.migration_status;
+            if (elLast) {
+                if (s.last_backup) {
+                    elLast.innerHTML = `
+                        <span style="font-family: monospace; font-size: 12px; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="${s.last_backup.filename}">${s.last_backup.filename}</span>
+                        <span class="badge" style="background: var(--surface-subtle); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap;">${s.last_backup.size_mb} MB</span>
+                    `;
+                } else {
+                    elLast.innerHTML = '<em style="color: var(--text-muted); font-size: 13px;">None recorded</em>';
+                }
+            }
+
+            // Metrics
+            const u = document.getElementById('statUsers');
+            const q = document.getElementById('statQuizzes');
+            const qn = document.getElementById('statQuestions');
+            const r = document.getElementById('statResults');
+            if (u) u.innerText = m.users_count;
+            if (q) q.innerText = m.quizzes_count;
+            if (qn) qn.innerText = m.questions_count;
+            if (r) r.innerText = m.results_count;
+
+            // Backups Table
+            const tbody = document.getElementById('backupTableBody');
+            if (tbody && data.backups) {
+                if (data.backups.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="padding: 28px; text-align: center; color: var(--text-muted);">No database backups recorded yet. Click "Create Backup" above to generate your first verified snapshot.</td></tr>`;
+                } else {
+                    let tbHtml = '';
+                    data.backups.forEach(b => {
+                        const noteHtml = b.note ? `
+                            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px; display: flex; align-items: center; gap: 5px;">
+                                <i class="fa-regular fa-note-sticky" style="color: var(--accent-primary); font-size: 11px;"></i>
+                                <span>${b.note}</span>
+                            </div>` : '';
+                        const tagHtml = b.tag ? `<span class="badge" style="background: var(--accent-primary-light); color: var(--accent-primary); border: 1px solid var(--accent-primary-border); padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 600;">${b.tag}</span>` : '';
+                        const safeNote = (b.note || '').replace(/'/g, "\\'");
+                        const safeTag = (b.tag || '').replace(/'/g, "\\'");
+
+                        tbHtml += `
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 14px 16px; color: var(--text-secondary); white-space: nowrap; font-size: 13px;">
+                                <i class="fa-regular fa-clock" style="margin-right: 5px; opacity: 0.6;"></i>${b.timestamp}
+                            </td>
+                            <td style="padding: 14px 16px;">
+                                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                    <span style="font-family: monospace; font-size: 13px; font-weight: 600; color: var(--text-primary);">${b.filename}</span>
+                                    ${tagHtml}
+                                </div>
+                                ${noteHtml}
+                            </td>
+                            <td style="padding: 14px 16px; color: var(--text-primary); white-space: nowrap; font-weight: 600; font-size: 13px;">
+                                ${b.size_mb} MB
+                            </td>
+                            <td style="padding: 14px 16px; white-space: nowrap;">
+                                <span class="badge" style="background: var(--success-light); color: var(--success); border: 1px solid var(--success-border); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                                    <i class="fa-solid fa-check"></i> Verified
+                                </span>
+                            </td>
+                            <td style="padding: 14px 16px; text-align: right; white-space: nowrap;">
+                                <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end;">
+                                    <a href="/dashboard/settings/db/download/${b.filename}/" class="btn-small secondary" style="padding: 6px 10px; font-size: 12px; text-decoration: none;" title="Download verified backup">
+                                        <i class="fa-solid fa-download"></i> Download
+                                    </a>
+                                    <button type="button" class="btn-small danger" style="padding: 6px 10px; font-size: 12px;" onclick="openRestoreModal('${b.filename}', '${b.size_mb} MB', '${b.timestamp}')" title="Restore this backup">
+                                        <i class="fa-solid fa-clock-rotate-left"></i> Restore
+                                    </button>
+                                    <button type="button" class="btn-small secondary" style="padding: 6px 8px; font-size: 12px; color: var(--text-secondary);" onclick="openEditNoteModal('${b.filename}', '${safeNote}', '${safeTag}')" title="Add or edit note">
+                                        <i class="fa-regular fa-pen-to-square"></i>
+                                    </button>
+                                    <button type="button" class="btn-small danger" style="padding: 6px 8px; font-size: 12px; background: transparent; border: 1px solid var(--error-border); color: var(--error);" onclick="openDeleteModal('${b.filename}', '${b.size_mb} MB')" title="Delete backup file">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>`;
+                    });
+                    tbody.innerHTML = tbHtml;
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Health refresh failed:", err);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Refresh';
+        }
+    }
+}
 </script>
 {% endblock %}

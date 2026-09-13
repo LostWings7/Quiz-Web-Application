@@ -481,3 +481,12 @@ class SecurityAndPermissionTests(BaseExamTestSetup):
         resp = self.client.get(reverse('dashboard_home'))
         self.assertEqual(resp.status_code, 302)
         self.assertIn(reverse('login'), resp.url)
+
+
+# Superuser Database & Maintenance Test Integration
+from exam.test_db_maintenance import (
+    DatabaseMaintenanceSecurityTests,
+    DatabaseMaintenanceCoreTests,
+    DatabaseMaintenanceOperationsTests,
+)
+

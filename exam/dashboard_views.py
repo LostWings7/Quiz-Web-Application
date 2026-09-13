@@ -2110,7 +2110,17 @@ def settings_view(request):
         messages.success(request, 'Institution branding settings updated successfully!')
         return redirect('dashboard_settings')
 
-    return render(request, 'dashboard/settings.html', {'school_profile': school_profile})
+    context = {'school_profile': school_profile}
+    if request.user.is_superuser:
+        from exam import db_maintenance
+        context['db_status'] = db_maintenance.get_database_status()
+        context['db_metrics'] = db_maintenance.get_database_metrics()
+        context['db_backups'] = db_maintenance.get_backup_history(limit=10)
+        is_locked, active_op = db_maintenance.MaintenanceLock.is_locked()
+        context['is_maintenance_locked'] = is_locked
+        context['active_maintenance_op'] = active_op
+
+    return render(request, 'dashboard/settings.html', context)
 
 @staff_member_required
 def classes_list(request):

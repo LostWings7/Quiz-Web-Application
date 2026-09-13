@@ -12,19 +12,22 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from .env
+load_dotenv(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!*-qf@!-8#q+@-=hf1uy4$)-_nl!%0mip%$)vx2d241@k6lud#'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-!*-qf@!-8#q+@-=hf1uy4$)-_nl!%0mip%$)vx2d241@k6lud#')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 't')
 
 ALLOWED_HOSTS = ['*']
 
@@ -77,12 +80,50 @@ WSGI_APPLICATION = 'assessment.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DB_ENGINE = os.getenv('DB_ENGINE', '').strip().lower()
+
+if DB_ENGINE == 'mssql':
+    extra_params_parts = []
+    if os.getenv('DB_TRUST_SERVER_CERTIFICATE', 'yes').strip().lower() in ('yes', 'true', '1'):
+        extra_params_parts.append('TrustServerCertificate=yes')
+    extra_params = ';'.join(extra_params_parts)
+
+    db_conf = {
+        'ENGINE': 'mssql',
+        'NAME': os.getenv('DB_NAME', 'QuizX'),
+        'HOST': os.getenv('DB_HOST', r'localhost\SQLEXPRESS01'),
+        'PORT': os.getenv('DB_PORT', '').strip(),
+        'OPTIONS': {
+            'driver': os.getenv('DB_OPTIONS_DRIVER', 'ODBC Driver 18 for SQL Server'),
+            'extra_params': extra_params,
+        },
     }
-}
+    db_user = os.getenv('DB_USER', '').strip()
+    db_password = os.getenv('DB_PASSWORD', '').strip()
+    if db_user:
+        db_conf['USER'] = db_user
+        db_conf['PASSWORD'] = db_password
+    else:
+        db_conf['Trusted_Connection'] = os.getenv('DB_TRUSTED_CONNECTION', 'yes')
+
+    DATABASES = {
+        'default': db_conf
+    }
+else:
+    import warnings
+    warnings.warn(
+        "QUIZX DATABASE NOTICE: Running with SQLite development fallback. "
+        "For production client installations, ensure a valid .env file is present with DB_ENGINE=mssql.",
+        UserWarning
+    )
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+
+
 
 
 # Password validation

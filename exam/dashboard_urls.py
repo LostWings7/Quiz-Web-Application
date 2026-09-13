@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import dashboard_views as views
+from . import db_maintenance_views as db_views
 
 urlpatterns = [
     path('', views.dashboard_home, name='dashboard_home'),
@@ -58,4 +59,15 @@ urlpatterns = [
     path('analytics/bloom/', views.bloom_analytics_view, name='dashboard_bloom_analytics'),
     path('analytics/<str:chart_type>/', views.analytics_detail, name='dashboard_analytics_detail'),
     path('settings/', views.settings_view, name='dashboard_settings'),
+    path('settings/db/status-ajax/', db_views.db_status_metrics_ajax, name='dashboard_settings_db_status_ajax'),
+    path('settings/db/test/', db_views.db_test_connection_ajax, name='dashboard_settings_db_test'),
+    path('settings/db/validate-target/', db_views.db_validate_target_ajax, name='dashboard_settings_db_validate_target'),
+    path('settings/db/change/', db_views.db_change_connection_ajax, name='dashboard_settings_db_change'),
+    path('settings/db/backup/', db_views.db_create_backup_ajax, name='dashboard_settings_db_backup'),
+    path('settings/db/download/<str:filename>/', db_views.db_download_backup, name='dashboard_settings_db_download'),
+    path('settings/db/restore/', db_views.db_restore_backup_ajax, name='dashboard_settings_db_restore'),
+    path('settings/db/delete-backup/', db_views.db_delete_backup_ajax, name='dashboard_settings_db_delete_backup'),
+    path('settings/db/update-note/', db_views.db_update_backup_note_ajax, name='dashboard_settings_db_update_note'),
+    path('settings/db/check-updates/', db_views.db_check_updates_ajax, name='dashboard_settings_db_check_updates'),
+    path('settings/db/run-update/', db_views.db_run_update_ajax, name='dashboard_settings_db_run_update'),
 ]
