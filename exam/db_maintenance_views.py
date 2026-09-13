@@ -168,7 +168,7 @@ def db_change_connection_ajax(request):
         with db_maintenance.maintenance_operation("Database Switch", request.user.username):
             # Step 1: Validate target DB
             val = db_maintenance.validate_target_database(server=server, database=database, driver=driver, trust_cert=trust_cert)
-            if not val.get('success'):
+            if not val.get('success') and not val.get('can_initialize'):
                 return JsonResponse({
                     'success': False,
                     'error': f"Target validation failed: {val.get('error')}. Configuration was NOT modified."
@@ -203,24 +203,61 @@ def db_change_connection_ajax(request):
                 trust_cert=trust_cert
             )
 
+            # Step 4: If database was empty, automatically apply QuizX migrations
+            initialized_now = False
+            if val.get('can_initialize'):
+                import subprocess
+                import sys
+                sub_env = os.environ.copy()
+                sub_env['DB_ENGINE'] = 'mssql'
+                sub_env['DB_NAME'] = database
+                sub_env['DB_HOST'] = server
+                sub_env['DB_OPTIONS_DRIVER'] = driver or 'ODBC Driver 18 for SQL Server'
+                sub_env['DB_TRUST_SERVER_CERTIFICATE'] = 'yes'
+                sub_env['DB_TRUSTED_CONNECTION'] = 'yes'
+                res = subprocess.run(
+                    [sys.executable, 'manage.py', 'migrate', '--noinput'],
+                    cwd=str(settings.BASE_DIR),
+                    env=sub_env,
+                    capture_output=True,
+                    text=True
+                )
+                if res.returncode != 0:
+                    logger.error(f"Auto-migration failed for {database}: {res.stderr}")
+                    return JsonResponse({
+                        'success': False,
+                        'error': f"Configuration updated to [{database}], but running initial migrations failed: {res.stderr.strip()[:300]}"
+                    }, status=500)
+                initialized_now = True
+
             db_maintenance.log_audit_event(
                 request.user,
                 'DATABASE_CONFIGURATION_CHANGED',
-                f"Switched DB to {server}/{database}. Pre-switch backup: {b_meta.get('filename')}",
+                f"Switched DB to {server}/{database}. Initialized: {initialized_now}. Pre-switch backup: {b_meta.get('filename')}",
                 success=True
             )
 
-            return JsonResponse({
-                'success': True,
-                'message': (
+            if initialized_now:
+                msg = (
+                    f"Target database [{database}] was empty and has been automatically initialized with all QuizX tables! "
+                    f"Configuration saved. Pre-switch backup: {b_meta.get('filename')}. "
+                    f"Please restart QuizX to establish the new connection."
+                )
+            else:
+                msg = (
                     f"Target database [{database}] verified and configuration saved. "
                     f"Pre-switch backup created: {b_meta.get('filename')}. "
                     f"Please restart QuizX to establish the new database connection."
-                ),
+                )
+
+            return JsonResponse({
+                'success': True,
+                'message': msg,
                 'pre_switch_backup': b_meta.get('filename'),
                 'target_server': server,
                 'target_database': database,
                 'restart_required': True,
+                'initialized': initialized_now,
             })
 
     except db_maintenance.MaintenanceLockError as mle:

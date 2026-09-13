@@ -688,7 +688,21 @@ async function runValidateTargetDb() {
                 <div style="margin-top: 8px; font-weight: 600; color: var(--text-primary);">Stage 1 passed. You may now apply this configuration.</div>
             `;
             applyBtn.disabled = false;
+            applyBtn.innerHTML = '<i class="fa-solid fa-link"></i> 2. Apply &amp; Connect Database';
             window.showToast('Target database verified successfully!', 'success');
+        } else if (data.can_initialize) {
+            resultBox.style.background = '#FFFBEB';
+            resultBox.style.color = '#B45309';
+            resultBox.style.border = '1px solid #FCD34D';
+            resultBox.innerHTML = `
+                <div style="font-weight: 700; margin-bottom: 4px;"><i class="fa-solid fa-circle-info"></i> Empty Database Detected (0 Tables)</div>
+                <div>Server: <strong>${data.server}</strong> | Database: <strong>${data.database}</strong></div>
+                <div style="margin-top: 6px; font-size: 12px;">This database is ready to be initialized with all 32 QuizX tables and migrations.</div>
+                <div style="margin-top: 8px; font-weight: 600; color: #78350F;">Click the button below to initialize tables and connect!</div>
+            `;
+            applyBtn.disabled = false;
+            applyBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 2. Initialize Schema &amp; Connect';
+            window.showToast('Empty database detected. Ready to initialize schema.', 'info');
         } else {
             resultBox.style.background = 'var(--error-light)';
             resultBox.style.color = 'var(--error)';
@@ -698,6 +712,7 @@ async function runValidateTargetDb() {
                 <div>${data.error || 'Database is not reachable or incompatible.'}</div>
             `;
             applyBtn.disabled = true;
+            applyBtn.innerHTML = '<i class="fa-solid fa-link"></i> 2. Apply &amp; Connect Database';
             window.showToast('Target database validation failed.', 'error');
         }
     } catch (err) {

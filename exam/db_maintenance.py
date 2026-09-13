@@ -311,9 +311,12 @@ def validate_target_database(
         if table_count == 0:
             return {
                 'success': False,
-                'error': f"Database [{database}] is completely empty (0 tables). Cannot switch to an uninitialized database.",
-                'table_count': 0,
+                'can_initialize': True,
                 'is_empty': True,
+                'error': f"Database [{database}] is currently empty (0 tables). Click 'Initialize Schema & Connect' to automatically build the QuizX tables.",
+                'table_count': 0,
+                'server': server,
+                'database': database,
             }
 
         if not has_migrations or migration_count == 0:
