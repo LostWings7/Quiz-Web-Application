@@ -3,18 +3,26 @@
 
 {% block title %}{{ quiz.title }} - Questions | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
 
-{% block eyebrow %}Question Configuration{% endblock %}
-{% block heading %}{{ quiz.title }}{% endblock %}
-{% block subtitle %}Drag and drop to reorder questions, assign subtopics, and manage answer configurations.{% endblock %}
+{% block eyebrow %}Curriculum &amp; Assessments{% endblock %}
+{% block heading %}Question Bank: {{ quiz.title }}{% endblock %}
+{% block subtitle %}Passkey: <strong style="font-family: var(--font-mono); color: var(--accent-primary);">{{ quiz.code }}</strong> &bull; {{ questions|length }} Total Question{{ questions|length|pluralize }} &bull; Drag to reorder, configure answer options, and classify cognitive levels.{% endblock %}
 
 {% block actions %}
-<a class="btn btn-primary" href="{% url 'dashboard_question_create' %}?quiz={{ quiz.id }}">
-    <i class="fa-solid fa-plus"></i>
-    <span>Add Question</span>
+<a class="btn btn-secondary" href="{% url 'dashboard_quizzes' %}" title="Back to Quiz List">
+    <i class="fa-solid fa-arrow-left"></i>
+    <span>Quizzes</span>
 </a>
+<button type="button" class="btn btn-secondary" onclick="openBulkBloomModal()" id="btnAutoClassifyBloom" style="display: inline-flex; align-items: center; gap: 8px;">
+    <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-primary);"></i>
+    <span>Auto-Classify Bloom</span>
+</button>
 <a class="btn btn-secondary" href="{% url 'dashboard_question_import' %}?quiz={{ quiz.id }}">
     <i class="fa-solid fa-file-import"></i>
     <span>Bulk Import</span>
+</a>
+<a class="btn btn-primary" href="{% url 'dashboard_question_create' %}?quiz={{ quiz.id }}">
+    <i class="fa-solid fa-plus"></i>
+    <span>Add Question</span>
 </a>
 {% endblock %}
 
@@ -40,33 +48,45 @@
                 {% for question in questions %}
                 <tr>
                     <td style="text-align: center;">
-                        <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                        <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
                             <i class="fa-solid fa-grip-vertical drag-handle" style="cursor:grab; color:var(--text-muted); font-size:14px;" title="Drag to reorder"></i>
-                            <span class="order-display" style="font-weight:700; color:var(--text-primary); font-family:var(--font-mono);">{{ forloop.counter }}</span>
+                            <span class="pill" style="font-family:var(--font-mono); font-weight:700; min-width:34px; justify-content:center; font-size:11px;">Q{{ forloop.counter }}</span>
                         </div>
                         <input type="hidden" class="order-input" name="order_{{ question.id }}" value="{{ forloop.counter }}">
                     </td>
                     <td>
-                        <div style="font-weight: 600; color: var(--text-primary);">
-                            {{ question.text|striptags|truncatechars:70 }}
+                        <div style="font-weight: 600; color: var(--text-primary); line-height: 1.4;">
+                            {{ question.text|striptags|truncatechars:85 }}
                         </div>
+                        {% if question.bloom_level %}
+                            <div style="margin-top: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <span class="bloom-pill {{ question.bloom_level|lower }}" style="font-size: 10px;">
+                                    <i class="fa-solid fa-brain"></i> {{ question.get_bloom_level_display }}
+                                </span>
+                                {% if not question.bloom_reviewed and question.bloom_confidence and question.bloom_confidence < 0.45 %}
+                                    <span class="pill warning" style="font-size: 10px;"><i class="fa-solid fa-triangle-exclamation"></i> Needs Review</span>
+                                {% elif question.bloom_reviewed %}
+                                    <span class="pill success" style="font-size: 10px;"><i class="fa-solid fa-check"></i> Reviewed</span>
+                                {% endif %}
+                            </div>
+                        {% endif %}
                     </td>
                     <td style="text-align: center;">
                         {% if question.subtopic %}
                         <span class="pill accent" style="font-size: 11px;">{{ question.subtopic.name }}</span>
                         {% else %}
-                        <span class="pill" style="font-size: 11px;">General</span>
+                        <span class="pill" style="font-size: 11px; color: var(--text-muted);">General</span>
                         {% endif %}
                     </td>
                     <td style="text-align: center;">
-                        <span class="pill success" style="font-size: 11px; font-weight: 700;">{{ question.correct_option_label }}</span>
+                        <span class="pill success" style="font-size: 11px; font-weight: 700; min-width: 28px; justify-content: center;">{{ question.correct_option_label }}</span>
                     </td>
                     <td>
-                        <div style="display:flex; gap:6px; justify-content: flex-end;">
-                            <a class="btn-small secondary" href="{% url 'dashboard_question_edit' question.id %}" title="Edit Question">
+                        <div style="display:flex; gap:6px; justify-content: flex-end; align-items: center;">
+                            <a class="btn-small secondary" href="{% url 'dashboard_question_edit' question.id %}" title="Edit Question" aria-label="Edit question {{ forloop.counter }}">
                                 <i class="fa-solid fa-pen"></i>
                             </a>
-                            <button type="button" class="btn-small danger delete-btn" data-url="{% url 'dashboard_question_delete' question.id %}" data-question="{{ question.text|striptags|truncatechars:60|escape }}" title="Delete Question">
+                            <button type="button" class="btn-small danger delete-btn" data-url="{% url 'dashboard_question_delete' question.id %}" data-question="{{ question.text|striptags|truncatechars:60|escape }}" title="Delete Question" aria-label="Delete question {{ forloop.counter }}">
                                 <i class="fa-solid fa-trash"></i>
                             </button>
                         </div>
@@ -77,11 +97,14 @@
                     <td colspan="5">
                         <div class="empty-state">
                             <div class="empty-state-icon"><i class="fa-solid fa-clipboard-question"></i></div>
-                            <div class="empty-state-title">No Questions Added</div>
+                            <div class="empty-state-title">No Questions Added Yet</div>
                             <div class="empty-state-desc">This assessment does not contain any questions yet. Add questions manually or import via spreadsheet.</div>
-                            <div class="empty-state-actions">
+                            <div class="empty-state-actions" style="display: flex; gap: 10px; justify-content: center; margin-top: 14px;">
                                 <a class="btn btn-primary btn-small" href="{% url 'dashboard_question_create' %}?quiz={{ quiz.id }}">
                                     <i class="fa-solid fa-plus"></i> Add First Question
+                                </a>
+                                <a class="btn btn-secondary btn-small" href="{% url 'dashboard_question_import' %}?quiz={{ quiz.id }}">
+                                    <i class="fa-solid fa-file-import"></i> Bulk Import
                                 </a>
                             </div>
                         </div>
@@ -105,6 +128,7 @@
 {% endblock %}
 
 {% block modals %}
+<!-- Delete Question Modal -->
 <div id="deleteModal" class="modal-overlay">
     <div class="glass-modal">
         <div class="modal-icon danger">
@@ -125,11 +149,374 @@
         </form>
     </div>
 </div>
+
+<!-- Bulk Bloom Auto-Classification Review Modal -->
+<div id="bulkBloomModal" class="modal-overlay">
+    <div class="glass-modal" style="max-width: 900px; width: 95%; max-height: 88vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="modal-icon" style="background: var(--accent-primary-subtle); color: var(--accent-primary); width: 38px; height: 38px; border-radius: var(--radius-sm); display: grid; place-items: center; font-size: 16px;">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <div>
+                    <h2 style="font-size: 17px; margin: 0; font-weight: 700;">Bloom's Taxonomy Classification</h2>
+                    <span style="font-size: 12px; color: var(--text-muted);">Review and confirm AI-suggested cognitive levels for unclassified questions.</span>
+                </div>
+            </div>
+            <button type="button" class="btn-small secondary" onclick="hideModal('bulkBloomModal')" style="padding: 4px 8px;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div id="bloomModalLoading" style="display: none; padding: 48px 20px; text-align: center;">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size: 2.2rem; color: var(--accent-primary); margin-bottom: 14px;"></i>
+            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">Analyzing Questions Locally...</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Running zero-shot NLI on CPU. This may take a few seconds.</p>
+        </div>
+
+        <div id="bloomModalEmpty" style="display: none; padding: 40px 20px; text-align: center;">
+            <i class="fa-solid fa-circle-check" style="font-size: 2.5rem; color: var(--success); margin-bottom: 12px;"></i>
+            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">All Questions Are Already Classified!</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Every question in this assessment currently has an assigned Bloom level.</p>
+        </div>
+
+        <div id="bloomModalContent" style="display: none; flex: 1; overflow-y: auto; padding: 18px 0;">
+            <!-- Summary Stats Bar -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                <div style="background: var(--surface); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: center;">
+                    <span style="font-size: 11px; color: var(--text-muted); display: block;">Total Evaluated</span>
+                    <strong id="statTotalEvaluated" style="font-size: 17px; color: var(--text-primary);">0</strong>
+                </div>
+                <div style="background: var(--surface); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: center;">
+                    <span style="font-size: 11px; color: var(--text-muted); display: block;">High Confidence</span>
+                    <strong id="statHighConf" style="font-size: 17px; color: var(--success);">0</strong>
+                </div>
+                <div style="background: var(--surface); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: center;">
+                    <span style="font-size: 11px; color: var(--text-muted); display: block;">Needs Teacher Review</span>
+                    <strong id="statNeedsReview" style="font-size: 17px; color: var(--warning);">0</strong>
+                </div>
+            </div>
+
+            <!-- Table of Questions -->
+            <div class="table-wrapper" style="max-height: 360px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                <table class="data-table" id="bloomReviewTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">#</th>
+                            <th>Question Prompt</th>
+                            <th style="width: 170px; text-align: center;">Assigned Cognitive Level</th>
+                            <th style="width: 110px; text-align: center;">Confidence</th>
+                            <th style="width: 150px; text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bloomReviewTbody">
+                        <!-- Populated dynamically via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); margin-top: auto;">
+            <button type="button" class="modal-btn secondary" onclick="hideModal('bulkBloomModal')">Cancel</button>
+            <button type="button" class="modal-btn primary" id="btnSaveBulkBloom" onclick="saveBulkBloomClassifications()" style="display: none; background: var(--accent-primary); border-color: var(--accent-primary);">
+                <i class="fa-solid fa-check"></i>
+                <span id="btnSaveBulkText">Save &amp; Apply All Classifications</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Single Question Full Detail Preview Modal -->
+<div id="bloomQuestionPreviewModal" class="modal-overlay" style="z-index: 100010; background: rgba(15, 23, 42, 0.72);">
+    <div class="glass-modal" style="max-width: 680px; width: 92%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="pill" id="previewModalQNum" style="font-family: var(--font-mono); font-weight: 700; font-size: 11px;">Q1</span>
+                <span class="pill accent" id="previewModalSubtopic" style="font-size: 11px;">General</span>
+            </div>
+            <button type="button" class="btn-small secondary" onclick="hideModal('bloomQuestionPreviewModal')" style="padding: 4px 8px;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding: 16px 0;">
+            <!-- Question Prompt -->
+            <div style="background: var(--surface); padding: 14px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 16px;">
+                <span style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Question Prompt</span>
+                <div id="previewModalPrompt" style="font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.5; word-break: break-word;"></div>
+            </div>
+
+            <!-- Options List -->
+            <div style="margin-bottom: 16px;">
+                <span style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 8px;">Options &amp; Correct Answer</span>
+                <div id="previewModalOptionsList" style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <!-- Cognitive Prediction Breakdown -->
+            <div style="background: var(--bg-secondary); padding: 14px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Zero-Shot NLI Probability Distribution</span>
+                    <span id="previewModalTopConf" class="pill accent" style="font-size: 11px;">Top Match</span>
+                </div>
+                <div id="previewModalScoresBars">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); margin-top: auto; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label for="previewModalLevelSelect" style="font-size: 12px; font-weight: 600; color: var(--text-muted);">Cognitive Level:</label>
+                <select id="previewModalLevelSelect" class="form-select" style="padding: 4px 10px; font-size: 12px; font-weight: 600;">
+                    <option value="remember">Remember</option>
+                    <option value="understand">Understand</option>
+                    <option value="apply">Apply</option>
+                    <option value="analyze">Analyze</option>
+                </select>
+            </div>
+            <button type="button" class="modal-btn primary" onclick="applyPreviewModalSelection()">Done</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/vendor/Sortable.min.js' %}"></script>
 <script>
+let currentBulkQuestions = [];
+let currentPreviewQuestionId = null;
+
+function openBulkBloomModal() {
+    const loading = document.getElementById('bloomModalLoading');
+    const empty = document.getElementById('bloomModalEmpty');
+    const content = document.getElementById('bloomModalContent');
+    const saveBtn = document.getElementById('btnSaveBulkBloom');
+
+    loading.style.display = 'block';
+    empty.style.display = 'none';
+    content.style.display = 'none';
+    saveBtn.style.display = 'none';
+
+    window.showModal('bulkBloomModal');
+
+    fetch('/dashboard/quizzes/{{ quiz.id }}/classify-bloom-batch-preview/')
+        .then(res => res.json())
+        .then(data => {
+            loading.style.display = 'none';
+            if (!data.questions || data.questions.length === 0) {
+                empty.style.display = 'block';
+                return;
+            }
+
+            currentBulkQuestions = data.questions;
+            renderBulkQuestionsTable(data.questions);
+            content.style.display = 'block';
+            saveBtn.style.display = 'inline-flex';
+        })
+        .catch(err => {
+            loading.style.display = 'none';
+            alert('Error running Bloom auto-classification: ' + err);
+            window.hideModal('bulkBloomModal');
+        });
+}
+
+function renderBulkQuestionsTable(questions) {
+    const tbody = document.getElementById('bloomReviewTbody');
+    tbody.innerHTML = '';
+
+    let highConfCount = 0;
+    let needsReviewCount = 0;
+
+    questions.forEach((q, idx) => {
+        if (q.needs_review) {
+            needsReviewCount++;
+        } else {
+            highConfCount++;
+        }
+
+        const tr = document.createElement('tr');
+        
+        let statusBadge = q.needs_review 
+            ? '<span class="pill warning" style="font-size: 11px;"><i class="fa-solid fa-triangle-exclamation"></i> Needs Review</span>'
+            : '<span class="pill success" style="font-size: 11px;"><i class="fa-solid fa-check"></i> Confident</span>';
+
+        tr.innerHTML = `
+            <td style="text-align: center; font-family: var(--font-mono); font-weight: 700;">Q${q.order || (idx + 1)}</td>
+            <td style="font-size: 12px; font-weight: 600; max-width: 340px; cursor: pointer;" onclick="openQuestionPreviewModal(${q.id})" title="Click to view full question, options, and probability distribution">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <span style="word-break: break-word; color: var(--text-primary); text-decoration: underline text-decoration-color: var(--border-subtle);">${escapeHtml(q.text.length > 75 ? q.text.substring(0, 75) + '...' : q.text)}</span>
+                    <span class="pill" style="font-size: 10px; padding: 2px 6px; background: var(--surface-hover); color: var(--accent-primary); flex-shrink: 0;"><i class="fa-solid fa-eye"></i> View</span>
+                </div>
+            </td>
+            <td style="text-align: center;">
+                <select class="form-select" id="bulk_level_${q.id}" onchange="onBulkLevelChange(${q.id})" style="padding: 4px 8px; font-size: 12px; font-weight: 600;">
+                    <option value="remember" ${q.predicted_db_level === 'remember' ? 'selected' : ''}>Remember</option>
+                    <option value="understand" ${q.predicted_db_level === 'understand' ? 'selected' : ''}>Understand</option>
+                    <option value="apply" ${q.predicted_db_level === 'apply' ? 'selected' : ''}>Apply</option>
+                    <option value="analyze" ${q.predicted_db_level === 'analyze' ? 'selected' : ''}>Analyze</option>
+                </select>
+            </td>
+            <td style="text-align: center;">
+                <span class="pill accent" style="font-size: 11px;">${q.confidence_pct}%</span>
+            </td>
+            <td style="text-align: center;" id="bulk_status_${q.id}">
+                ${statusBadge}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('statTotalEvaluated').textContent = questions.length;
+    document.getElementById('statHighConf').textContent = highConfCount;
+    document.getElementById('statNeedsReview').textContent = needsReviewCount;
+}
+
+function openQuestionPreviewModal(qid) {
+    const q = currentBulkQuestions.find(item => item.id === qid);
+    if (!q) return;
+
+    currentPreviewQuestionId = qid;
+    document.getElementById('previewModalQNum').textContent = `Q${q.order}`;
+    document.getElementById('previewModalSubtopic').textContent = q.subtopic || 'General';
+    document.getElementById('previewModalPrompt').textContent = q.text;
+
+    // Render Options
+    const optContainer = document.getElementById('previewModalOptionsList');
+    optContainer.innerHTML = '';
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+    if (q.options && q.options.length > 0) {
+        q.options.forEach((opt, idx) => {
+            const letter = letters[idx] || (idx + 1);
+            const optDiv = document.createElement('div');
+            optDiv.style.cssText = `display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid ${opt.is_correct ? 'var(--success-border)' : 'var(--border-subtle)'}; background: ${opt.is_correct ? 'var(--success-light)' : 'var(--surface)'};`;
+            optDiv.innerHTML = `
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: ${opt.is_correct ? 'var(--success)' : 'var(--surface-sunken)'}; color: ${opt.is_correct ? '#fff' : 'var(--text-primary)'}; flex-shrink: 0;">${letter}</span>
+                <span style="font-size: 13px; font-weight: 500; color: var(--text-primary); flex: 1; word-break: break-word;">${escapeHtml(opt.text)}</span>
+                ${opt.is_correct ? '<span class="pill success" style="font-size: 10px; font-weight: 700; flex-shrink: 0;"><i class="fa-solid fa-check"></i> Correct</span>' : ''}
+            `;
+            optContainer.appendChild(optDiv);
+        });
+    } else {
+        optContainer.innerHTML = '<p style="font-size: 12px; color: var(--text-muted); margin: 0;">No options configured.</p>';
+    }
+
+    // Render Cognitive Scores Breakdown
+    const scoresContainer = document.getElementById('previewModalScoresBars');
+    scoresContainer.innerHTML = '';
+    document.getElementById('previewModalTopConf').textContent = `${q.confidence_pct}% Match (${q.predicted_level})`;
+
+    const levelColors = {
+        'Remember': '#635BFF',
+        'Understand': '#22B8C7',
+        'Apply': '#7C6FFF',
+        'Analyze': '#2E9B67',
+    };
+
+    if (q.scores) {
+        for (const [lvl, score] of Object.entries(q.scores)) {
+            const scorePct = Math.round(score * 1000) / 10;
+            const barRow = document.createElement('div');
+            barRow.style.cssText = 'display: flex; align-items: center; margin-bottom: 6px; font-size: 11px;';
+            barRow.innerHTML = `
+                <span style="width: 80px; font-weight: 600; color: var(--text-primary);">${lvl}</span>
+                <div style="flex: 1; height: 8px; background: var(--surface-sunken); border-radius: 4px; overflow: hidden; margin: 0 10px;">
+                    <div style="height: 100%; width: ${scorePct}%; background: ${levelColors[lvl] || 'var(--accent-primary)'}; border-radius: 4px;"></div>
+                </div>
+                <span style="width: 44px; text-align: right; font-weight: 700; font-family: var(--font-mono);">${scorePct}%</span>
+            `;
+            scoresContainer.appendChild(barRow);
+        }
+    }
+
+    // Sync Level Select with current selection in bulk table
+    const tableSelect = document.getElementById('bulk_level_' + q.id);
+    const currentVal = tableSelect ? tableSelect.value : q.predicted_db_level;
+    document.getElementById('previewModalLevelSelect').value = currentVal;
+
+    window.showModal('bloomQuestionPreviewModal');
+}
+
+function applyPreviewModalSelection() {
+    if (currentPreviewQuestionId) {
+        const newVal = document.getElementById('previewModalLevelSelect').value;
+        const tableSelect = document.getElementById('bulk_level_' + currentPreviewQuestionId);
+        if (tableSelect && tableSelect.value !== newVal) {
+            tableSelect.value = newVal;
+            onBulkLevelChange(currentPreviewQuestionId);
+        }
+    }
+    window.hideModal('bloomQuestionPreviewModal');
+}
+
+function onBulkLevelChange(qid) {
+    const statusCell = document.getElementById('bulk_status_' + qid);
+    if (statusCell) {
+        statusCell.innerHTML = '<span class="pill" style="font-size: 11px; background: var(--surface-subtle);"><i class="fa-solid fa-user-pen"></i> Teacher Edit</span>';
+    }
+}
+
+function saveBulkBloomClassifications() {
+    const saveBtn = document.getElementById('btnSaveBulkBloom');
+    const saveText = document.getElementById('btnSaveBulkText');
+    const originalText = saveText.textContent;
+    saveBtn.disabled = true;
+    saveText.textContent = 'Saving...';
+
+    const payload = currentBulkQuestions.map(q => {
+        const select = document.getElementById('bulk_level_' + q.id);
+        const chosenLevel = select ? select.value : q.predicted_db_level;
+        const isModified = chosenLevel !== q.predicted_db_level;
+        return {
+            id: q.id,
+            level: chosenLevel,
+            confidence: q.confidence,
+            source: isModified ? 'manual' : 'zero_shot',
+            reviewed: true,
+        };
+    });
+
+    let csrfToken = '{{ csrf_token }}';
+    if (!csrfToken || csrfToken.includes('{{')) {
+        const input = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (input) csrfToken = input.value;
+        else {
+            const match = document.cookie.match(/csrftoken=([^;]+)/);
+            if (match) csrfToken = match[1];
+        }
+    }
+
+    fetch('/dashboard/quizzes/{{ quiz.id }}/save-bloom-batch/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ classifications: payload })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error saving classifications: ' + (data.error || 'Unknown error'));
+            saveBtn.disabled = false;
+            saveText.textContent = originalText;
+        }
+    })
+    .catch(err => {
+        alert('Failed to save classifications: ' + err);
+        saveBtn.disabled = false;
+        saveText.textContent = originalText;
+    });
+}
+
+function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const tbody = document.querySelector('#questionsTable tbody');
     if (tbody && window.Sortable) {

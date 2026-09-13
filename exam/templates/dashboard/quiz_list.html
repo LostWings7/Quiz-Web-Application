@@ -42,11 +42,14 @@
     <div class="filter-bar">
         <div class="search-bar-wrapper" style="flex: 1; min-width: 240px;">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="searchInput" value="{{ query }}" placeholder="Search by quiz title or passkey code…" autocomplete="off">
+            <input type="text" id="searchInput" value="{{ query }}" placeholder="Search by quiz title or passkey code…" autocomplete="off" aria-label="Search quizzes by title or code">
+            <button type="button" class="search-clear-btn {% if query %}visible{% endif %}" id="searchClearBtn" aria-label="Clear search input" title="Clear search" onclick="clearQuizSearch()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
 
         <div class="filter-wrapper">
-            <button class="btn btn-secondary" id="filterToggleBtn" type="button">
+            <button class="btn btn-secondary" id="filterToggleBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Filter quizzes by class or section visibility">
                 <i class="fa-solid fa-sliders"></i>
                 <span>Filter</span>
                 <span id="filterBadge" class="filter-active-badge" style="display:none;"></span>
@@ -54,7 +57,7 @@
 
             <!-- Dropdown Menu -->
             <div class="filter-dropdown" id="filterDropdown">
-                <div class="filter-dropdown-header">Filter by Visibility</div>
+                <div class="filter-dropdown-header">Filter by Target Visibility</div>
 
                 <!-- Classes Section -->
                 <button class="filter-section-toggle expanded" id="toggleClasses" type="button">
@@ -129,22 +132,56 @@
                     {% endwith %}
                 </td>
                 <td style="text-align: center;">
-                    <span style="font-weight: 600; color: var(--text-primary);">{{ row.participants }}</span>
+                    <span style="font-weight: 600; color: var(--text-primary);"><i class="fa-solid fa-users" style="color:var(--text-muted); margin-right:4px; font-size:11px;"></i>{{ row.participants }}</span>
                 </td>
                 <td style="text-align: center;">
-                    <span class="pill {% if row.quiz.is_active %}success{% else %}warning{% endif %}" style="font-size: 11px;">
-                        <span class="status-dot"></span>
-                        {% if row.quiz.is_active %}Active{% else %}Inactive{% endif %}
-                    </span>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <span class="pill {% if row.quiz.is_active %}success{% else %}warning{% endif %}" style="font-size: 11px;">
+                            <span class="status-dot"></span>
+                            {% if row.quiz.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                        {% if row.quiz.show_detailed_results %}
+                        <span class="pill" style="font-size: 10px; color: var(--text-secondary); padding: 2px 6px;" title="Detailed answer feedback is enabled for candidates after submission">
+                            <i class="fa-solid fa-eye" style="color: var(--accent-cyan); font-size: 9px; margin-right: 3px;"></i> Review On
+                        </span>
+                        {% endif %}
+                    </div>
                 </td>
                 <td>
                     <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center; flex-wrap: nowrap;">
-                        <a class="btn-small secondary" href="{% url 'dashboard_quiz_edit' row.quiz.id %}" title="Edit Quiz"><i class="fa-solid fa-pen"></i></a>
-                        <a class="btn-small {% if row.quiz.is_active %}warning{% else %}success{% endif %}" href="{% url 'dashboard_quiz_toggle' row.quiz.id %}" title="Toggle Active"><i class="fa-solid fa-power-off"></i></a>
-                        <button class="btn-small {% if row.quiz.show_detailed_results %}warning{% else %}secondary{% endif %}" onclick="showModal('detailsModal-{{ row.quiz.id }}')" title="Toggle Results View"><i class="fa-solid {% if row.quiz.show_detailed_results %}fa-eye-slash{% else %}fa-eye{% endif %}"></i></button>
-                        <a class="btn-small secondary" href="{% url 'dashboard_quiz_duplicate' row.quiz.id %}" title="Duplicate Quiz"><i class="fa-solid fa-copy"></i></a>
-                        <a class="btn-small secondary" href="{% url 'dashboard_quiz_results' row.quiz.id %}" title="View Results"><i class="fa-solid fa-chart-bar"></i></a>
-                        <button class="btn-small danger" onclick="showModal('deleteModal-{{ row.quiz.id }}')" title="Delete Quiz"><i class="fa-solid fa-trash"></i></button>
+                        <a class="btn-small secondary" href="{% url 'dashboard_quiz_edit' row.quiz.id %}" title="Edit Quiz Settings" aria-label="Edit settings for {{ row.quiz.title }}">
+                            <i class="fa-solid fa-pen"></i>
+                        </a>
+                        <a class="btn-small secondary" href="{% url 'dashboard_quiz_questions' row.quiz.id %}" title="Question Bank (Manage Questions)" aria-label="Manage questions for {{ row.quiz.title }}">
+                            <i class="fa-solid fa-clipboard-question"></i>
+                        </a>
+                        <a class="btn-small secondary" href="{% url 'dashboard_quiz_results' row.quiz.id %}" title="View Candidate Results" aria-label="View results for {{ row.quiz.title }}">
+                            <i class="fa-solid fa-chart-bar"></i>
+                        </a>
+                        <div class="action-dropdown-wrapper">
+                            <button type="button" class="btn-small secondary action-dropdown-btn" onclick="toggleActionMenu(event, 'actionMenu-{{ row.quiz.id }}')" aria-haspopup="true" aria-expanded="false" title="More Options" aria-label="More options for {{ row.quiz.title }}">
+                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                            </button>
+                            <div class="action-dropdown-menu" id="actionMenu-{{ row.quiz.id }}">
+                                <a class="action-dropdown-item" href="{% url 'dashboard_quiz_toggle' row.quiz.id %}">
+                                    <i class="fa-solid fa-power-off" style="width: 16px; color: {% if row.quiz.is_active %}var(--warning){% else %}var(--success){% endif %};"></i>
+                                    <span>{% if row.quiz.is_active %}Deactivate Quiz{% else %}Activate Quiz{% endif %}</span>
+                                </a>
+                                <button type="button" class="action-dropdown-item" onclick="closeAllActionMenus(); showModal('detailsModal-{{ row.quiz.id }}');">
+                                    <i class="fa-solid {% if row.quiz.show_detailed_results %}fa-eye-slash{% else %}fa-eye{% endif %}" style="width: 16px; color: var(--text-secondary);"></i>
+                                    <span>{% if row.quiz.show_detailed_results %}Hide Review Mode{% else %}Allow Review Mode{% endif %}</span>
+                                </button>
+                                <a class="action-dropdown-item" href="{% url 'dashboard_quiz_duplicate' row.quiz.id %}">
+                                    <i class="fa-solid fa-copy" style="width: 16px; color: var(--text-secondary);"></i>
+                                    <span>Duplicate Quiz</span>
+                                </a>
+                                <div class="action-dropdown-divider"></div>
+                                <button type="button" class="action-dropdown-item danger" onclick="closeAllActionMenus(); showModal('deleteModal-{{ row.quiz.id }}');">
+                                    <i class="fa-solid fa-trash" style="width: 16px;"></i>
+                                    <span>Delete Quiz</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </td>
             </tr>
@@ -154,7 +191,16 @@
                     <div class="empty-state">
                         <div class="empty-state-icon"><i class="fa-solid fa-clipboard-question"></i></div>
                         <div class="empty-state-title">No Quizzes Found</div>
-                        <div class="empty-state-desc">No examination quizzes match your current search or filter criteria.</div>
+                        <div class="empty-state-desc">{% if query %}No examination quizzes match "{{ query }}". Try another keyword or clear filters.{% else %}You have not created any assessments yet.{% endif %}</div>
+                        {% if query %}
+                        <button type="button" class="btn btn-secondary btn-small" onclick="clearQuizSearch()" style="margin-top: 10px;">
+                            <i class="fa-solid fa-xmark"></i> Clear Search
+                        </button>
+                        {% else %}
+                        <a class="btn btn-primary btn-small" href="{% url 'dashboard_quiz_create' %}" style="margin-top: 10px;">
+                            <i class="fa-solid fa-plus"></i> Create First Quiz
+                        </a>
+                        {% endif %}
                     </div>
                 </td>
             </tr>
@@ -267,7 +313,15 @@
     function renderQuizzes(quizzes) {
         let html = `<table class="data-table"><thead><tr><th>Quiz Title</th><th style="text-align: center;">Passkey Code</th><th style="text-align: center;">Assigned Target</th><th style="text-align: center;">Submissions</th><th style="text-align: center;">Status</th><th style="text-align:right;">Actions</th></tr></thead><tbody>`;
         if (!quizzes.length) {
-            html += '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-clipboard-question"></i></div><div class="empty-state-title">No Quizzes Found</div><div class="empty-state-desc">No examination quizzes match your current criteria.</div></div></td></tr>';
+            const qVal = searchInput ? searchInput.value.trim() : '';
+            html += `<tr><td colspan="6">
+                <div class="empty-state">
+                    <div class="empty-state-icon"><i class="fa-solid fa-clipboard-question"></i></div>
+                    <div class="empty-state-title">No Quizzes Found</div>
+                    <div class="empty-state-desc">${qVal ? `No examination quizzes match "${qVal}". Try another keyword or clear filters.` : 'No examination quizzes match your current criteria.'}</div>
+                    ${qVal ? `<button type="button" class="btn btn-secondary btn-small" onclick="clearQuizSearch()" style="margin-top: 10px;"><i class="fa-solid fa-xmark"></i> Clear Search</button>` : ''}
+                </div>
+            </td></tr>`;
         } else {
             quizzes.forEach(q => {
                 const vis = q.visibility === 'All Classes'
@@ -276,22 +330,51 @@
                 const statusCls = q.is_active ? 'success' : 'warning';
                 const statusLbl = q.is_active ? 'Active' : 'Inactive';
                 const toggleCls = q.is_active ? 'warning' : 'success';
+                const toggleText = q.is_active ? 'Deactivate Quiz' : 'Activate Quiz';
                 const eyeIcon = q.show_detailed_results ? 'fa-eye-slash' : 'fa-eye';
-                const eyeCls = q.show_detailed_results ? 'warning' : 'secondary';
+                const eyeText = q.show_detailed_results ? 'Hide Review Mode' : 'Allow Review Mode';
+                const reviewBadge = q.show_detailed_results ? `<span class="pill" style="font-size: 10px; color: var(--text-secondary); padding: 2px 6px;" title="Detailed answer feedback is enabled for candidates"><i class="fa-solid fa-eye" style="color: var(--accent-cyan); font-size: 9px; margin-right: 3px;"></i> Review On</span>` : '';
+                const questionsUrl = q.questions_url || `/dashboard/quizzes/${q.id}/questions/`;
                 html += `<tr>
                     <td><a href="${q.edit_url}" style="font-weight:700;color:var(--text-primary);">${q.title}</a></td>
                     <td style="text-align: center;"><span class="pill" style="font-family:var(--font-mono);font-weight:700;letter-spacing:0.05em;">${q.code}</span></td>
                     <td style="text-align: center;">${vis}</td>
-                    <td style="text-align: center;"><span style="font-weight:600;color:var(--text-primary);">${q.participants}</span></td>
-                    <td style="text-align: center;"><span class="pill ${statusCls}" style="font-size:11px;"><span class="status-dot"></span>${statusLbl}</span></td>
+                    <td style="text-align: center;"><span style="font-weight:600;color:var(--text-primary);"><i class="fa-solid fa-users" style="color:var(--text-muted);margin-right:4px;font-size:11px;"></i>${q.participants}</span></td>
+                    <td style="text-align: center;">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                            <span class="pill ${statusCls}" style="font-size:11px;"><span class="status-dot"></span>${statusLbl}</span>
+                            ${reviewBadge}
+                        </div>
+                    </td>
                     <td>
                         <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center;flex-wrap:nowrap;">
-                            <a class="btn-small secondary" href="${q.edit_url}" title="Edit"><i class="fa-solid fa-pen"></i></a>
-                            <a class="btn-small ${toggleCls}" href="${q.toggle_url}" title="Toggle Active"><i class="fa-solid fa-power-off"></i></a>
-                            <a class="btn-small ${eyeCls}" href="${q.toggle_review_url}" title="Toggle Results View"><i class="fa-solid ${eyeIcon}"></i></a>
-                            <a class="btn-small secondary" href="${q.duplicate_url}" title="Duplicate"><i class="fa-solid fa-copy"></i></a>
-                            <a class="btn-small secondary" href="${q.results_url}" title="Results"><i class="fa-solid fa-chart-bar"></i></a>
-                            <a class="btn-small danger" href="${q.delete_url}" title="Delete" onclick="return confirm('Delete this quiz?')"><i class="fa-solid fa-trash"></i></a>
+                            <a class="btn-small secondary" href="${q.edit_url}" title="Edit Quiz Settings" aria-label="Edit settings for ${q.title}"><i class="fa-solid fa-pen"></i></a>
+                            <a class="btn-small secondary" href="${questionsUrl}" title="Question Bank (Manage Questions)" aria-label="Manage questions for ${q.title}"><i class="fa-solid fa-clipboard-question"></i></a>
+                            <a class="btn-small secondary" href="${q.results_url}" title="View Candidate Results" aria-label="View results for ${q.title}"><i class="fa-solid fa-chart-bar"></i></a>
+                            <div class="action-dropdown-wrapper">
+                                <button type="button" class="btn-small secondary action-dropdown-btn" onclick="toggleActionMenu(event, 'actionMenu-${q.id}')" aria-haspopup="true" aria-expanded="false" title="More Options" aria-label="More options for ${q.title}">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                </button>
+                                <div class="action-dropdown-menu" id="actionMenu-${q.id}">
+                                    <a class="action-dropdown-item" href="${q.toggle_url}">
+                                        <i class="fa-solid fa-power-off" style="width: 16px; color: ${q.is_active ? 'var(--warning)' : 'var(--success)'};"></i>
+                                        <span>${toggleText}</span>
+                                    </a>
+                                    <a class="action-dropdown-item" href="${q.toggle_review_url}">
+                                        <i class="fa-solid ${eyeIcon}" style="width: 16px; color: var(--text-secondary);"></i>
+                                        <span>${eyeText}</span>
+                                    </a>
+                                    <a class="action-dropdown-item" href="${q.duplicate_url}">
+                                        <i class="fa-solid fa-copy" style="width: 16px; color: var(--text-secondary);"></i>
+                                        <span>Duplicate Quiz</span>
+                                    </a>
+                                    <div class="action-dropdown-divider"></div>
+                                    <a class="action-dropdown-item danger" href="${q.delete_url}" onclick="return confirm('Are you sure you want to delete this quiz?')">
+                                        <i class="fa-solid fa-trash" style="width: 16px;"></i>
+                                        <span>Delete Quiz</span>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </td>
                 </tr>`;
@@ -301,13 +384,120 @@
         if (tableWrap) tableWrap.innerHTML = html;
     }
 
+    const clearBtn = document.getElementById('searchClearBtn');
+
+    function updateClearBtn() {
+        if (!clearBtn) return;
+        if (searchInput && searchInput.value.trim().length > 0) {
+            clearBtn.classList.add('visible');
+        } else {
+            clearBtn.classList.remove('visible');
+        }
+    }
+
+    window.clearQuizSearch = function() {
+        if (searchInput) {
+            searchInput.value = '';
+            updateClearBtn();
+            fetchQuizzes();
+        }
+    };
+
     if (searchInput) {
-        searchInput.addEventListener('input', () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(fetchQuizzes, 50); });
-        searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') fetchQuizzes(); });
+        searchInput.addEventListener('input', () => {
+            updateClearBtn();
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fetchQuizzes, 50);
+        });
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') fetchQuizzes();
+            if (e.key === 'Escape') clearQuizSearch();
+        });
     }
     document.querySelectorAll('.class-filter, .section-filter').forEach(cb => cb.addEventListener('change', () => { updateBadge(); fetchQuizzes(); }));
 
     updateBadge();
+    updateClearBtn();
 })();
+
+let currentOpenMenu = null;
+let currentMenuOriginalParent = null;
+
+function toggleActionMenu(event, menuId) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const targetMenu = document.getElementById(menuId);
+    if (!targetMenu) return;
+    
+    const isAlreadyOpen = targetMenu.classList.contains('open');
+    closeAllActionMenus();
+    
+    if (!isAlreadyOpen) {
+        currentMenuOriginalParent = targetMenu.parentElement;
+        currentOpenMenu = targetMenu;
+        
+        // Append directly to body so no parent container or table overflow clips it
+        document.body.appendChild(targetMenu);
+        
+        targetMenu.style.display = 'flex';
+        targetMenu.style.visibility = 'hidden';
+        
+        const rect = btn.getBoundingClientRect();
+        const menuWidth = targetMenu.offsetWidth || 175;
+        const menuHeight = targetMenu.offsetHeight || 160;
+        
+        const scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+        const scrollX = window.pageXOffset || document.documentElement.scrollLeft || 0;
+        
+        const spaceBelow = window.innerHeight - rect.bottom;
+        let topPos;
+        if (spaceBelow < menuHeight + 10 && rect.top > menuHeight + 10) {
+            topPos = scrollY + rect.top - menuHeight - 4;
+        } else {
+            topPos = scrollY + rect.bottom + 4;
+        }
+        
+        let leftPos = scrollX + rect.right - menuWidth;
+        if (leftPos < 10) leftPos = 10;
+        
+        targetMenu.style.top = `${topPos}px`;
+        targetMenu.style.left = `${leftPos}px`;
+        targetMenu.style.right = 'auto';
+        targetMenu.style.visibility = 'visible';
+        targetMenu.classList.add('open');
+        
+        btn.setAttribute('aria-expanded', 'true');
+    }
+}
+
+function closeAllActionMenus() {
+    if (currentOpenMenu) {
+        currentOpenMenu.classList.remove('open');
+        currentOpenMenu.style.display = 'none';
+        if (currentMenuOriginalParent) {
+            currentMenuOriginalParent.appendChild(currentOpenMenu);
+        }
+        currentOpenMenu = null;
+        currentMenuOriginalParent = null;
+    }
+    document.querySelectorAll('.action-dropdown-btn[aria-expanded="true"]').forEach(btn => {
+        btn.setAttribute('aria-expanded', 'false');
+    });
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.action-dropdown-wrapper') && !e.target.closest('.action-dropdown-menu')) {
+        closeAllActionMenus();
+    }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeAllActionMenus();
+    }
+});
+
+window.addEventListener('scroll', closeAllActionMenus, true);
+window.addEventListener('resize', closeAllActionMenus);
 </script>
 {% endblock %}

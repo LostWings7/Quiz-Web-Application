@@ -5,133 +5,148 @@
 
 {% block eyebrow %}Performance Intelligence{% endblock %}
 {% block heading %}Analytics & Performance{% endblock %}
-{% block subtitle %}Data-driven insights, accuracy distributions, subtopic masteries, and cohort rankings.{% endblock %}
+{% block subtitle %}Data-driven insights, accuracy distributions, subtopic masteries, and Bloom's cognitive taxonomy.{% endblock %}
 
 {% block content %}
-{% if quizzes %}
-<!-- Searchable Quiz Picker -->
-<div class="quiz-picker-wrapper" id="quizPickerWrapper" style="margin-bottom: 24px;">
-    <div class="quiz-picker-trigger" id="quizPickerTrigger" onclick="togglePicker()">
-        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
-            <i class="fa-solid fa-clipboard-list" style="color: var(--accent-primary); font-size: 14px;"></i>
-            <span class="trigger-text" id="triggerLabel">
-                {% if selected_quiz %}{{ selected_quiz.title }}{% else %}Select an assessment to view analytics{% endif %}
-            </span>
-        </div>
-        <i class="fa-solid fa-chevron-down trigger-icon"></i>
-    </div>
-    <div class="quiz-picker-dropdown" id="quizPickerDropdown">
-        <div class="quiz-picker-search">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="quizSearchInput" placeholder="Search quizzes by title or code…" oninput="filterQuizzes(this.value)" autocomplete="off">
-        </div>
-        <div class="quiz-picker-list" id="quizPickerList">
-            {% for quiz in quizzes %}
-            <div class="quiz-picker-item {% if quiz.id == selected_quiz.id %}selected{% endif %}"
-                 data-id="{{ quiz.id }}"
-                 data-title="{{ quiz.title|lower }}"
-                 data-code="{{ quiz.code|lower }}"
-                 onclick="selectQuiz('{{ quiz.id }}', '{{ quiz.title|escapejs }}')">
-                <div class="item-icon"><i class="fa-solid fa-file-lines"></i></div>
-                <span class="item-label" data-original="{{ quiz.title }}">{{ quiz.title }}</span>
-                <span class="item-code">{{ quiz.code }}</span>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
-{% endif %}
+{% with current_analytics_section='overview' %}
+    {% include 'dashboard/partials/analytics_nav.html' %}
+{% endwith %}
 
+<div class="analytics-dynamic-panel panel-card-fade-in" id="analyticsDynamicPanel">
 {% if not selected_quiz %}
 <div class="card empty-state fade-up">
     <div class="empty-state-icon"><i class="fa-solid fa-chart-pie"></i></div>
-    <h2 class="empty-state-title">No Quizzes Available</h2>
-    <p class="empty-state-desc">Create quizzes and conduct assessments to generate real-time performance analytics.</p>
+    <h2 class="empty-state-title">No Assessment Selected</h2>
+    <p class="empty-state-desc">Select an assessment from the dropdown picker above to inspect class accuracy, subtopic mastery, and performance distributions.</p>
 </div>
 {% else %}
 <!-- Summary Metric Cards -->
-<section class="metric-grid">
+<section class="metric-grid" aria-label="Assessment Performance Metrics">
     <div class="metric-card fade-up stagger-1">
         <span>Average Score</span>
         <strong data-count-to="{{ average_score }}" data-suffix="%">{{ average_score }}%</strong>
+        <div class="metric-card-footer">
+            <i class="fa-solid fa-gauge-high" style="color: var(--accent-primary);"></i>
+            <span>Mean candidate performance</span>
+        </div>
     </div>
     <div class="metric-card fade-up stagger-2">
-        <span>Pass Rate</span>
+        <span>Pass Rate (≥40%)</span>
         <strong data-count-to="{{ pass_rate }}" data-suffix="%" style="color: var(--success);">{{ pass_rate }}%</strong>
+        <div class="metric-card-footer">
+            <i class="fa-solid fa-circle-check" style="color: var(--success);"></i>
+            <span>Scored 40% or higher</span>
+        </div>
     </div>
     <div class="metric-card fade-up stagger-3">
         <span>Total Attempts</span>
         <strong data-count-to="{{ attempt_count }}" style="color: var(--accent-primary);">{{ attempt_count }}</strong>
+        <div class="metric-card-footer">
+            <i class="fa-solid fa-users" style="color: var(--text-secondary);"></i>
+            <span>Completed candidate submissions</span>
+        </div>
     </div>
 </section>
 
 {% if attempt_count == 0 %}
 <div class="card empty-state fade-up" style="margin-top: 24px;">
     <div class="empty-state-icon"><i class="fa-solid fa-chart-bar"></i></div>
-    <h2 class="empty-state-title">No Data Available</h2>
-    <p class="empty-state-desc">This assessment hasn't received any submissions yet. Charts and graphs will appear here once candidates complete the quiz.</p>
+    <h2 class="empty-state-title">No Candidate Submissions Yet</h2>
+    <p class="empty-state-desc">This assessment has not received any candidate submissions. Charts, accuracy curves, and scorecards will generate automatically once candidates complete the quiz.</p>
 </div>
 {% else %}
 <!-- Analytics Chart Grid -->
-<section class="chart-grid" style="margin-bottom: 40px;">
+<section class="chart-grid" style="margin-bottom: 40px;" aria-label="Analytics Visualizations">
     <!-- Score Distribution -->
-    <div class="chart-box interactive-card fade-up stagger-1" onclick="window.location.href='/dashboard/analytics/score/?quiz={{ selected_quiz.id }}'">
-        <div class="section-heading">
-            <h2>Score Distribution</h2>
-            <span class="pill" style="font-size: 11px;">View Details &rarr;</span>
+    <div class="chart-box interactive-card fade-up stagger-1" onclick="window.location.href='{% url 'dashboard_analytics_detail' 'score' %}?quiz={{ selected_quiz.id }}'" role="region" aria-label="Score Distribution Chart">
+        <div class="chart-box-header">
+            <div class="chart-box-title-group">
+                <h3 class="chart-box-title">Score Distribution</h3>
+                <p class="chart-box-desc">Candidate volume across Low (<40%), Medium (40–69%), and High (70–100%) score tiers.</p>
+            </div>
+            <span class="pill" style="font-size: 11px;">View Deep Dive &rarr;</span>
         </div>
         <div class="canvas-container"><canvas id="scoreChart"></canvas></div>
     </div>
 
     <!-- Overall Gauge Score -->
-    <div class="chart-box interactive-card fade-up stagger-2" onclick="window.location.href='/dashboard/analytics/overall/?quiz={{ selected_quiz.id }}'">
-        <div class="section-heading">
-            <h2>Average Performance Gauge</h2>
-            <span class="pill" style="font-size: 11px;">View Details &rarr;</span>
+    <div class="chart-box interactive-card fade-up stagger-2" onclick="window.location.href='{% url 'dashboard_analytics_detail' 'overall' %}?quiz={{ selected_quiz.id }}'" role="region" aria-label="Average Performance Gauge">
+        <div class="chart-box-header">
+            <div class="chart-box-title-group">
+                <h3 class="chart-box-title">Average Performance Gauge</h3>
+                <p class="chart-box-desc">Cohort-wide score mean compared against the full score potential.</p>
+            </div>
+            <span class="pill" style="font-size: 11px;">View Deep Dive &rarr;</span>
         </div>
         <div class="canvas-container"><canvas id="overallChart"></canvas></div>
     </div>
 
     <!-- CRO Breakdown -->
-    <div class="chart-box interactive-card fade-up stagger-3" onclick="window.location.href='/dashboard/analytics/cro/?quiz={{ selected_quiz.id }}'">
-        <div class="section-heading">
-            <h2>Critical Focus Priority</h2>
-            <span class="pill" style="font-size: 11px;">View Details &rarr;</span>
+    <div class="chart-box interactive-card fade-up stagger-3" onclick="window.location.href='{% url 'dashboard_analytics_detail' 'cro' %}?quiz={{ selected_quiz.id }}'" role="region" aria-label="Critical Focus Priority Chart">
+        <div class="chart-box-header">
+            <div class="chart-box-title-group">
+                <h3 class="chart-box-title">Critical Focus Priority (CRO)</h3>
+                <p class="chart-box-desc">Curriculum questions categorized: Critical (<50%), Recommended (50–76%), Optional (≥77%).</p>
+            </div>
+            <span class="pill" style="font-size: 11px;">View Deep Dive &rarr;</span>
         </div>
         <div class="canvas-container"><canvas id="croChart"></canvas></div>
     </div>
 
     <!-- Subtopic Accuracy -->
-    <div class="chart-box interactive-card fade-up stagger-4" onclick="window.location.href='/dashboard/analytics/subtopic/?quiz={{ selected_quiz.id }}'">
-        <div class="section-heading">
-            <h2>Subtopic Accuracy</h2>
-            <span class="pill" style="font-size: 11px;">View Details &rarr;</span>
+    <div class="chart-box interactive-card fade-up stagger-4" onclick="window.location.href='{% url 'dashboard_analytics_detail' 'subtopic' %}?quiz={{ selected_quiz.id }}'" role="region" aria-label="Subtopic Accuracy Chart">
+        <div class="chart-box-header">
+            <div class="chart-box-title-group">
+                <h3 class="chart-box-title">Subtopic Mastery</h3>
+                <p class="chart-box-desc">Average candidate accuracy aggregated across curriculum subtopics.</p>
+            </div>
+            <span class="pill" style="font-size: 11px;">View Deep Dive &rarr;</span>
         </div>
         <div class="canvas-container"><canvas id="subtopicChart"></canvas></div>
     </div>
 
-    <!-- Student Rankings -->
-    <div class="chart-box interactive-card fade-up stagger-5" onclick="window.location.href='/dashboard/analytics/ranking/?quiz={{ selected_quiz.id }}'">
-        <div class="section-heading">
-            <h2>Candidate Rankings</h2>
-            <span class="pill" style="font-size: 11px;">View Details &rarr;</span>
+    <!-- Bloom's Taxonomy Cognitive Performance -->
+    <div class="chart-box interactive-card fade-up stagger-4" onclick="window.location.href='{% url 'dashboard_bloom_analytics' %}?quiz={{ selected_quiz.id }}'" role="region" aria-label="Bloom's Taxonomy Summary Chart">
+        <div class="chart-box-header">
+            <div class="chart-box-title-group">
+                <h3 class="chart-box-title">Bloom's Taxonomy Analysis</h3>
+                <p class="chart-box-desc">Cognitive mastery across Remember, Understand, Apply, and Analyze levels.</p>
+            </div>
+            <span class="pill accent" style="font-size: 11px;">Bloom Analysis &rarr;</span>
         </div>
-        <div class="canvas-container"><canvas id="rankingChart"></canvas></div>
+        <div class="canvas-container"><canvas id="bloomChart"></canvas></div>
+        <div class="chart-box-footer">
+            <div>
+                <span style="color: var(--text-muted); margin-right: 4px;">Strongest:</span>
+                <span class="bloom-pill remember" style="padding: 2px 7px; font-size: 10px;">{{ bloom_analytics.strongest_level }}</span>
+            </div>
+            <div>
+                <span style="color: var(--text-muted); margin-right: 4px;">Weakest:</span>
+                <span class="bloom-pill apply" style="padding: 2px 7px; font-size: 10px;">{{ bloom_analytics.weakest_level }}</span>
+            </div>
+            <div>
+                <span style="color: var(--text-muted);">Classified:</span>
+                <strong style="font-family: var(--font-mono); margin-left: 3px;">{{ bloom_analytics.classified_count }}/{{ bloom_analytics.total_questions }}</strong>
+            </div>
+        </div>
     </div>
 
     <!-- Class Scorecard Preview -->
-    <div class="chart-box interactive-card fade-up stagger-5" style="overflow: auto; padding-bottom: 24px;" onclick="window.location.href='/dashboard/analytics/scorecard/?quiz={{ selected_quiz.id }}'">
-        <div class="section-heading">
-            <h2>Class Scorecard</h2>
+    <div class="chart-box interactive-card fade-up stagger-5" style="overflow: hidden; justify-content: flex-start;" onclick="window.location.href='{% url 'dashboard_analytics_detail' 'scorecard' %}?quiz={{ selected_quiz.id }}'" role="region" aria-label="Class Scorecard Preview">
+        <div class="chart-box-header">
+            <div class="chart-box-title-group">
+                <h3 class="chart-box-title">Class Scorecard Preview</h3>
+                <p class="chart-box-desc">Top-performing candidates ranked by assessment score.</p>
+            </div>
             <span class="pill" style="font-size: 11px;">Full Scorecard &rarr;</span>
         </div>
-        <div class="table-wrapper">
+        <div class="table-wrapper" style="margin-top: 6px; flex: 1;">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th style="text-align: center;">Rank</th>
+                        <th style="text-align: center; width: 60px;">Rank</th>
                         <th>Student Name</th>
-                        <th style="text-align: center;">Score</th>
+                        <th style="text-align: center; width: 80px;">Score</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -154,16 +169,19 @@
             </table>
         </div>
         {% if scorecard|length > 3 %}
-        <div style="text-align: center; padding-top: 12px; color: var(--accent-primary); font-size: var(--text-xs); font-weight: 600;">
+        <div style="text-align: center; padding-top: 10px; color: var(--accent-primary); font-size: var(--text-xs); font-weight: 600;">
             Click to view all {{ scorecard|length }} candidates &rarr;
         </div>
         {% endif %}
     </div>
 
     <!-- Question Difficulty Full-Width Line -->
-    <div class="chart-box interactive-card fade-up" style="grid-column: 1 / -1; height: 360px;" onclick="window.location.href='/dashboard/analytics/difficulty/?quiz={{ selected_quiz.id }}'">
-        <div class="section-heading">
-            <h2>Question-by-Question Difficulty Curve</h2>
+    <div class="chart-box interactive-card fade-up" style="grid-column: 1 / -1; height: 360px;" onclick="window.location.href='{% url 'dashboard_analytics_detail' 'difficulty' %}?quiz={{ selected_quiz.id }}'" role="region" aria-label="Question Difficulty Curve">
+        <div class="chart-box-header">
+            <div class="chart-box-title-group">
+                <h3 class="chart-box-title">Question-by-Question Difficulty Curve</h3>
+                <p class="chart-box-desc">Sequential candidate accuracy across all question prompts. Drops indicate high-friction questions.</p>
+            </div>
             <span class="pill" style="font-size: 11px;">Deep Breakdown &rarr;</span>
         </div>
         <div class="canvas-container"><canvas id="difficultyChart"></canvas></div>
@@ -171,265 +189,220 @@
 </section>
 {% endif %}
 {% endif %}
-{% endblock %}
 
-{% block extra_js %}
 {% if selected_quiz and attempt_count > 0 %}
 {{ chart_data|json_script:"chart-data" }}
 <script src="{% static 'js/vendor/chart.min.js' %}"></script>
 <script>
 (function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const quizParam = urlParams.get('quiz');
-    if (quizParam) {
-        sessionStorage.setItem('analytics_selected_quiz_id', quizParam);
-    } else {
-        const savedQuizId = sessionStorage.getItem('analytics_selected_quiz_id');
-        {% if selected_quiz %}
-        const currentSelectedId = '{{ selected_quiz.id }}';
-        if (savedQuizId && savedQuizId !== currentSelectedId) {
-            window.location.replace('?quiz=' + savedQuizId);
-            return;
-        } else {
-            sessionStorage.setItem('analytics_selected_quiz_id', currentSelectedId);
-        }
-        {% endif %}
-    }
-})();
+    const dataEl = document.getElementById("chart-data");
+    if (!dataEl || !window.Chart) return;
 
-const chartData = JSON.parse(document.getElementById("chart-data").textContent);
-const lightGrid = { color: "rgba(24, 24, 27, 0.06)", borderColor: "rgba(24, 24, 27, 0.1)" };
-const lightTicks = { color: "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
+    try {
+        sessionStorage.setItem('quizx_active_quiz_id', '{{ selected_quiz.id }}');
+        sessionStorage.removeItem('analytics_selected_quiz');
+        sessionStorage.removeItem('analytics_selected_quiz_id');
+    } catch(e) {}
 
-const speedDialNeedle = {
-    id: 'speedDialNeedle',
-    afterDatasetDraw(chart, args, options) {
-        const { ctx, config, data, chartArea: { width } } = chart;
-        if (config.options.plugins.speedDialNeedle && data.datasets[0].type === 'doughnut') {
-            ctx.save();
-            const value = data.datasets[0].data[0];
-            const max = data.datasets[0].data[0] + data.datasets[0].data[1];
+    const chartData = JSON.parse(dataEl.textContent);
+    const lightGrid = { color: "rgba(24, 24, 27, 0.06)", borderColor: "rgba(24, 24, 27, 0.1)" };
+    const lightTicks = { color: "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
 
-            let animatedValue = value;
-            if (chart._activeAnimationProgress !== undefined) {
-                animatedValue = value * chart._activeAnimationProgress;
+    const speedDialNumberPlugin = {
+        id: 'speedDialNumberPlugin',
+        afterDraw(chart) {
+            if (!chart.config.options.plugins.speedDialNumberPlugin) return;
+            const { ctx, chartArea } = chart;
+            const meta = chart.getDatasetMeta(0);
+            if (!meta || !meta.data || !meta.data[0]) return;
+
+            const value = chart.data.datasets[0].data[0] || 0;
+            let progress = 0;
+            if (chart._entranceDone) {
+                progress = 1;
+            } else if (chart._activeAnimationProgress !== undefined) {
+                progress = chart._activeAnimationProgress;
             }
 
-            const angle = Math.PI + (1 / max * animatedValue * Math.PI);
-            const cx = width / 2;
-            const cy = chart._metasets[0].data[0].y;
+            const animatedValue = Math.round(value * progress);
+            const cx = (chartArea.left + chartArea.right) / 2;
+            const cy = meta.data[0].y;
+            const innerRadius = meta.data[0].innerRadius || ((chartArea.bottom - chartArea.top) * 0.7);
 
-            ctx.translate(cx, cy);
-            ctx.rotate(angle);
+            // True vertical center of the hollow semicircle area
+            const centerY = cy - (innerRadius * 0.48);
 
-            // Draw Needle
-            ctx.beginPath();
-            ctx.moveTo(0, -4);
-            ctx.lineTo(chart.outerRadius - 14, 0);
-            ctx.lineTo(0, 4);
-            ctx.fillStyle = '#18181B';
-            ctx.fill();
+            // Responsive typography based on gauge radius
+            const numFontSize = Math.min(64, Math.max(36, Math.round(innerRadius * 0.32)));
+            const labelFontSize = Math.min(16, Math.max(12, Math.round(numFontSize * 0.32)));
 
-            // Center Dot
-            ctx.beginPath();
-            ctx.arc(0, 0, 8, 0, 2 * Math.PI);
-            ctx.fillStyle = '#635BFF';
-            ctx.fill();
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Main score text: Solid black
+            ctx.font = `bold ${numFontSize}px 'Inter', -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillStyle = "#000000";
+            ctx.fillText(animatedValue + '%', cx, centerY - (labelFontSize * 0.6));
+
+            // Sub-label
+            ctx.font = `600 ${labelFontSize}px 'Inter', -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillStyle = "#71717A";
+            ctx.fillText("Average Score", cx, centerY + (numFontSize * 0.48));
 
             ctx.restore();
         }
-    }
-};
-Chart.register(speedDialNeedle);
+    };
 
-function makeChart(id, type, labels, values, label, customOptions = {}) {
-    const ctx = document.getElementById(id);
-    if (!ctx || !window.Chart) return;
-
-    let backgroundColor = [
-        "rgba(99, 91, 255, 0.8)",
-        "rgba(34, 184, 199, 0.8)",
-        "rgba(124, 111, 255, 0.8)",
-        "rgba(46, 155, 103, 0.8)"
-    ];
-
-    if (id === 'croChart') {
-        backgroundColor = ["rgba(217, 87, 99, 0.85)", "rgba(217, 154, 50, 0.85)", "rgba(46, 155, 103, 0.85)"];
-    } else if (id === 'overallChart') {
-        backgroundColor = ["rgba(99, 91, 255, 0.9)", "rgba(24, 24, 27, 0.06)"];
+    try {
+        if (!window.Chart.registry.plugins.get('speedDialNumberPlugin')) {
+            window.Chart.register(speedDialNumberPlugin);
+        }
+    } catch(e) {
+        try { window.Chart.register(speedDialNumberPlugin); } catch(err) {}
     }
 
-    new Chart(ctx, {
-        type,
-        data: {
-            labels,
-            datasets: [{
-                label,
-                data: values,
-                borderColor: type === "doughnut" || type === "pie" ? "#FFFFFF" : "#635BFF",
-                backgroundColor: backgroundColor,
-                borderWidth: type === "doughnut" || type === "pie" ? 2 : 2,
-                tension: 0.35,
-                fill: type === "line"
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-                duration: 900,
-                easing: "easeOutQuart",
-                onProgress: function(animation) {
-                    if (id === 'overallChart') {
-                        animation.chart._activeAnimationProgress = animation.currentStep / animation.numSteps;
-                    }
-                },
-                onComplete: (animation) => {
-                    if (id === 'overallChart') {
-                        animation.chart._activeAnimationProgress = 1;
-                    }
-                }
+    function makeChart(id, type, labels, values, label, customOptions = {}) {
+        const ctx = document.getElementById(id);
+        if (!ctx || !window.Chart) return;
+
+        try {
+            const existing = window.Chart.getChart(ctx);
+            if (existing) existing.destroy();
+        } catch(e) {}
+
+        let backgroundColor = [
+            "rgba(99, 91, 255, 0.85)",
+            "rgba(34, 184, 199, 0.85)",
+            "rgba(217, 154, 50, 0.85)",
+            "rgba(46, 155, 103, 0.85)"
+        ];
+
+        if (id === 'croChart') {
+            backgroundColor = ["rgba(217, 87, 99, 0.85)", "rgba(217, 154, 50, 0.85)", "rgba(46, 155, 103, 0.85)"];
+        } else if (id === 'overallChart') {
+            backgroundColor = ["rgba(99, 91, 255, 0.9)", "rgba(24, 24, 27, 0.06)"];
+        } else if (id === 'bloomChart') {
+            backgroundColor = ["rgba(99, 91, 255, 0.85)", "rgba(34, 184, 199, 0.85)", "rgba(217, 154, 50, 0.85)", "rgba(46, 155, 103, 0.85)"];
+        }
+
+        const initialData = (type === 'bar' || type === 'line')
+            ? values.map(() => 0)
+            : values;
+
+        const targetCircumference = customOptions.circumference !== undefined ? customOptions.circumference : 360;
+        const chartOptions = { ...customOptions };
+        if (type === 'doughnut' || type === 'pie') {
+            chartOptions.circumference = 0;
+        }
+
+        const chart = new window.Chart(ctx, {
+            type,
+            data: {
+                labels,
+                datasets: [{
+                    label,
+                    data: initialData,
+                    borderColor: "#000000",
+                    backgroundColor: backgroundColor,
+                    borderWidth: 2,
+                    borderRadius: type === "bar" ? 6 : 0,
+                    maxBarThickness: 42,
+                    tension: 0.35,
+                    fill: type === "line",
+                    pointBorderColor: "#000000",
+                    pointBackgroundColor: "#635BFF",
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    hoverOffset: id === 'overallChart' ? 0 : 4
+                }]
             },
-            plugins: {
-                speedDialNeedle: id === 'overallChart',
-                legend: {
-                    display: type === "pie" || type === "doughnut",
-                    labels: { color: "#18181B", font: { family: "'Inter', sans-serif", size: 12 } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                hover: {
+                    mode: id === 'overallChart' ? null : 'nearest'
                 },
-                tooltip: {
-                    backgroundColor: "#FFFFFF",
-                    titleColor: "#18181B",
-                    bodyColor: "#71717A",
-                    borderColor: "rgba(24, 24, 27, 0.12)",
-                    borderWidth: 1,
-                    padding: 10,
-                    callbacks: {
-                        label: function(context) {
-                            if (id === 'overallChart' && context.dataIndex === 1) return null;
-                            return context.formattedValue + (id === 'scoreChart' || id === 'croChart' ? ' Students' : (id === 'overallChart' || id === 'difficultyChart' || id === 'subtopicChart' || id === 'rankingChart' ? '%' : ''));
+                animation: {
+                    duration: 1200,
+                    easing: "easeOutQuart",
+                    onProgress: function(animation) {
+                        if (animation.chart._isEntranceAnimating) {
+                            animation.chart._activeAnimationProgress = animation.currentStep / animation.numSteps;
+                        }
+                    },
+                    onComplete: (animation) => {
+                        if (animation.chart._isEntranceAnimating) {
+                            animation.chart._activeAnimationProgress = 1;
+                            animation.chart._isEntranceAnimating = false;
+                            animation.chart._entranceDone = true;
                         }
                     }
-                }
-            },
-            scales: type === "doughnut" || type === "pie" ? {} : {
-                x: { grid: lightGrid, ticks: lightTicks },
-                y: { beginAtZero: true, grid: lightGrid, ticks: lightTicks }
-            },
-            ...customOptions
-        }
-    });
-}
+                },
+                plugins: {
+                    speedDialNumberPlugin: id === 'overallChart',
+                    legend: {
+                        display: type === "pie" || type === "doughnut",
+                        labels: { color: "#18181B", font: { family: "'Inter', sans-serif", size: 12 } }
+                    },
+                    tooltip: {
+                        enabled: id !== 'overallChart',
+                        backgroundColor: "#FFFFFF",
+                        titleColor: "#18181B",
+                        bodyColor: "#71717A",
+                        borderColor: "rgba(24, 24, 27, 0.12)",
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                if (id === 'overallChart' && context.dataIndex === 1) return null;
+                                return context.formattedValue + (id === 'scoreChart' || id === 'croChart' ? ' Students' : (id === 'overallChart' || id === 'difficultyChart' || id === 'subtopicChart' || id === 'rankingChart' || id === 'bloomChart' ? '%' : ''));
+                            }
+                        }
+                    }
+                },
+                scales: type === "doughnut" || type === "pie" ? {} : {
+                    x: { grid: lightGrid, ticks: lightTicks },
+                    y: { beginAtZero: true, grid: lightGrid, ticks: lightTicks }
+                },
+                ...chartOptions
+            }
+        });
 
-makeChart("scoreChart", "doughnut", chartData.scoreLabels, chartData.scoreValues, "Students");
-makeChart("overallChart", "doughnut", ["Score", "Remaining"], [chartData.averageScore, 100 - chartData.averageScore], "Average", {
-    circumference: 180,
-    rotation: 270,
-    cutout: "80%"
-});
-makeChart("croChart", "pie", chartData.croLabels, chartData.croValues, "Questions");
-makeChart("subtopicChart", "bar", chartData.subtopicLabels, chartData.subtopicValues, "Accuracy");
-makeChart("rankingChart", "bar", chartData.rankingLabels, chartData.rankingValues, "Percentage");
-makeChart("difficultyChart", "line", chartData.difficultyLabels, chartData.difficultyValues, "Accuracy");
+        if (type === 'doughnut' || type === 'pie') {
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    chart.options.circumference = targetCircumference;
+                    chart._isEntranceAnimating = true;
+                    chart.update();
+                }, 40);
+            });
+        } else {
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    chart.data.datasets[0].data = values;
+                    chart.update();
+                }, 40);
+            });
+        }
+    }
+
+    makeChart("scoreChart", "doughnut", chartData.scoreLabels, chartData.scoreValues, "Students", { cutout: "72%" });
+    makeChart("overallChart", "doughnut", ["Score", "Remaining"], [chartData.averageScore, 100 - chartData.averageScore], "Average", {
+        circumference: 180,
+        rotation: 270,
+        cutout: "80%"
+    });
+    makeChart("croChart", "pie", chartData.croLabels, chartData.croValues, "Questions");
+    makeChart("subtopicChart", "bar", chartData.subtopicLabels, chartData.subtopicValues, "Accuracy");
+    if (chartData.bloomLabels && chartData.bloomValues) {
+        makeChart("bloomChart", "bar", chartData.bloomLabels, chartData.bloomValues, "Accuracy");
+    }
+    makeChart("difficultyChart", "line", chartData.difficultyLabels, chartData.difficultyValues, "Accuracy");
+})();
 </script>
 {% endif %}
 
-<script>
-const trigger    = document.getElementById('quizPickerTrigger');
-const dropdown   = document.getElementById('quizPickerDropdown');
-const searchInput= document.getElementById('quizSearchInput');
-const list       = document.getElementById('quizPickerList');
-
-if (trigger && dropdown) {
-    let focusedIdx = -1;
-
-    function togglePicker() {
-        dropdown.classList.contains('open') ? closePicker() : openPicker();
-    }
-
-    function openPicker() {
-        trigger.classList.add('open');
-        dropdown.classList.add('open');
-        if (searchInput) setTimeout(() => searchInput.focus(), 60);
-        focusedIdx = -1;
-    }
-
-    function closePicker() {
-        trigger.classList.remove('open');
-        dropdown.classList.remove('open');
-        if (searchInput) { searchInput.value = ''; filterQuizzes(''); }
-        focusedIdx = -1;
-    }
-
-    document.addEventListener('click', function(e) {
-        const wrapper = document.getElementById('quizPickerWrapper');
-        if (wrapper && !wrapper.contains(e.target)) closePicker();
-    });
-
-    if (searchInput) {
-        searchInput.addEventListener('keydown', function(e) {
-            const visible = [...list.querySelectorAll('.quiz-picker-item:not([style*="display: none"])')];
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                focusedIdx = Math.min(focusedIdx + 1, visible.length - 1);
-                updateFocus(visible);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                focusedIdx = Math.max(focusedIdx - 1, 0);
-                updateFocus(visible);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                if (focusedIdx >= 0 && visible[focusedIdx]) visible[focusedIdx].click();
-            } else if (e.key === 'Escape') {
-                closePicker();
-            }
-        });
-    }
-
-    function updateFocus(visible) {
-        visible.forEach((el, i) => {
-            el.classList.toggle('focused', i === focusedIdx);
-            if (i === focusedIdx) el.scrollIntoView({ block: 'nearest' });
-        });
-    }
-}
-
-function filterQuizzes(query) {
-    if (!list) return;
-    const q = query.trim().toLowerCase();
-    const items = list.querySelectorAll('.quiz-picker-item');
-    let hasVisible = false;
-    let emptyMsg = list.querySelector('.quiz-picker-empty');
-
-    items.forEach(item => {
-        const title = item.dataset.title || '';
-        const code  = item.dataset.code  || '';
-        const match = !q || title.includes(q) || code.includes(q);
-        item.style.display = match ? '' : 'none';
-        if (match) hasVisible = true;
-    });
-
-    if (!emptyMsg) {
-        emptyMsg = document.createElement('div');
-        emptyMsg.className = 'quiz-picker-empty';
-        emptyMsg.style.padding = '18px';
-        emptyMsg.style.textAlign = 'center';
-        emptyMsg.style.color = 'var(--text-muted)';
-        emptyMsg.style.fontSize = 'var(--text-xs)';
-        emptyMsg.innerHTML = 'No quizzes match your search.';
-        list.appendChild(emptyMsg);
-    }
-    emptyMsg.style.display = hasVisible ? 'none' : '';
-}
-
-function selectQuiz(id, title) {
-    sessionStorage.setItem('analytics_selected_quiz_id', id);
-    const trigger = document.getElementById('quizPickerTrigger');
-    const label   = document.getElementById('triggerLabel');
-    if (label) label.textContent = title;
-    if (trigger) trigger.classList.remove('open');
-    const dropdown = document.getElementById('quizPickerDropdown');
-    if (dropdown) dropdown.classList.remove('open');
-    window.location.href = '?quiz=' + id;
-}
-</script>
+</div>
 {% endblock %}

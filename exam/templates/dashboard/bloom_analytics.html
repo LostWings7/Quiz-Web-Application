@@ -1,0 +1,1118 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Bloom's Taxonomy Analysis | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}{% endblock %}
+
+{% block eyebrow %}Cognitive Performance Intelligence{% endblock %}
+{% block heading %}Bloom's Taxonomy Analysis{% endblock %}
+{% block subtitle %}Multi-tiered cognitive analysis across Remember, Understand, Apply, and Analyze for {{ selected_quiz.title }}.{% endblock %}
+
+{% block actions %}
+<a href="{% url 'dashboard_analytics' %}?quiz={{ selected_quiz.id }}" class="btn btn-secondary">
+    <i class="fa-solid fa-arrow-left"></i>
+    <span>Back to Analytics</span>
+</a>
+{% endblock %}
+
+{% block content %}
+{% with current_analytics_section='bloom' %}
+    {% include 'dashboard/partials/analytics_nav.html' %}
+{% endwith %}
+
+<div class="analytics-dynamic-panel panel-card-fade-in" id="analyticsDynamicPanel" style="width: 100%; max-width: 100%; box-sizing: border-box;">
+{% if not selected_quiz %}
+<div class="card empty-state fade-up">
+    <div class="empty-state-icon"><i class="fa-solid fa-chart-pie"></i></div>
+    <h2 class="empty-state-title">No Assessment Selected</h2>
+    <p class="empty-state-desc">Select an assessment to view cognitive Bloom's Taxonomy analytics.</p>
+</div>
+{% elif attempt_count == 0 %}
+<div class="card empty-state fade-up" style="margin-top: 24px;">
+    <div class="empty-state-icon"><i class="fa-solid fa-chart-bar"></i></div>
+    <h2 class="empty-state-title">No Candidate Submissions Yet</h2>
+    <p class="empty-state-desc">Bloom's Taxonomy analytics will compute automatically once students complete the quiz.</p>
+</div>
+{% else %}
+
+<!-- 1. Balanced 4-Card Metric Grid -->
+<section class="bloom-metric-grid" aria-label="Bloom's Taxonomy Performance Metrics">
+    <!-- Card 1: Overall Mastery -->
+    <div class="bloom-kpi-card fade-up stagger-1">
+        <div class="bloom-kpi-header">
+            <span class="bloom-kpi-title">Overall Mastery</span>
+            <div class="bloom-kpi-icon" style="background: rgba(99, 91, 255, 0.1); color: #635BFF;">
+                <i class="fa-solid fa-brain"></i>
+            </div>
+        </div>
+        <div class="bloom-kpi-value" style="color: #635BFF;">
+            {{ bloom_data.overall_accuracy }}%
+        </div>
+        <div class="bloom-kpi-footer">
+            <i class="fa-solid fa-chart-line" style="color: #635BFF;"></i>
+            <span>Aggregated cognitive accuracy</span>
+        </div>
+    </div>
+
+    <!-- Card 2: Dominant Cognitive Tier -->
+    <div class="bloom-kpi-card fade-up stagger-2">
+        <div class="bloom-kpi-header">
+            <span class="bloom-kpi-title">Dominant Tier</span>
+            <div class="bloom-kpi-icon" style="background: rgba(46, 155, 103, 0.1); color: var(--success);">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+        </div>
+        <div class="bloom-kpi-value" style="color: var(--success); font-size: 22px;">
+            {{ bloom_data.strongest_level }}
+        </div>
+        <div class="bloom-kpi-footer">
+            <i class="fa-solid fa-arrow-trend-up" style="color: var(--success);"></i>
+            <span>Highest cohort accuracy</span>
+        </div>
+    </div>
+
+    <!-- Card 3: Taxonomy Coverage -->
+    <div class="bloom-kpi-card fade-up stagger-3">
+        <div class="bloom-kpi-header">
+            <span class="bloom-kpi-title">Taxonomy Coverage</span>
+            <div class="bloom-kpi-icon" style="background: rgba(14, 159, 173, 0.1); color: #0E9FAD;">
+                <i class="fa-solid fa-tags"></i>
+            </div>
+        </div>
+        <div class="bloom-kpi-value">
+            {{ bloom_data.classified_count }} <span style="font-size: 15px; font-weight: 500; color: var(--text-secondary);">/ {{ bloom_data.total_questions }} items</span>
+        </div>
+        <div class="bloom-kpi-footer" style="display: flex; align-items: center; gap: 8px;">
+            <div class="bloom-table-track" style="width: 70px; margin-left: 0;">
+                <div class="bloom-table-fill" style="width: {% if bloom_data.total_questions > 0 %}{% widthratio bloom_data.classified_count bloom_data.total_questions 100 %}{% else %}0{% endif %}%; background: #0E9FAD;"></div>
+            </div>
+            <span>{% if bloom_data.total_questions > 0 %}{% widthratio bloom_data.classified_count bloom_data.total_questions 100 %}{% else %}0{% endif %}% classified</span>
+        </div>
+    </div>
+
+    <!-- Card 4: Review Queue -->
+    <div class="bloom-kpi-card fade-up stagger-4">
+        <div class="bloom-kpi-header">
+            <span class="bloom-kpi-title">Review Status</span>
+            <div class="bloom-kpi-icon" style="background: {% if bloom_data.needs_review_count > 0 %}rgba(217, 87, 99, 0.1){% else %}rgba(46, 155, 103, 0.1){% endif %}; color: {% if bloom_data.needs_review_count > 0 %}var(--error){% else %}var(--success){% endif %};">
+                <i class="fa-solid {% if bloom_data.needs_review_count > 0 %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+            </div>
+        </div>
+        <div class="bloom-kpi-value" style="{% if bloom_data.needs_review_count > 0 %}color: var(--error);{% else %}color: var(--success);{% endif %}">
+            {{ bloom_data.needs_review_count }}
+        </div>
+        <div class="bloom-kpi-footer">
+            {% if bloom_data.needs_review_count > 0 %}
+                <span class="pill danger" style="font-size: 10px; font-weight: 700;">Needs Teacher Review</span>
+            {% else %}
+                <span class="pill success" style="font-size: 10px; font-weight: 700;">All Items Reviewed</span>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- 2. AI Batch Auto-Classification Callout (when unclassified questions exist) -->
+{% if bloom_data.unclassified_count > 0 %}
+<section class="bloom-ai-banner fade-up" aria-label="AI Cognitive Auto-Classification">
+    <div class="bloom-ai-content">
+        <div class="bloom-ai-icon">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </div>
+        <div class="bloom-ai-text">
+            <h4>Auto-Classify Questions with AI</h4>
+            <p>
+                <strong>{{ bloom_data.unclassified_count }}</strong> questions lack cognitive taxonomy classification. Run the zero-shot classifier to automatically categorize them into Remember, Understand, Apply, or Analyze.
+            </p>
+        </div>
+    </div>
+    <button type="button" class="btn btn-primary" id="openBloomAiBatchModalBtn" onclick="openBloomAiBatchModal()">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>Auto-Classify with AI</span>
+    </button>
+</section>
+{% endif %}
+
+<!-- 3. Side-by-Side Visualizations -->
+<section class="bloom-chart-grid" aria-label="Taxonomy Visualizations">
+    <!-- Left: Bar Chart: Accuracy by Cognitive Tier -->
+    <div class="bloom-chart-card interactive-card fade-up stagger-1" role="region" aria-label="Cognitive Tier Accuracy Chart">
+        <div class="chart-box-header">
+            <div class="chart-box-title-group">
+                <h3 class="chart-box-title">Accuracy by Cognitive Tier</h3>
+                <p class="chart-box-desc">Candidate accuracy compared across Remember, Understand, Apply, and Analyze.</p>
+            </div>
+            <span class="pill accent" style="font-size: 11px;">Cognitive Breakdown</span>
+        </div>
+        <div class="bloom-chart-wrapper"><canvas id="bloomAccuracyChart"></canvas></div>
+    </div>
+
+    <!-- Right: Donut Chart: Question Distribution -->
+    <div class="bloom-chart-card interactive-card fade-up stagger-2" role="region" aria-label="Question Distribution Chart">
+        <div class="chart-box-header">
+            <div class="chart-box-title-group">
+                <h3 class="chart-box-title">Question Distribution</h3>
+                <p class="chart-box-desc">Taxonomy balance and item volume across each cognitive dimension.</p>
+            </div>
+            <span class="pill" style="font-size: 11px;">Taxonomy Weights</span>
+        </div>
+        <div class="bloom-chart-wrapper"><canvas id="bloomDistributionChart"></canvas></div>
+    </div>
+</section>
+
+<!-- 4. Connected Cognitive Performance Progression Pipeline -->
+<section class="cognitive-pipeline-card fade-up" aria-label="Cognitive Performance Progression">
+    <div class="cognitive-pipeline-header">
+        <div class="chart-box-title-group">
+            <h3 class="chart-box-title">
+                <i class="fa-solid fa-arrow-trend-up" style="color: var(--accent-primary); margin-right: 8px;"></i>
+                Cognitive Performance Trend
+            </h3>
+            <p class="chart-box-desc">Observed mastery trajectory from foundational recall to high-order analytical reasoning.</p>
+        </div>
+        <span class="pill {% if bloom_data.trend_delta >= 0 %}success{% else %}warning{% endif %}" style="font-size: 11px; font-weight: 700;">
+            Progression Delta: {% if bloom_data.trend_delta >= 0 %}+{% endif %}{{ bloom_data.trend_delta }}%
+        </span>
+    </div>
+
+    <div class="cognitive-pipeline-steps">
+        <!-- Step 1: Remember -->
+        <div class="cognitive-step-box tier-remember">
+            <div class="step-badge-row">
+                <span class="step-label">
+                    <i class="fa-solid fa-lightbulb"></i> Step 1: Remember
+                </span>
+                <span class="pill" style="font-size: 10px; font-weight: 600;">Recall</span>
+            </div>
+            <div class="step-accuracy-val" style="color: #635BFF;">
+                {{ bloom_data.level_stats.Remember.accuracy }}%
+            </div>
+            <div class="step-meta-info">
+                <span>{{ bloom_data.level_stats.Remember.question_count }} questions</span>
+                <span>{{ bloom_data.level_stats.Remember.total_responses }} attempts</span>
+            </div>
+        </div>
+
+        <!-- Step 2: Understand -->
+        <div class="cognitive-step-box tier-understand">
+            <div class="step-badge-row">
+                <span class="step-label">
+                    <i class="fa-solid fa-book-open"></i> Step 2: Understand
+                </span>
+                <span class="pill" style="font-size: 10px; font-weight: 600;">Comprehend</span>
+            </div>
+            <div class="step-accuracy-val" style="color: #0E9FAD;">
+                {{ bloom_data.level_stats.Understand.accuracy }}%
+            </div>
+            <div class="step-meta-info">
+                <span>{{ bloom_data.level_stats.Understand.question_count }} questions</span>
+                <span>{{ bloom_data.level_stats.Understand.total_responses }} attempts</span>
+            </div>
+        </div>
+
+        <!-- Step 3: Apply -->
+        <div class="cognitive-step-box tier-apply">
+            <div class="step-badge-row">
+                <span class="step-label">
+                    <i class="fa-solid fa-gears"></i> Step 3: Apply
+                </span>
+                <span class="pill" style="font-size: 10px; font-weight: 600;">Execute</span>
+            </div>
+            <div class="step-accuracy-val" style="color: #D99A32;">
+                {{ bloom_data.level_stats.Apply.accuracy }}%
+            </div>
+            <div class="step-meta-info">
+                <span>{{ bloom_data.level_stats.Apply.question_count }} questions</span>
+                <span>{{ bloom_data.level_stats.Apply.total_responses }} attempts</span>
+            </div>
+        </div>
+
+        <!-- Step 4: Analyze -->
+        <div class="cognitive-step-box tier-analyze">
+            <div class="step-badge-row">
+                <span class="step-label">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i> Step 4: Analyze
+                </span>
+                <span class="pill" style="font-size: 10px; font-weight: 600;">Deconstruct</span>
+            </div>
+            <div class="step-accuracy-val" style="color: #2E9B67;">
+                {{ bloom_data.level_stats.Analyze.accuracy }}%
+            </div>
+            <div class="step-meta-info">
+                <span>{{ bloom_data.level_stats.Analyze.question_count }} questions</span>
+                <span>{{ bloom_data.level_stats.Analyze.total_responses }} attempts</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 5. Bloom Level Performance Summary Table -->
+<section class="card fade-up" style="padding: 24px; margin-bottom: 28px;">
+    <div class="chart-box-header" style="margin-bottom: 16px;">
+        <div class="chart-box-title-group">
+            <h3 class="chart-box-title">
+                <i class="fa-solid fa-table-list" style="color: var(--accent-primary); margin-right: 8px;"></i>
+                Bloom's Taxonomy Summary Table
+            </h3>
+            <p class="chart-box-desc">Comprehensive question breakdown, responses, error counts, and cohort accuracy per cognitive category.</p>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table bloom-summary-table">
+            <thead>
+                <tr>
+                    <th style="min-width: 140px;">Bloom Level</th>
+                    <th style="text-align: center;">Questions</th>
+                    <th style="text-align: center;">Total Responses</th>
+                    <th style="text-align: center;">Correct</th>
+                    <th style="text-align: center;">Incorrect</th>
+                    <th style="text-align: center; min-width: 150px;">Class Accuracy</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for level, stat in bloom_data.level_stats.items %}
+                <tr>
+                    <td>
+                        {% if level == 'Remember' %}
+                            <span class="bloom-pill remember"><i class="fa-solid fa-lightbulb"></i> Remember</span>
+                        {% elif level == 'Understand' %}
+                            <span class="bloom-pill understand"><i class="fa-solid fa-book-open"></i> Understand</span>
+                        {% elif level == 'Apply' %}
+                            <span class="bloom-pill apply"><i class="fa-solid fa-gears"></i> Apply</span>
+                        {% elif level == 'Analyze' %}
+                            <span class="bloom-pill analyze"><i class="fa-solid fa-magnifying-glass-chart"></i> Analyze</span>
+                        {% else %}
+                            <span class="bloom-pill unclassified"><i class="fa-solid fa-circle-question"></i> {{ level }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center; font-weight: 600; font-family: var(--font-mono);">{{ stat.question_count }}</td>
+                    <td style="text-align: center; color: var(--text-secondary); font-family: var(--font-mono);">{{ stat.total_responses }}</td>
+                    <td style="text-align: center; color: var(--success); font-weight: 600; font-family: var(--font-mono);">{{ stat.correct_responses }}</td>
+                    <td style="text-align: center; color: var(--error); font-weight: 600; font-family: var(--font-mono);">{{ stat.incorrect_responses }}</td>
+                    <td style="text-align: center;">
+                        <span class="pill {% if stat.accuracy >= 70 %}success{% elif stat.accuracy >= 40 %}warning{% else %}danger{% endif %}" style="font-weight: 700; font-size: 11px;">
+                            {{ stat.accuracy }}%
+                        </span>
+                        <div class="bloom-table-track">
+                            <div class="bloom-table-fill" style="width: {{ stat.accuracy }}%; background: {% if stat.accuracy >= 70 %}var(--success){% elif stat.accuracy >= 40 %}var(--warning){% else %}var(--error){% endif %};"></div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- 6. Question Breakdown by Cognitive Tier (Fluid CSS Grid Accordions) -->
+<section class="card fade-up" style="padding: 24px; margin-bottom: 28px;">
+    <div class="chart-box-header" style="margin-bottom: 16px;">
+        <div class="chart-box-title-group">
+            <h3 class="chart-box-title">
+                <i class="fa-solid fa-layer-group" style="color: var(--accent-primary); margin-right: 8px;"></i>
+                Question Breakdown by Cognitive Tier
+            </h3>
+            <p class="chart-box-desc">
+                Select any cognitive tier below to inspect question prompts, candidate choice distributions, and classification metadata.
+            </p>
+        </div>
+    </div>
+
+    <div class="bloom-accordion-group">
+        <!-- Remember Accordion -->
+        <div class="bloom-accordion-item tier-remember" id="accordion-remember">
+            <button type="button" class="bloom-accordion-header" aria-expanded="false" onclick="toggleBloomAccordion('remember')">
+                <div class="bloom-header-left">
+                    <div class="bloom-tier-icon"><i class="fa-solid fa-lightbulb"></i></div>
+                    <div>
+                        <span class="bloom-header-title">Remember</span>
+                        <span class="pill" style="font-size: 11px; margin-left: 8px;">{{ bloom_data.questions_by_level.Remember|length }} Questions</span>
+                    </div>
+                </div>
+                <div class="bloom-header-right">
+                    <span class="pill {% if bloom_data.level_stats.Remember.accuracy >= 70 %}success{% elif bloom_data.level_stats.Remember.accuracy >= 40 %}warning{% else %}danger{% endif %}" style="font-size: 11px; font-weight: 700;">
+                        {{ bloom_data.level_stats.Remember.accuracy }}% Accuracy
+                    </span>
+                    <i class="fa-solid fa-chevron-down chevron-icon"></i>
+                </div>
+            </button>
+            <div class="accordion-grid">
+                <div class="accordion-inner">
+                    <div class="bloom-accordion-body-container">
+                        {% for q in bloom_data.questions_by_level.Remember %}
+                            {% include "dashboard/bloom_question_row.html" with q=q %}
+                        {% empty %}
+                            <p style="font-size: 13px; color: var(--text-muted); margin: 0; padding: 8px 0;">No questions classified under Remember.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Understand Accordion -->
+        <div class="bloom-accordion-item tier-understand" id="accordion-understand">
+            <button type="button" class="bloom-accordion-header" aria-expanded="false" onclick="toggleBloomAccordion('understand')">
+                <div class="bloom-header-left">
+                    <div class="bloom-tier-icon"><i class="fa-solid fa-book-open"></i></div>
+                    <div>
+                        <span class="bloom-header-title">Understand</span>
+                        <span class="pill" style="font-size: 11px; margin-left: 8px;">{{ bloom_data.questions_by_level.Understand|length }} Questions</span>
+                    </div>
+                </div>
+                <div class="bloom-header-right">
+                    <span class="pill {% if bloom_data.level_stats.Understand.accuracy >= 70 %}success{% elif bloom_data.level_stats.Understand.accuracy >= 40 %}warning{% else %}danger{% endif %}" style="font-size: 11px; font-weight: 700;">
+                        {{ bloom_data.level_stats.Understand.accuracy }}% Accuracy
+                    </span>
+                    <i class="fa-solid fa-chevron-down chevron-icon"></i>
+                </div>
+            </button>
+            <div class="accordion-grid">
+                <div class="accordion-inner">
+                    <div class="bloom-accordion-body-container">
+                        {% for q in bloom_data.questions_by_level.Understand %}
+                            {% include "dashboard/bloom_question_row.html" with q=q %}
+                        {% empty %}
+                            <p style="font-size: 13px; color: var(--text-muted); margin: 0; padding: 8px 0;">No questions classified under Understand.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Apply Accordion -->
+        <div class="bloom-accordion-item tier-apply" id="accordion-apply">
+            <button type="button" class="bloom-accordion-header" aria-expanded="false" onclick="toggleBloomAccordion('apply')">
+                <div class="bloom-header-left">
+                    <div class="bloom-tier-icon"><i class="fa-solid fa-gears"></i></div>
+                    <div>
+                        <span class="bloom-header-title">Apply</span>
+                        <span class="pill" style="font-size: 11px; margin-left: 8px;">{{ bloom_data.questions_by_level.Apply|length }} Questions</span>
+                    </div>
+                </div>
+                <div class="bloom-header-right">
+                    <span class="pill {% if bloom_data.level_stats.Apply.accuracy >= 70 %}success{% elif bloom_data.level_stats.Apply.accuracy >= 40 %}warning{% else %}danger{% endif %}" style="font-size: 11px; font-weight: 700;">
+                        {{ bloom_data.level_stats.Apply.accuracy }}% Accuracy
+                    </span>
+                    <i class="fa-solid fa-chevron-down chevron-icon"></i>
+                </div>
+            </button>
+            <div class="accordion-grid">
+                <div class="accordion-inner">
+                    <div class="bloom-accordion-body-container">
+                        {% for q in bloom_data.questions_by_level.Apply %}
+                            {% include "dashboard/bloom_question_row.html" with q=q %}
+                        {% empty %}
+                            <p style="font-size: 13px; color: var(--text-muted); margin: 0; padding: 8px 0;">No questions classified under Apply.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analyze Accordion -->
+        <div class="bloom-accordion-item tier-analyze" id="accordion-analyze">
+            <button type="button" class="bloom-accordion-header" aria-expanded="false" onclick="toggleBloomAccordion('analyze')">
+                <div class="bloom-header-left">
+                    <div class="bloom-tier-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+                    <div>
+                        <span class="bloom-header-title">Analyze</span>
+                        <span class="pill" style="font-size: 11px; margin-left: 8px;">{{ bloom_data.questions_by_level.Analyze|length }} Questions</span>
+                    </div>
+                </div>
+                <div class="bloom-header-right">
+                    <span class="pill {% if bloom_data.level_stats.Analyze.accuracy >= 70 %}success{% elif bloom_data.level_stats.Analyze.accuracy >= 40 %}warning{% else %}danger{% endif %}" style="font-size: 11px; font-weight: 700;">
+                        {{ bloom_data.level_stats.Analyze.accuracy }}% Accuracy
+                    </span>
+                    <i class="fa-solid fa-chevron-down chevron-icon"></i>
+                </div>
+            </button>
+            <div class="accordion-grid">
+                <div class="accordion-inner">
+                    <div class="bloom-accordion-body-container">
+                        {% for q in bloom_data.questions_by_level.Analyze %}
+                            {% include "dashboard/bloom_question_row.html" with q=q %}
+                        {% empty %}
+                            <p style="font-size: 13px; color: var(--text-muted); margin: 0; padding: 8px 0;">No questions classified under Analyze.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unclassified Accordion (if unclassified questions exist) -->
+        {% if bloom_data.unclassified_questions %}
+        <div class="bloom-accordion-item tier-unclassified" id="accordion-unclassified">
+            <button type="button" class="bloom-accordion-header" aria-expanded="false" onclick="toggleBloomAccordion('unclassified')">
+                <div class="bloom-header-left">
+                    <div class="bloom-tier-icon"><i class="fa-solid fa-circle-question"></i></div>
+                    <div>
+                        <span class="bloom-header-title" style="color: var(--warning);">Unclassified</span>
+                        <span class="pill warning" style="font-size: 11px; margin-left: 8px;">{{ bloom_data.unclassified_questions|length }} Questions</span>
+                    </div>
+                </div>
+                <div class="bloom-header-right">
+                    <span class="pill warning" style="font-size: 11px; font-weight: 700;">Needs Classification</span>
+                    <i class="fa-solid fa-chevron-down chevron-icon"></i>
+                </div>
+            </button>
+            <div class="accordion-grid">
+                <div class="accordion-inner">
+                    <div class="bloom-accordion-body-container">
+                        {% for q in bloom_data.unclassified_questions %}
+                            {% include "dashboard/bloom_question_row.html" with q=q %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- 7. Factual Insights Summary (Deterministic Analytics) -->
+<section class="card fade-up" style="padding: 24px;">
+    <div class="chart-box-header" style="margin-bottom: 14px;">
+        <div class="chart-box-title-group">
+            <h3 class="chart-box-title">
+                <i class="fa-solid fa-circle-info" style="color: var(--accent-primary); margin-right: 8px;"></i>
+                Cognitive Performance Insights
+            </h3>
+            <p class="chart-box-desc">Automated findings derived from candidate cognitive patterns.</p>
+        </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        <div style="background: var(--bg-secondary); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+            <div style="font-weight: 700; font-size: 13px; color: var(--text-primary); margin-bottom: 6px;">Dominant Cognitive Strength</div>
+            <p style="font-size: var(--text-xs); color: var(--text-secondary); margin: 0; line-height: 1.45;">
+                Students demonstrated highest cohort mastery on <strong>{{ bloom_data.factual_insights.strongest_level }}</strong> questions with <strong>{{ bloom_data.factual_insights.strongest_accuracy }}%</strong> accuracy.
+            </p>
+        </div>
+        <div style="background: var(--bg-secondary); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+            <div style="font-weight: 700; font-size: 13px; color: var(--text-primary); margin-bottom: 6px;">Key Cognitive Area for Growth</div>
+            <p style="font-size: var(--text-xs); color: var(--text-secondary); margin: 0; line-height: 1.45;">
+                Lowest cohort mastery was observed on <strong>{{ bloom_data.factual_insights.weakest_level }}</strong> questions at <strong>{{ bloom_data.factual_insights.weakest_accuracy }}%</strong> accuracy.
+            </p>
+        </div>
+        <div style="background: var(--bg-secondary); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+            <div style="font-weight: 700; font-size: 13px; color: var(--text-primary); margin-bottom: 6px;">Taxonomy Balance</div>
+            <p style="font-size: var(--text-xs); color: var(--text-secondary); margin: 0; line-height: 1.45;">
+                Assessment question distribution: 
+                Remember {{ bloom_data.factual_insights.distribution_percentages.Remember }}% &bull; 
+                Understand {{ bloom_data.factual_insights.distribution_percentages.Understand }}% &bull; 
+                Apply {{ bloom_data.factual_insights.distribution_percentages.Apply }}% &bull; 
+                Analyze {{ bloom_data.factual_insights.distribution_percentages.Analyze }}%.
+            </p>
+        </div>
+    </div>
+</section>
+
+<form id="bulkBloomCsrfForm" style="display: none;">{% csrf_token %}</form>
+
+<!-- Bulk Bloom Auto-Classification Review Modal -->
+<div id="bulkBloomModal" class="modal-overlay">
+    <div class="glass-modal" style="max-width: 900px; width: 95%; max-height: 88vh; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="modal-icon" style="background: var(--accent-primary-subtle); color: var(--accent-primary); width: 38px; height: 38px; border-radius: var(--radius-sm); display: grid; place-items: center; font-size: 16px;">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <div>
+                    <h2 style="font-size: 17px; margin: 0; font-weight: 700;">Bloom's Taxonomy Classification</h2>
+                    <span style="font-size: 12px; color: var(--text-muted);">Review and confirm AI-suggested cognitive levels for unclassified questions.</span>
+                </div>
+            </div>
+            <button type="button" class="btn-small secondary" onclick="hideModal('bulkBloomModal')" style="padding: 4px 8px;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div id="bloomModalLoading" style="display: none; padding: 48px 20px; text-align: center;">
+            <i class="fa-solid fa-spinner fa-spin" style="font-size: 2.2rem; color: var(--accent-primary); margin-bottom: 14px;"></i>
+            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">Analyzing Questions Locally...</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Running zero-shot NLI on CPU. This may take a few seconds.</p>
+        </div>
+
+        <div id="bloomModalEmpty" style="display: none; padding: 40px 20px; text-align: center;">
+            <i class="fa-solid fa-circle-check" style="font-size: 2.5rem; color: var(--success); margin-bottom: 12px;"></i>
+            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">All Questions Are Already Classified!</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin: 0;">Every question in this assessment currently has an assigned Bloom level.</p>
+        </div>
+
+        <div id="bloomModalContent" style="display: none; flex: 1; overflow-y: auto; padding: 18px 0;">
+            <!-- Summary Stats Bar -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                <div style="background: var(--surface); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: center;">
+                    <span style="font-size: 11px; color: var(--text-muted); display: block;">Total Evaluated</span>
+                    <strong id="statTotalEvaluated" style="font-size: 17px; color: var(--text-primary);">0</strong>
+                </div>
+                <div style="background: var(--surface); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: center;">
+                    <span style="font-size: 11px; color: var(--text-muted); display: block;">High Confidence</span>
+                    <strong id="statHighConf" style="font-size: 17px; color: var(--success);">0</strong>
+                </div>
+                <div style="background: var(--surface); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); text-align: center;">
+                    <span style="font-size: 11px; color: var(--text-muted); display: block;">Needs Teacher Review</span>
+                    <strong id="statNeedsReview" style="font-size: 17px; color: var(--warning);">0</strong>
+                </div>
+            </div>
+
+            <!-- Table of Questions -->
+            <div class="table-wrapper" style="max-height: 360px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                <table class="data-table" id="bloomReviewTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">#</th>
+                            <th>Question Prompt</th>
+                            <th style="width: 170px; text-align: center;">Assigned Cognitive Level</th>
+                            <th style="width: 110px; text-align: center;">Confidence</th>
+                            <th style="width: 150px; text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bloomReviewTbody">
+                        <!-- Populated dynamically via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); margin-top: auto;">
+            <button type="button" class="modal-btn secondary" onclick="hideModal('bulkBloomModal')">Cancel</button>
+            <button type="button" class="modal-btn primary" id="btnSaveBulkBloom" onclick="saveBulkBloomClassifications()" style="display: none; background: var(--accent-primary); border-color: var(--accent-primary);">
+                <i class="fa-solid fa-check"></i>
+                <span id="btnSaveBulkText">Save &amp; Apply All Classifications</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Single Question Full Detail Preview Modal -->
+<div id="bloomQuestionPreviewModal" class="modal-overlay" style="z-index: 100010; background: rgba(15, 23, 42, 0.72);">
+    <div class="glass-modal" style="max-width: 680px; width: 92%; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="pill" id="previewModalQNum" style="font-family: var(--font-mono); font-weight: 700; font-size: 11px;">Q1</span>
+                <span class="pill accent" id="previewModalSubtopic" style="font-size: 11px;">General</span>
+            </div>
+            <button type="button" class="btn-small secondary" onclick="hideModal('bloomQuestionPreviewModal')" style="padding: 4px 8px;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding: 16px 0;">
+            <!-- Question Prompt -->
+            <div style="background: var(--surface); padding: 14px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 16px;">
+                <span style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px;">Question Prompt</span>
+                <div id="previewModalPrompt" style="font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.5; word-break: break-word;"></div>
+            </div>
+
+            <!-- Options List -->
+            <div style="margin-bottom: 16px;">
+                <span style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 8px;">Options &amp; Correct Answer</span>
+                <div id="previewModalOptionsList" style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <!-- Cognitive Prediction Breakdown -->
+            <div style="background: var(--bg-secondary); padding: 14px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Zero-Shot NLI Probability Distribution</span>
+                    <span id="previewModalTopConf" class="pill accent" style="font-size: 11px;">Top Match</span>
+                </div>
+                <div id="previewModalScoresBars">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid var(--border); margin-top: auto; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label for="previewModalLevelSelect" style="font-size: 12px; font-weight: 600; color: var(--text-muted);">Cognitive Level:</label>
+                <select id="previewModalLevelSelect" class="form-select" style="padding: 4px 10px; font-size: 12px; font-weight: 600;">
+                    <option value="remember">Remember</option>
+                    <option value="understand">Understand</option>
+                    <option value="apply">Apply</option>
+                    <option value="analyze">Analyze</option>
+                </select>
+            </div>
+            <button type="button" class="modal-btn primary" onclick="applyPreviewModalSelection()">Done</button>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/vendor/chart.min.js' %}"></script>
+<script>
+// Fluid CSS Grid Accordion Handler with MathJax Typesetting
+window.toggleBloomAccordion = function(id) {
+    const item = document.getElementById('accordion-' + id);
+    if (!item) return;
+
+    const isOpen = item.classList.contains('is-open');
+    const header = item.querySelector('.bloom-accordion-header');
+
+    if (isOpen) {
+        item.classList.remove('is-open');
+        if (header) header.setAttribute('aria-expanded', 'false');
+    } else {
+        item.classList.add('is-open');
+        if (header) header.setAttribute('aria-expanded', 'true');
+
+        // Typeset LaTeX inside opened container if MathJax is available
+        const bodyContainer = item.querySelector('.bloom-accordion-body-container');
+        if (bodyContainer && window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise([bodyContainer]).catch(function(err) {});
+        }
+    }
+};
+
+// Question Card Candidate Options Accordion Handler
+window.toggleQuestionOptions = function(qid) {
+    let card = document.getElementById('bloom-q-card-' + qid);
+    if (!card) {
+        card = document.getElementById(qid);
+    }
+    if (!card) return;
+
+    const isOpen = card.classList.contains('is-open');
+    const header = card.querySelector('.bloom-question-card-header');
+    const toggleBtn = card.querySelector('.bloom-options-toggle-btn');
+
+    if (isOpen) {
+        card.classList.remove('is-open');
+        if (header) header.setAttribute('aria-expanded', 'false');
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+    } else {
+        card.classList.add('is-open');
+        if (header) header.setAttribute('aria-expanded', 'true');
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+
+        const opts = document.getElementById('bloom-q-options-' + qid);
+        if (opts && window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise([opts]).catch(function(err) {});
+        }
+    }
+};
+
+// -------------------------------------------------------------
+// Bulk Bloom Auto-Classification Review & Detail Preview System
+// -------------------------------------------------------------
+let currentBulkQuestions = [];
+let currentPreviewQuestionId = null;
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+window.openBulkBloomModal = function() {
+    const loading = document.getElementById('bloomModalLoading');
+    const empty = document.getElementById('bloomModalEmpty');
+    const content = document.getElementById('bloomModalContent');
+    const saveBtn = document.getElementById('btnSaveBulkBloom');
+    const triggerBtn = document.getElementById('openBloomAiBatchModalBtn');
+    const originalTriggerText = triggerBtn ? triggerBtn.innerHTML : '';
+
+    if (loading) loading.style.display = 'block';
+    if (empty) empty.style.display = 'none';
+    if (content) content.style.display = 'none';
+    if (saveBtn) saveBtn.style.display = 'none';
+
+    window.showModal('bulkBloomModal');
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const quizId = urlParams.get('quiz') || '{{ selected_quiz.id }}';
+    const previewUrl = `/dashboard/quizzes/${quizId}/classify-bloom-batch-preview/`;
+
+    fetch(previewUrl)
+        .then(res => res.json())
+        .then(data => {
+            if (loading) loading.style.display = 'none';
+            if (data.error) {
+                alert('Error running Bloom auto-classification: ' + data.error);
+                window.hideModal('bulkBloomModal');
+                return;
+            }
+            if (!data.questions || data.questions.length === 0) {
+                if (empty) empty.style.display = 'block';
+                return;
+            }
+
+            currentBulkQuestions = data.questions;
+            renderBulkQuestionsTable(data.questions);
+            if (content) content.style.display = 'block';
+            if (saveBtn) saveBtn.style.display = 'inline-flex';
+        })
+        .catch(err => {
+            if (loading) loading.style.display = 'none';
+            alert('Error running Bloom auto-classification: ' + err);
+            window.hideModal('bulkBloomModal');
+        });
+};
+window.openBloomAiBatchModal = window.openBulkBloomModal;
+
+function renderBulkQuestionsTable(questions) {
+    const tbody = document.getElementById('bloomReviewTbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    let highConfCount = 0;
+    let needsReviewCount = 0;
+
+    questions.forEach((q, idx) => {
+        if (q.needs_review) {
+            needsReviewCount++;
+        } else {
+            highConfCount++;
+        }
+
+        const tr = document.createElement('tr');
+        
+        let statusBadge = q.needs_review 
+            ? '<span class="pill warning" style="font-size: 11px;"><i class="fa-solid fa-triangle-exclamation"></i> Needs Review</span>'
+            : '<span class="pill success" style="font-size: 11px;"><i class="fa-solid fa-check"></i> Confident</span>';
+
+        tr.innerHTML = `
+            <td style="text-align: center; font-family: var(--font-mono); font-weight: 700;">Q${q.order || (idx + 1)}</td>
+            <td style="font-size: 12px; font-weight: 600; max-width: 340px; cursor: pointer;" onclick="openQuestionPreviewModal(${q.id})" title="Click to view full question, options, and probability distribution">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <span style="word-break: break-word; color: var(--text-primary); text-decoration: underline text-decoration-color: var(--border-subtle);">${escapeHtml(q.text.length > 75 ? q.text.substring(0, 75) + '...' : q.text)}</span>
+                    <span class="pill" style="font-size: 10px; padding: 2px 6px; background: var(--surface-hover); color: var(--accent-primary); flex-shrink: 0;"><i class="fa-solid fa-eye"></i> View</span>
+                </div>
+            </td>
+            <td style="text-align: center;">
+                <select class="form-select" id="bulk_level_${q.id}" onchange="onBulkLevelChange(${q.id})" style="padding: 4px 8px; font-size: 12px; font-weight: 600;">
+                    <option value="remember" ${q.predicted_db_level === 'remember' ? 'selected' : ''}>Remember</option>
+                    <option value="understand" ${q.predicted_db_level === 'understand' ? 'selected' : ''}>Understand</option>
+                    <option value="apply" ${q.predicted_db_level === 'apply' ? 'selected' : ''}>Apply</option>
+                    <option value="analyze" ${q.predicted_db_level === 'analyze' ? 'selected' : ''}>Analyze</option>
+                </select>
+            </td>
+            <td style="text-align: center;">
+                <span class="pill accent" style="font-size: 11px;">${q.confidence_pct}%</span>
+            </td>
+            <td style="text-align: center;" id="bulk_status_${q.id}">
+                ${statusBadge}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    const statTotal = document.getElementById('statTotalEvaluated');
+    const statHigh = document.getElementById('statHighConf');
+    const statRev = document.getElementById('statNeedsReview');
+    if (statTotal) statTotal.textContent = questions.length;
+    if (statHigh) statHigh.textContent = highConfCount;
+    if (statRev) statRev.textContent = needsReviewCount;
+
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([tbody]).catch(function() {});
+    }
+}
+window.renderBulkQuestionsTable = renderBulkQuestionsTable;
+
+window.openQuestionPreviewModal = function(qid) {
+    const q = currentBulkQuestions.find(item => item.id === qid);
+    if (!q) return;
+
+    currentPreviewQuestionId = qid;
+    const qNumEl = document.getElementById('previewModalQNum');
+    const subtopicEl = document.getElementById('previewModalSubtopic');
+    const promptEl = document.getElementById('previewModalPrompt');
+
+    if (qNumEl) qNumEl.textContent = `Q${q.order || ''}`;
+    if (subtopicEl) subtopicEl.textContent = q.subtopic || 'General';
+    if (promptEl) promptEl.textContent = q.text;
+
+    // Render Options
+    const optContainer = document.getElementById('previewModalOptionsList');
+    if (optContainer) {
+        optContainer.innerHTML = '';
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+        if (q.options && q.options.length > 0) {
+            q.options.forEach((opt, idx) => {
+                const letter = letters[idx] || (idx + 1);
+                const optDiv = document.createElement('div');
+                optDiv.style.cssText = `display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid ${opt.is_correct ? 'var(--success-border)' : 'var(--border-subtle)'}; background: ${opt.is_correct ? 'var(--success-light)' : 'var(--surface)'};`;
+                optDiv.innerHTML = `
+                    <span style="font-family: var(--font-mono); font-weight: 700; font-size: 11px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: ${opt.is_correct ? 'var(--success)' : 'var(--surface-sunken)'}; color: ${opt.is_correct ? '#fff' : 'var(--text-primary)'}; flex-shrink: 0;">${letter}</span>
+                    <span style="font-size: 13px; font-weight: 500; color: var(--text-primary); flex: 1; word-break: break-word;">${escapeHtml(opt.text)}</span>
+                    ${opt.is_correct ? '<span class="pill success" style="font-size: 10px; font-weight: 700; flex-shrink: 0;"><i class="fa-solid fa-check"></i> Correct</span>' : ''}
+                `;
+                optContainer.appendChild(optDiv);
+            });
+        } else {
+            optContainer.innerHTML = '<p style="font-size: 12px; color: var(--text-muted); margin: 0;">No options configured.</p>';
+        }
+    }
+
+    // Render Cognitive Scores Breakdown
+    const scoresContainer = document.getElementById('previewModalScoresBars');
+    const topConfEl = document.getElementById('previewModalTopConf');
+    if (topConfEl) topConfEl.textContent = `${q.confidence_pct}% Match (${q.predicted_level})`;
+
+    const levelColors = {
+        'Remember': '#635BFF',
+        'Understand': '#22B8C7',
+        'Apply': '#7C6FFF',
+        'Analyze': '#2E9B67',
+    };
+
+    if (scoresContainer) {
+        scoresContainer.innerHTML = '';
+        if (q.scores) {
+            for (const [lvl, score] of Object.entries(q.scores)) {
+                const scorePct = Math.round(score * 1000) / 10;
+                const barRow = document.createElement('div');
+                barRow.style.cssText = 'display: flex; align-items: center; margin-bottom: 6px; font-size: 11px;';
+                barRow.innerHTML = `
+                    <span style="width: 80px; font-weight: 600; color: var(--text-primary);">${lvl}</span>
+                    <div style="flex: 1; height: 8px; background: var(--surface-sunken); border-radius: 4px; overflow: hidden; margin: 0 10px;">
+                        <div style="height: 100%; width: ${scorePct}%; background: ${levelColors[lvl] || 'var(--accent-primary)'}; border-radius: 4px;"></div>
+                    </div>
+                    <span style="width: 44px; text-align: right; font-weight: 700; font-family: var(--font-mono);">${scorePct}%</span>
+                `;
+                scoresContainer.appendChild(barRow);
+            }
+        }
+    }
+
+    // Sync Level Select with current selection in bulk table
+    const tableSelect = document.getElementById('bulk_level_' + q.id);
+    const currentVal = tableSelect ? tableSelect.value : q.predicted_db_level;
+    const previewSelect = document.getElementById('previewModalLevelSelect');
+    if (previewSelect) previewSelect.value = currentVal;
+
+    window.showModal('bloomQuestionPreviewModal');
+
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        const previewModal = document.getElementById('bloomQuestionPreviewModal');
+        if (previewModal) {
+            window.MathJax.typesetPromise([previewModal]).catch(function() {});
+        }
+    }
+};
+
+window.applyPreviewModalSelection = function() {
+    if (currentPreviewQuestionId) {
+        const selectEl = document.getElementById('previewModalLevelSelect');
+        const newVal = selectEl ? selectEl.value : null;
+        const tableSelect = document.getElementById('bulk_level_' + currentPreviewQuestionId);
+        if (newVal && tableSelect && tableSelect.value !== newVal) {
+            tableSelect.value = newVal;
+            onBulkLevelChange(currentPreviewQuestionId);
+        }
+    }
+    window.hideModal('bloomQuestionPreviewModal');
+};
+
+window.onBulkLevelChange = function(qid) {
+    const statusCell = document.getElementById('bulk_status_' + qid);
+    if (statusCell) {
+        statusCell.innerHTML = '<span class="pill" style="font-size: 11px; background: var(--surface-subtle);"><i class="fa-solid fa-user-pen"></i> Teacher Edit</span>';
+    }
+};
+
+window.saveBulkBloomClassifications = function() {
+    const saveBtn = document.getElementById('btnSaveBulkBloom');
+    const saveText = document.getElementById('btnSaveBulkText');
+    const originalText = saveText ? saveText.textContent : 'Save & Apply All Classifications';
+    if (saveBtn) saveBtn.disabled = true;
+    if (saveText) saveText.textContent = 'Saving...';
+
+    const payload = currentBulkQuestions.map(q => {
+        const select = document.getElementById('bulk_level_' + q.id);
+        const chosenLevel = select ? select.value : q.predicted_db_level;
+        const isModified = chosenLevel !== q.predicted_db_level;
+        return {
+            id: q.id,
+            level: chosenLevel,
+            confidence: q.confidence,
+            source: isModified ? 'manual' : 'zero_shot',
+            reviewed: true,
+        };
+    });
+
+    let csrfToken = '{{ csrf_token }}';
+    if (!csrfToken || csrfToken.includes('{{')) {
+        const input = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (input) csrfToken = input.value;
+        else {
+            const match = document.cookie.match(/csrftoken=([^;]+)/);
+            if (match) csrfToken = match[1];
+        }
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const quizId = urlParams.get('quiz') || '{{ selected_quiz.id }}';
+
+    fetch(`/dashboard/quizzes/${quizId}/save-bloom-batch/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({ classifications: payload })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error saving classifications: ' + (data.error || 'Unknown error'));
+            if (saveBtn) saveBtn.disabled = false;
+            if (saveText) saveText.textContent = originalText;
+        }
+    })
+    .catch(err => {
+        alert('Failed to save classifications: ' + err);
+        if (saveBtn) saveBtn.disabled = false;
+        if (saveText) saveText.textContent = originalText;
+    });
+};
+window.saveBloomBatchClassifications = window.saveBulkBloomClassifications;
+
+// Initial typeset on page load
+if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise().catch(function(err) {});
+}
+
+// Chart.js Visualizations
+(function() {
+    try {
+        sessionStorage.setItem('quizx_active_quiz_id', '{{ selected_quiz.id }}');
+        sessionStorage.removeItem('analytics_selected_quiz');
+        sessionStorage.removeItem('analytics_selected_quiz_id');
+    } catch(e) {}
+
+    const lightGrid = { color: "rgba(24, 24, 27, 0.06)", borderColor: "rgba(24, 24, 27, 0.1)" };
+    const lightTicks = { color: "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
+
+    const bloomLevelColors = [
+        'rgba(99, 91, 255, 0.85)',   // Remember
+        'rgba(14, 159, 173, 0.85)',   // Understand
+        'rgba(217, 154, 50, 0.85)',   // Apply
+        'rgba(46, 155, 103, 0.85)'    // Analyze
+    ];
+
+    // Bar Chart: Accuracy by Level
+    const barCtx = document.getElementById('bloomAccuracyChart');
+    if (barCtx && window.Chart) {
+        try {
+            const existing = window.Chart.getChart(barCtx);
+            if (existing) existing.destroy();
+        } catch(e) {}
+
+        const realBarValues = {{ bloom_data.chart_data.barValues|safe }};
+        const zeroBarValues = realBarValues.map(() => 0);
+
+        const barChart = new window.Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ bloom_data.chart_data.barLabels|safe }},
+                datasets: [{
+                    label: 'Class Accuracy (%)',
+                    data: zeroBarValues,
+                    backgroundColor: bloomLevelColors,
+                    borderWidth: 0,
+                    borderRadius: 6,
+                    maxBarThickness: 44
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                },
+                scales: {
+                    x: { grid: lightGrid, ticks: lightTicks },
+                    y: { beginAtZero: true, max: 100, grid: lightGrid, ticks: lightTicks }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: "#FFFFFF",
+                        titleColor: "#18181B",
+                        bodyColor: "#71717A",
+                        borderColor: "rgba(24, 24, 27, 0.12)",
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: (ctx) => `Accuracy: ${ctx.formattedValue}%`
+                        }
+                    }
+                }
+            }
+        });
+
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                barChart.data.datasets[0].data = realBarValues;
+                barChart.update();
+            }, 40);
+        });
+    }
+
+    // Donut Chart: Question Distribution
+    const doughnutCtx = document.getElementById('bloomDistributionChart');
+    if (doughnutCtx && window.Chart) {
+        try {
+            const existing = window.Chart.getChart(doughnutCtx);
+            if (existing) existing.destroy();
+        } catch(e) {}
+
+        const doughnutChart = new window.Chart(doughnutCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ bloom_data.chart_data.doughnutLabels|safe }},
+                datasets: [{
+                    data: {{ bloom_data.chart_data.doughnutValues|safe }},
+                    backgroundColor: bloomLevelColors,
+                    borderWidth: 2,
+                    borderColor: '#FFFFFF',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                circumference: 0,
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                },
+                cutout: '68%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: "#18181B", font: { family: "'Inter', sans-serif", size: 12 }, padding: 14 }
+                    },
+                    tooltip: {
+                        backgroundColor: "#FFFFFF",
+                        titleColor: "#18181B",
+                        bodyColor: "#71717A",
+                        borderColor: "rgba(24, 24, 27, 0.12)",
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: (ctx) => `${ctx.label}: ${ctx.formattedValue} questions`
+                        }
+                    }
+                }
+            }
+        });
+
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                doughnutChart.options.circumference = 360;
+                doughnutChart.update();
+            }, 40);
+        });
+    }
+})();
+</script>
+{% endif %}
+</div>
+{% endblock %}
+
+

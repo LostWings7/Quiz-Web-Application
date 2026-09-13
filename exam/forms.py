@@ -42,11 +42,19 @@ class QuestionDashboardForm(forms.ModelForm):
             'subtopic',
             'text',
             'image',
+            'bloom_level',
+            'bloom_confidence',
+            'bloom_classification_source',
+            'bloom_reviewed',
         ]
 
-        widgets={
-			'text': forms.Textarea(attrs={'rows':4}),
-		}
+        widgets = {
+            'text': forms.Textarea(attrs={'rows': 4}),
+            'bloom_level': forms.Select(attrs={'class': 'form-select', 'id': 'id_bloom_level'}),
+            'bloom_confidence': forms.HiddenInput(attrs={'id': 'id_bloom_confidence'}),
+            'bloom_classification_source': forms.HiddenInput(attrs={'id': 'id_bloom_classification_source'}),
+            'bloom_reviewed': forms.HiddenInput(attrs={'id': 'id_bloom_reviewed'}),
+        }
 
     def __init__(self, *args, **kwargs):
         quiz = kwargs.pop('quiz', None)

@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
 import csv
+import html
 import io
 import json
 
@@ -10,6 +11,7 @@ from django.db.models import Avg, Count, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from xhtml2pdf import pisa
 
 from .forms import QuestionDashboardForm, QuizDashboardForm, StudentForm, StudentEditForm, StudentPasswordForm, ClassForm, SectionForm
@@ -24,6 +26,14 @@ from .import_utils import (
     download_image_from_url,
 )
 from .models import Question, QuestionOption, Quiz, QuizResult, Subtopic, Class, Section, StudentProfile, QuestionImage, OptionImage, SchoolProfile
+from .bloom_services import (
+    BloomAnalyticsService,
+    CANONICAL_BLOOM_LEVELS,
+    DB_TO_DISPLAY_MAP,
+    DISPLAY_TO_DB_MAP,
+    SOURCE_MANUAL,
+    SOURCE_ZERO_SHOT,
+)
 
 QUESTION_IMPORT_SESSION = 'question_import_payload'
 STUDENT_IMPORT_SESSION = 'student_import_payload'
@@ -272,6 +282,7 @@ def quiz_list(request):
             'show_detailed_results': r['quiz'].show_detailed_results,
             'visibility': r['quiz'].get_visibility_preview(),
             'edit_url': f"/dashboard/quizzes/{r['quiz'].id}/edit/",
+            'questions_url': f"/dashboard/quizzes/{r['quiz'].id}/questions/",
             'toggle_url': f"/dashboard/quizzes/{r['quiz'].id}/toggle/",
             'toggle_review_url': f"/dashboard/quizzes/{r['quiz'].id}/toggle-review/",
             'duplicate_url': f"/dashboard/quizzes/{r['quiz'].id}/duplicate/",
@@ -534,6 +545,154 @@ def save_question_options(question, rows):
 
 
 @staff_member_required
+def question_classify_bloom_ajax(request):
+    """
+    AJAX endpoint for on-demand Bloom's taxonomy classification during question creation/editing.
+    """
+    if request.method not in ('POST', 'GET'):
+        return JsonResponse({'error': 'Invalid request method.'}, status=405)
+
+    text = request.POST.get('text') or request.GET.get('text') or ''
+    if not text.strip():
+        return JsonResponse({'error': 'Please provide question text to classify.'}, status=400)
+
+    try:
+        import importlib
+        try:
+            ai_bloom = importlib.import_module('ai_reports.bloom')
+            BloomClassificationService = getattr(ai_bloom, 'BloomClassificationService', None)
+        except (ImportError, ModuleNotFoundError):
+            BloomClassificationService = None
+
+        if not BloomClassificationService:
+            return JsonResponse({'error': 'AI classification service is not enabled in this deployment.'}, status=501)
+
+        service = BloomClassificationService()
+        result = service.classify_text(text)
+        result['db_level'] = DISPLAY_TO_DB_MAP.get(result['level'])
+        return JsonResponse(result)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@staff_member_required
+def quiz_classify_bloom_batch_preview_ajax(request, quiz_id):
+    """
+    AJAX endpoint: Runs local zero-shot classification across all unclassified questions
+    for a quiz and returns a preview list for the teacher review modal without saving.
+    """
+    quiz = get_object_or_404(Quiz, id=quiz_id)
+    unclassified_qs = list(
+        quiz.questions.filter(Q(bloom_level__isnull=True) | Q(bloom_level=''))
+        .prefetch_related('options')
+        .select_related('subtopic')
+        .order_by('order', 'id')
+    )
+
+    if not unclassified_qs:
+        return JsonResponse({
+            'unclassified_count': 0,
+            'questions': [],
+            'message': 'All questions in this quiz are already classified.',
+        })
+
+    try:
+        import importlib
+        try:
+            ai_bloom = importlib.import_module('ai_reports.bloom')
+            BloomClassificationService = getattr(ai_bloom, 'BloomClassificationService', None)
+        except (ImportError, ModuleNotFoundError):
+            BloomClassificationService = None
+
+        if not BloomClassificationService:
+            return JsonResponse({'error': 'AI classification service is not enabled in this deployment.'}, status=501)
+
+        service = BloomClassificationService()
+        texts = [q.text for q in unclassified_qs]
+        results = service.classifier.classify_batch(texts)
+    except Exception as e:
+        return JsonResponse({'error': f'Classification failed: {str(e)}'}, status=500)
+
+    items = []
+    for idx, (q, res) in enumerate(zip(unclassified_qs, results), 1):
+        db_level = DISPLAY_TO_DB_MAP.get(res['level'], 'remember')
+        options_list = [
+            {
+                'id': opt.id,
+                'text': opt.text,
+                'is_correct': opt.is_correct,
+            }
+            for opt in q.options.all()
+        ]
+        items.append({
+            'id': q.id,
+            'order': q.order or idx,
+            'text': q.text,
+            'subtopic': q.subtopic.name if q.subtopic else 'General',
+            'options': options_list,
+            'predicted_level': res['level'],
+            'predicted_db_level': db_level,
+            'confidence': res['confidence'],
+            'confidence_pct': round(res['confidence'] * 100, 1),
+            'needs_review': res['needs_review'],
+            'scores': res['scores'],
+        })
+
+    return JsonResponse({
+        'unclassified_count': len(items),
+        'questions': items,
+    })
+
+
+@staff_member_required
+def quiz_save_bloom_batch_ajax(request, quiz_id):
+    """
+    AJAX endpoint: Persists the reviewed/confirmed Bloom classifications from the modal.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required.'}, status=405)
+
+    quiz = get_object_or_404(Quiz, id=quiz_id)
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        classifications = data.get('classifications', [])
+    except Exception as e:
+        return JsonResponse({'error': f'Invalid JSON payload: {e}'}, status=400)
+
+    if not classifications:
+        return JsonResponse({'error': 'No classification items provided.'}, status=400)
+
+    target_ids = [item.get('id') for item in classifications if item.get('id')]
+    questions_map = {q.id: q for q in quiz.questions.filter(id__in=target_ids)}
+
+    updated_questions = []
+    for item in classifications:
+        qid = item.get('id')
+        if qid not in questions_map:
+            continue
+        q = questions_map[qid]
+        db_level = item.get('level')
+        if db_level in dict(Question.BLOOM_CHOICES):
+            q.bloom_level = db_level
+            q.bloom_confidence = float(item.get('confidence', 1.0))
+            q.bloom_classification_source = item.get('source', SOURCE_ZERO_SHOT)
+            q.bloom_reviewed = True
+            updated_questions.append(q)
+
+    if updated_questions:
+        Question.objects.bulk_update(
+            updated_questions,
+            ['bloom_level', 'bloom_confidence', 'bloom_classification_source', 'bloom_reviewed']
+        )
+
+    return JsonResponse({
+        'success': True,
+        'updated_count': len(updated_questions),
+        'message': f'Successfully classified and saved {len(updated_questions)} questions.',
+    })
+
+
+@staff_member_required
 def question_create(request):
     quiz = Quiz.objects.filter(id=request.GET.get('quiz')).first()
     form = QuestionDashboardForm(request.POST or None, request.FILES or None, quiz=quiz)
@@ -542,7 +701,26 @@ def question_create(request):
         if not option_rows:
             messages.error(request, 'Add at least one option for the question.')
         else:
-            question = form.save()
+            question = form.save(commit=False)
+            bloom_action = request.POST.get('bloom_action')
+            if bloom_action == 'accept_suggestion':
+                question.bloom_classification_source = SOURCE_ZERO_SHOT
+                question.bloom_reviewed = True
+            elif question.bloom_level:
+                source = request.POST.get('bloom_classification_source')
+                if source == SOURCE_ZERO_SHOT and request.POST.get('bloom_reviewed') in ('True', 'true', True):
+                    question.bloom_classification_source = SOURCE_ZERO_SHOT
+                    question.bloom_reviewed = True
+                else:
+                    question.bloom_classification_source = SOURCE_MANUAL
+                    question.bloom_reviewed = True
+            else:
+                question.bloom_level = None
+                question.bloom_confidence = None
+                question.bloom_classification_source = None
+                question.bloom_reviewed = False
+
+            question.save()
             save_question_options(question, option_rows)
 
             for f in request.FILES.getlist('extra_question_images'):
@@ -575,7 +753,26 @@ def question_edit(request, question_id):
         if not option_rows:
             messages.error(request, 'Add at least one option for the question.')
         else:
-            question = form.save()
+            question = form.save(commit=False)
+            bloom_action = request.POST.get('bloom_action')
+            if bloom_action == 'accept_suggestion':
+                question.bloom_classification_source = SOURCE_ZERO_SHOT
+                question.bloom_reviewed = True
+            elif question.bloom_level:
+                source = request.POST.get('bloom_classification_source')
+                if source == SOURCE_ZERO_SHOT and request.POST.get('bloom_reviewed') in ('True', 'true', True):
+                    question.bloom_classification_source = SOURCE_ZERO_SHOT
+                    question.bloom_reviewed = True
+                else:
+                    question.bloom_classification_source = SOURCE_MANUAL
+                    question.bloom_reviewed = True
+            else:
+                question.bloom_level = None
+                question.bloom_confidence = None
+                question.bloom_classification_source = None
+                question.bloom_reviewed = False
+
+            question.save()
             save_question_options(question, option_rows)
 
             for f in request.FILES.getlist('extra_question_images'):
@@ -609,6 +806,7 @@ def question_edit(request, question_id):
         'option_rows': option_rows,
         'quiz': question.quiz,
         'question_images': question_images,
+        'question_instance': question,
     })
 
 
@@ -1457,13 +1655,30 @@ def analytics(request):
         return render(request, 'dashboard/analytics.html', {'quizzes': [], 'chart_data': {}})
 
     quiz_id = request.GET.get('quiz')
+    selected_quiz = None
+
+    # Case A: URL contains ?quiz=<id>
     if quiz_id:
         try:
-            selected_quiz = Quiz.objects.filter(id=quiz_id).first() or quizzes.first()
+            selected_quiz = Quiz.objects.filter(id=quiz_id).first()
         except (ValueError, TypeError):
-            selected_quiz = quizzes.first()
-    else:
+            selected_quiz = None
+
+    # Case B: No valid quiz in URL, try session fallback
+    if not selected_quiz:
+        session_quiz_id = request.session.get('active_quiz_id')
+        if session_quiz_id:
+            try:
+                selected_quiz = Quiz.objects.filter(id=session_quiz_id).first()
+            except (ValueError, TypeError):
+                selected_quiz = None
+
+    # Case C: Neither available or both invalid, fall back to first quiz
+    if not selected_quiz:
         selected_quiz = quizzes.first()
+
+    if selected_quiz:
+        request.session['active_quiz_id'] = str(selected_quiz.id)
 
     results = QuizResult.objects.filter(quiz=selected_quiz).select_related('user')
     total_questions = selected_quiz.questions.count() or 1
@@ -1510,6 +1725,9 @@ def analytics(request):
         })
     rankings.sort(key=lambda item: item['percentage'], reverse=True)
 
+    # Compute Bloom's Taxonomy Analytics for selected quiz
+    bloom_analytics = BloomAnalyticsService.get_quiz_bloom_analytics(selected_quiz, results)
+
     chart_data = {
         'scoreLabels': ['0-39', '40-69', '70-100'],
         'scoreValues': [bins.get('0-39', 0), bins.get('40-69', 0), bins.get('70-100', 0)],
@@ -1521,6 +1739,8 @@ def analytics(request):
         'rankingValues': [item['percentage'] for item in rankings[:10]],
         'croLabels': ['Critical (<50%)', 'Recommended (50-76%)', 'Optional (>=77%)'],
         'croValues': [cro_counts['critical'], cro_counts['recommended'], cro_counts['optional']],
+        'bloomLabels': bloom_analytics['chart_data']['barLabels'],
+        'bloomValues': bloom_analytics['chart_data']['barValues'],
         'averageScore': average_score,
     }
 
@@ -1532,21 +1752,90 @@ def analytics(request):
         'attempt_count': len(percentages),
         'chart_data': chart_data,
         'scorecard': rankings,
+        'bloom_analytics': bloom_analytics,
+    })
+
+
+@staff_member_required
+def bloom_analytics_view(request):
+    """
+    Dedicated Expanded Bloom's Taxonomy Analytics Page.
+    """
+    quizzes = Quiz.objects.all()
+    if not quizzes.exists():
+        return render(request, 'dashboard/bloom_analytics.html', {
+            'quizzes': [],
+            'selected_quiz': None,
+            'bloom_data': None,
+            'attempt_count': 0,
+        })
+
+    quiz_id = request.GET.get('quiz')
+    selected_quiz = None
+
+    # Case A: URL contains ?quiz=<id>
+    if quiz_id:
+        try:
+            selected_quiz = Quiz.objects.filter(id=quiz_id).first()
+        except (ValueError, TypeError):
+            selected_quiz = None
+
+    # Case B: No valid quiz in URL, try session fallback
+    if not selected_quiz:
+        session_quiz_id = request.session.get('active_quiz_id')
+        if session_quiz_id:
+            try:
+                selected_quiz = Quiz.objects.filter(id=session_quiz_id).first()
+            except (ValueError, TypeError):
+                selected_quiz = None
+
+    # Case C: Neither available or both invalid, fall back to first quiz
+    if not selected_quiz:
+        selected_quiz = quizzes.first()
+
+    if selected_quiz:
+        request.session['active_quiz_id'] = str(selected_quiz.id)
+
+    results = QuizResult.objects.filter(quiz=selected_quiz).select_related('user')
+    bloom_data = BloomAnalyticsService.get_quiz_bloom_analytics(selected_quiz, results)
+
+    return render(request, 'dashboard/bloom_analytics.html', {
+        'quizzes': quizzes,
+        'selected_quiz': selected_quiz,
+        'bloom_data': bloom_data,
+        'attempt_count': results.count(),
     })
 
 @staff_member_required
 def analytics_detail(request, chart_type):
+    quizzes = Quiz.objects.all()
     quiz_id = request.GET.get('quiz')
-    if not quiz_id:
-        return redirect('dashboard_analytics')
-    
-    try:
-        selected_quiz = Quiz.objects.filter(id=quiz_id).first()
-    except (ValueError, TypeError):
-        selected_quiz = None
+    selected_quiz = None
+
+    # Case A: URL contains ?quiz=<id>
+    if quiz_id:
+        try:
+            selected_quiz = Quiz.objects.filter(id=quiz_id).first()
+        except (ValueError, TypeError):
+            selected_quiz = None
+
+    # Case B: No valid quiz in URL, try session fallback
+    if not selected_quiz:
+        session_quiz_id = request.session.get('active_quiz_id')
+        if session_quiz_id:
+            try:
+                selected_quiz = Quiz.objects.filter(id=session_quiz_id).first()
+            except (ValueError, TypeError):
+                selected_quiz = None
+
+    # Case C: Fall back to first available quiz
+    if not selected_quiz:
+        selected_quiz = quizzes.first()
 
     if not selected_quiz:
         return redirect('dashboard_analytics')
+
+    request.session['active_quiz_id'] = str(selected_quiz.id)
     results = QuizResult.objects.filter(quiz=selected_quiz).select_related('user')
     total_questions = selected_quiz.questions.count() or 1
 
@@ -1613,9 +1902,13 @@ def analytics_detail(request, chart_type):
                     'percentage': pct
                 })
                 
+            subtopic_name = question.subtopic.name if question.subtopic else 'General'
             difficulty_data.append({
+                'id': question.id,
+                'order': idx,
                 'label': f'Q{idx}',
                 'accuracy': accuracy,
+                'subtopic': subtopic_name,
                 'question_text': question.text,
                 'options': opts_stats
             })
@@ -1754,9 +2047,14 @@ def analytics_detail(request, chart_type):
             else:
                 cro_counts['optional'] += 1
             
+            subtopic_name = question.subtopic.name if question.subtopic else 'General'
+            clean_prompt = html.unescape(strip_tags(question.text)).strip()
             table_data.append({
                 'id': idx,
-                'text': question.text[:100] + '...' if len(question.text) > 100 else question.text,
+                'question_id': question.id,
+                'text': clean_prompt[:100] + '...' if len(clean_prompt) > 100 else clean_prompt,
+                'full_text': question.text,
+                'subtopic': subtopic_name,
                 'accuracy': accuracy,
                 'category': category,
                 'color': color,
@@ -1777,6 +2075,7 @@ def analytics_detail(request, chart_type):
         }
 
     return render(request, 'dashboard/analytics_detail.html', {
+        'quizzes': Quiz.objects.all(),
         'selected_quiz': selected_quiz,
         'chart_data': chart_data,
         'text_metrics': text_metrics,

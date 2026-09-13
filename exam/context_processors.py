@@ -110,6 +110,31 @@ def dashboard_breadcrumbs(request):
         crumbs.append(_crumb('Analytics', current=True))
         return {'breadcrumbs': crumbs}
 
+    if name == 'dashboard_analytics_detail':
+        chart_type = kwargs.get('chart_type', '')
+        chart_titles = {
+            'score': 'Score Distribution',
+            'overall': 'Overall Performance',
+            'cro': 'CRO Priority',
+            'subtopic': 'Subtopic Accuracy',
+            'difficulty': 'Question Difficulty',
+            'ranking': 'Student Rankings',
+            'scorecard': 'Class Scorecard',
+        }
+        title = chart_titles.get(chart_type, 'Detail')
+        quiz_id = request.GET.get('quiz')
+        analytics_url = '/dashboard/analytics/' + (f'?quiz={quiz_id}' if quiz_id else '')
+        crumbs.append({'label': 'Analytics', 'url': analytics_url, 'current': False})
+        crumbs.append(_crumb(title, current=True))
+        return {'breadcrumbs': crumbs}
+
+    if name == 'dashboard_bloom_analytics':
+        quiz_id = request.GET.get('quiz')
+        analytics_url = '/dashboard/analytics/' + (f'?quiz={quiz_id}' if quiz_id else '')
+        crumbs.append({'label': 'Analytics', 'url': analytics_url, 'current': False})
+        crumbs.append(_crumb("Bloom's Taxonomy", current=True))
+        return {'breadcrumbs': crumbs}
+
     if name == 'dashboard_settings':
         crumbs.append(_crumb('Settings', current=True))
         return {'breadcrumbs': crumbs}

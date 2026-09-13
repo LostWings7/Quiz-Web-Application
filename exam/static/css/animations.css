@@ -1,64 +1,101 @@
 /* ==========================================================================
-   "Modern Academic Interface" - Animations & Micro-Interactions
+   "Modern Academic Interface" - Fluid Motion & Interaction Architecture
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. Keyframes
+   1. Keyframes & Physics-Inspired Motion Curves
    -------------------------------------------------------------------------- */
-@keyframes pageFadeIn {
-    from {
+
+/* Standard Page & Card Reveal: Smooth upward glide with soft scale settlement */
+@keyframes fluidCardEntrance {
+    0% {
         opacity: 0;
-        transform: translateY(8px);
+        transform: translate3d(0, 14px, 0) scale(0.985);
     }
-    to {
+    100% {
         opacity: 1;
-        transform: translateY(0);
+        transform: translate3d(0, 0, 0) scale(1);
     }
 }
 
+
+/* Fast Panel Swap (For seamless AJAX tab / card switching without shell flash) */
+@keyframes dynamicPanelEntrance {
+    0% {
+        opacity: 0;
+        transform: translate3d(0, 10px, 0);
+    }
+    100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+/* Canvas & Generic Element Soft Fade-In */
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Modal Backdrop Soft Blur Fade */
 @keyframes modalBackdropFadeIn {
-    from {
+    0% {
         opacity: 0;
+        backdrop-filter: blur(0px);
+        -webkit-backdrop-filter: blur(0px);
     }
-    to {
+    100% {
         opacity: 1;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
     }
 }
 
+/* Modal Dialog Scale-and-Spring Entrance */
 @keyframes modalDialogEnter {
-    from {
+    0% {
         opacity: 0;
-        transform: scale(0.97) translateY(8px);
+        transform: translate3d(0, 18px, 0) scale(0.95);
     }
-    to {
+    100% {
         opacity: 1;
-        transform: scale(1) translateY(0);
+        transform: translate3d(0, 0, 0) scale(1);
     }
 }
 
-@keyframes dropdownEnter {
-    from {
+/* Floating Action Portal Dropdown Spring Entrance */
+@keyframes dropdownPortalEnter {
+    0% {
         opacity: 0;
-        transform: scale(0.98) translateY(-4px);
+        transform: translate3d(0, -6px, 0) scale(0.96);
     }
-    to {
+    100% {
         opacity: 1;
-        transform: scale(1) translateY(0);
+        transform: translate3d(0, 0, 0) scale(1);
     }
 }
 
+/* Background Ambient Gradient Canvas Floating */
 @keyframes ambientFloat {
     0% {
         transform: translate3d(0, 0, 0) scale(1);
     }
-    50% {
+    33% {
         transform: translate3d(24px, -18px, 0) scale(1.04);
     }
+    66% {
+        transform: translate3d(-18px, 14px, 0) scale(0.97);
+    }
     100% {
-        transform: translate3d(-16px, 12px, 0) scale(0.98);
+        transform: translate3d(0, 0, 0) scale(1);
     }
 }
 
+/* Skeleton Loading Shimmer */
 @keyframes shimmer {
     0% {
         background-position: -200% 0;
@@ -68,35 +105,69 @@
     }
 }
 
+/* Infinite Spinner */
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
 
-@keyframes pulseGlow {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 1; }
+/* Subtle Status Indicator Breathing Pulse */
+@keyframes statusDotGlow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(46, 155, 103, 0.45);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(46, 155, 103, 0);
+    }
 }
 
 /* --------------------------------------------------------------------------
-   2. Animation Utilities & Stagger
+   2. Animation Utility Classes
    -------------------------------------------------------------------------- */
-.fade-in,
-.fade-up {
-    animation: pageFadeIn 300ms var(--ease-primary) both;
+.fade-in {
+    animation: fluidCardEntrance 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
 }
 
-.stagger-1 { animation-delay: 40ms !important; }
-.stagger-2 { animation-delay: 80ms !important; }
-.stagger-3 { animation-delay: 120ms !important; }
-.stagger-4 { animation-delay: 160ms !important; }
-.stagger-5 { animation-delay: 200ms !important; }
+.fade-up {
+    animation: fluidCardEntrance 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+}
 
-/* Skeleton Loader */
+/* Isolated Card Reload Transition (Used when switching cards/tabs in analytics) */
+.card-reload-entrance,
+.panel-card-fade-in {
+    animation: dynamicPanelEntrance 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+}
+
+
+/* Stagger Sequence (Harmonic 30ms interval cascade) */
+.stagger-1 { animation-delay: 30ms !important; }
+.stagger-2 { animation-delay: 60ms !important; }
+.stagger-3 { animation-delay: 90ms !important; }
+.stagger-4 { animation-delay: 120ms !important; }
+.stagger-5 { animation-delay: 150ms !important; }
+.stagger-6 { animation-delay: 180ms !important; }
+.stagger-7 { animation-delay: 210ms !important; }
+.stagger-8 { animation-delay: 240ms !important; }
+
+/* Status Dot Ambient Pulse */
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: currentColor;
+    display: inline-block;
+    flex-shrink: 0;
+    animation: statusDotGlow 2.5s infinite var(--ease-in-out);
+}
+
+/* Skeleton Loading Shimmer */
 .skeleton {
     background: linear-gradient(90deg, var(--surface-sunken) 25%, var(--surface-subtle) 50%, var(--surface-sunken) 75%);
     background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    animation: shimmer 1.6s infinite;
     border-radius: var(--radius-sm);
 }
 
@@ -135,6 +206,8 @@
 
     .fade-in,
     .fade-up,
+    .card-reload-entrance,
+    .panel-card-fade-in,
     .app-page-content {
         animation: none !important;
         opacity: 1 !important;

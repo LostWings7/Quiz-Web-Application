@@ -182,6 +182,60 @@
                 {% if form.subtopic.errors %}<div class="errorlist">{% for e in form.subtopic.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
             </div>
 
+            <!-- Bloom's Taxonomy Cognitive Classification Section -->
+            <div class="form-group" style="margin-top: 18px; background: var(--surface-subtle); padding: 18px; border-radius: var(--radius-md); border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <label class="form-label" style="margin-bottom: 2px; font-weight: 700; display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                            <i class="fa-solid fa-brain" style="color: var(--accent-primary);"></i>
+                            <span>Bloom's Taxonomy Classification</span>
+                        </label>
+                        <span style="font-size: 11px; color: var(--text-muted);">Cognitive level (Remember, Understand, Apply, Analyze).</span>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-small" id="btnSuggestBloom" onclick="suggestBloomClassification()" style="font-size: 11px; padding: 4px 12px;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Suggest with Local AI</span>
+                    </button>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; align-items: start;">
+                    <div>
+                        <label class="form-label" style="font-size: 12px;" for="id_bloom_level">
+                            Assigned Level
+                        </label>
+                        {{ form.bloom_level }}
+                        {{ form.bloom_confidence }}
+                        {{ form.bloom_classification_source }}
+                        {{ form.bloom_reviewed }}
+                        <input type="hidden" name="bloom_action" id="id_bloom_action" value="">
+                    </div>
+                    
+                    <div>
+                        <label class="form-label" style="font-size: 12px;">
+                            Model Suggestion &amp; Review Status
+                        </label>
+                        <div id="bloomSuggestionBox" style="background: var(--surface); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 12px; min-height: 40px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                            {% if form.instance.bloom_level %}
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <span>Level: <strong id="bloomCurrentDisplay">{{ form.instance.get_bloom_level_display }}</strong></span>
+                                    {% if form.instance.bloom_confidence %}
+                                        <span class="pill accent" style="font-size: 10px;" id="bloomConfBadge">{{ form.instance.bloom_confidence|floatformat:2 }} conf</span>
+                                    {% endif %}
+                                    {% if form.instance.bloom_reviewed %}
+                                        <span class="pill success" style="font-size: 10px;"><i class="fa-solid fa-check"></i> Reviewed</span>
+                                    {% elif form.instance.bloom_confidence and form.instance.bloom_confidence < 0.45 %}
+                                        <span class="pill warning" style="font-size: 10px;" id="bloomReviewBadge"><i class="fa-solid fa-triangle-exclamation"></i> Needs Teacher Review</span>
+                                    {% endif %}
+                                </div>
+                                <span class="pill" style="font-size: 10px;">{{ form.instance.get_bloom_classification_source_display }}</span>
+                            {% else %}
+                                <span style="color: var(--text-muted);" id="bloomEmptyMsg">Unclassified. Select a level or click 'Suggest with Local AI'.</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <hr style="margin: 28px 0; border: 0; border-top: 1px solid var(--border-subtle);">
 
             <div class="section-heading" style="margin-bottom: 16px;">
@@ -240,149 +294,168 @@
             <!-- ===============================================================
                  QUIZ CREATION / EDITING
                  =============================================================== -->
-            <div class="section-heading" style="margin-bottom: 16px;">
-                <h2><i class="fa-solid fa-file-pen" style="color: var(--accent-primary); margin-right: 8px;"></i> Assessment Information</h2>
-            </div>
-
-            <div class="form-grid-2">
-                <div class="form-group">
-                    <label class="form-label" for="{{ form.title.id_for_label }}">
-                        Assessment Title <span class="required">*</span>
-                    </label>
-                    {{ form.title }}
-                    {% if form.title.help_text %}<span class="helptext">{{ form.title.help_text }}</span>{% endif %}
-                    {% if form.title.errors %}<div class="errorlist">{% for e in form.title.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+            <!-- Section 1: Assessment Identity -->
+            <div class="form-section-card">
+                <div class="form-section-header">
+                    <div class="form-section-title-group">
+                        <h3 class="form-section-title"><i class="fa-solid fa-file-pen" style="color: var(--accent-primary);"></i> Assessment Identity</h3>
+                        <p class="form-section-desc">Primary identification details and access credentials for candidates.</p>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="{{ form.code.id_for_label }}">
-                        Passkey / Access Code <span class="required">*</span>
-                    </label>
-                    {{ form.code }}
-                    <span class="helptext">Candidates use this unique code to start the test.</span>
-                    {% if form.code.errors %}<div class="errorlist">{% for e in form.code.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
-                </div>
-            </div>
-
-            <hr style="margin: 28px 0; border: 0; border-top: 1px solid var(--border-subtle);">
-
-            <div class="section-heading" style="margin-bottom: 16px;">
-                <h2><i class="fa-solid fa-sliders" style="color: var(--accent-primary); margin-right: 8px;"></i> Assessment Parameters &amp; Timing</h2>
-            </div>
-
-            <div class="form-grid-2" style="margin-bottom: 16px;">
-                <label class="toggle-card" for="{{ form.is_active.id_for_label }}">
-                    <div class="toggle-card-info">
-                        <div class="toggle-card-title">Active Status</div>
-                        <div class="toggle-card-desc">Enable candidate access to this examination</div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.title.id_for_label }}">
+                            Assessment Title <span class="required">*</span>
+                        </label>
+                        {{ form.title }}
+                        {% if form.title.help_text %}<span class="helptext">{{ form.title.help_text }}</span>{% endif %}
+                        {% if form.title.errors %}<div class="errorlist">{% for e in form.title.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
                     </div>
-                    {{ form.is_active }}
-                </label>
 
-                <label class="toggle-card" for="{{ form.randomize_questions.id_for_label }}">
-                    <div class="toggle-card-info">
-                        <div class="toggle-card-title">Randomize Order</div>
-                        <div class="toggle-card-desc">Shuffle questions per candidate attempt</div>
+                    <div class="form-group">
+                        <label class="form-label" for="{{ form.code.id_for_label }}">
+                            Passkey / Access Code <span class="required">*</span>
+                        </label>
+                        {{ form.code }}
+                        <span class="helptext">Candidates use this unique code to start the test.</span>
+                        {% if form.code.errors %}<div class="errorlist">{% for e in form.code.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
                     </div>
-                    {{ form.randomize_questions }}
-                </label>
-            </div>
-
-            <div class="form-grid-2">
-                <label class="toggle-card" for="{{ form.timer_enabled.id_for_label }}">
-                    <div class="toggle-card-info">
-                        <div class="toggle-card-title">Timed Assessment</div>
-                        <div class="toggle-card-desc">Enforce maximum countdown timer</div>
-                    </div>
-                    {{ form.timer_enabled }}
-                </label>
-
-                <div class="form-group">
-                    <label class="form-label" for="{{ form.duration_minutes.id_for_label }}">
-                        Duration (Minutes)
-                    </label>
-                    {{ form.duration_minutes }}
-                    {% if form.duration_minutes.help_text %}<span class="helptext">{{ form.duration_minutes.help_text }}</span>{% endif %}
-                    {% if form.duration_minutes.errors %}<div class="errorlist">{% for e in form.duration_minutes.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
                 </div>
             </div>
 
-            <hr style="margin: 28px 0; border: 0; border-top: 1px solid var(--border-subtle);">
+            <!-- Section 2: Parameters & Timing -->
+            <div class="form-section-card">
+                <div class="form-section-header">
+                    <div class="form-section-title-group">
+                        <h3 class="form-section-title"><i class="fa-solid fa-sliders" style="color: var(--accent-primary);"></i> Assessment Behavior &amp; Timing</h3>
+                        <p class="form-section-desc">Control candidate availability, question randomization, and countdown timers.</p>
+                    </div>
+                </div>
 
-            <div class="section-heading" style="margin-bottom: 8px;">
-                <h2><i class="fa-solid fa-users-rectangle" style="color: var(--accent-primary); margin-right: 8px;"></i> Class &amp; Section Visibility Assignment</h2>
+                <div class="form-grid-2" style="margin-bottom: 16px;">
+                    <label class="toggle-card" for="{{ form.is_active.id_for_label }}">
+                        <div class="toggle-card-info">
+                            <div class="toggle-card-title">Active Status</div>
+                            <div class="toggle-card-desc">Enable candidate access to this examination</div>
+                        </div>
+                        {{ form.is_active }}
+                    </label>
+
+                    <label class="toggle-card" for="{{ form.randomize_questions.id_for_label }}">
+                        <div class="toggle-card-info">
+                            <div class="toggle-card-title">Randomize Order</div>
+                            <div class="toggle-card-desc">Shuffle questions per candidate attempt</div>
+                        </div>
+                        {{ form.randomize_questions }}
+                    </label>
+                </div>
+
+                <div class="form-grid-2">
+                    <label class="toggle-card" for="{{ form.timer_enabled.id_for_label }}">
+                        <div class="toggle-card-info">
+                            <div class="toggle-card-title">Timed Assessment</div>
+                            <div class="toggle-card-desc">Enforce maximum countdown timer</div>
+                        </div>
+                        {{ form.timer_enabled }}
+                    </label>
+
+                    <div class="form-group" id="durationGroup" style="transition: opacity var(--transition-fast);">
+                        <label class="form-label" for="{{ form.duration_minutes.id_for_label }}">
+                            Duration (Minutes)
+                        </label>
+                        {{ form.duration_minutes }}
+                        <span class="helptext" id="durationHelp">Countdown limit in minutes (active when Timed Assessment is enabled).</span>
+                        {% if form.duration_minutes.errors %}<div class="errorlist">{% for e in form.duration_minutes.errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+                    </div>
+                </div>
             </div>
-            <p style="color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: 20px;">
-                Select the classes assigned to this examination. Optionally check specific sections to restrict access.
-            </p>
 
-            <div class="table-wrapper" style="margin-bottom: 24px;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th style="width:70px; text-align:center;">Assign</th>
-                            <th>Class Name</th>
-                            <th style="text-align:center;">Section Assignment</th>
-                            <th>Enrolled Students</th>
-                            <th style="width:140px; text-align:center;">Access Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for c in all_classes %}
-                        {% with cid=c.id|stringformat:"s" %}
-                        <tr id="classAssignRow-{{ c.id }}">
-                            <td style="text-align:center;">
-                                <input type="checkbox" name="assigned_classes" value="{{ c.id }}" class="custom-quiz-checkbox" id="classChk-{{ c.id }}" {% if cid in selected_class_ids %}checked{% endif %} onchange="toggleQuizClassRow({{ c.id }})">
-                            </td>
-                            <td>
-                                <label for="classChk-{{ c.id }}" style="font-weight:600; cursor:pointer; color:var(--text-primary); font-size:var(--text-sm);">
-                                    {{ c.name }}
-                                </label>
-                            </td>
-                            <td style="text-align:center;">
-                                {% if c.sections.all %}
-                                <div class="section-checkbox-group" id="sectionGroup-{{ c.id }}">
-                                    {% for sec in c.sections.all %}
-                                    {% with sid=sec.id|stringformat:"s" %}
-                                    <label class="section-checkbox-label" for="secChk-{{ sec.id }}">
-                                        <input type="checkbox" name="assigned_sections" value="{{ sec.id }}" class="custom-quiz-checkbox section-chk-{{ c.id }}" id="secChk-{{ sec.id }}" {% if sid in selected_section_ids %}checked{% endif %} {% if cid not in selected_class_ids %}disabled{% endif %} onchange="onSectionCheckboxChange({{ c.id }})">
-                                        <span>Section {{ sec.name }}</span>
+            <!-- Section 3: Visibility & Target Class Assignment -->
+            <div class="form-section-card">
+                <div class="form-section-header">
+                    <div class="form-section-title-group">
+                        <h3 class="form-section-title"><i class="fa-solid fa-users-rectangle" style="color: var(--accent-primary);"></i> Target Class &amp; Section Visibility</h3>
+                        <p class="form-section-desc">Select assigned classes. Optionally check specific sections to restrict access.</p>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width:70px; text-align:center;">Assign</th>
+                                <th>Class Name</th>
+                                <th style="text-align:center;">Section Assignment</th>
+                                <th>Enrolled Students</th>
+                                <th style="width:140px; text-align:center;">Access Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in all_classes %}
+                            {% with cid=c.id|stringformat:"s" %}
+                            <tr id="classAssignRow-{{ c.id }}">
+                                <td style="text-align:center;">
+                                    <input type="checkbox" name="assigned_classes" value="{{ c.id }}" class="custom-quiz-checkbox" id="classChk-{{ c.id }}" {% if cid in selected_class_ids %}checked{% endif %} onchange="toggleQuizClassRow({{ c.id }})">
+                                </td>
+                                <td>
+                                    <label for="classChk-{{ c.id }}" style="font-weight:600; cursor:pointer; color:var(--text-primary); font-size:var(--text-sm);">
+                                        {{ c.name }}
                                     </label>
-                                    {% endwith %}
-                                    {% endfor %}
-                                </div>
-                                {% else %}
-                                <span style="color:var(--text-muted); font-size:var(--text-xs);">All Students in {{ c.name }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <span style="font-size:var(--text-xs); color:var(--text-secondary);"><i class="fa-solid fa-users" style="margin-right:6px; color:var(--accent-primary);"></i>{{ c.student_count }} Student{{ c.student_count|pluralize }}</span>
-                            </td>
-                            <td style="text-align:center;">
-                                <span id="accessBadge-{{ c.id }}" class="pill {% if cid in selected_class_ids %}success{% else %}warning{% endif %}" style="font-size: 11px;">
-                                    {% if cid in selected_class_ids %}Assigned{% else %}Not Assigned{% endif %}
-                                </span>
-                            </td>
-                        </tr>
-                        {% endwith %}
-                        {% empty %}
-                        <tr><td colspan="5"><div class="empty-state">No classes available. Create classes first.</div></td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                </td>
+                                <td style="text-align:center;">
+                                    {% if c.sections.all %}
+                                    <div class="section-checkbox-group" id="sectionGroup-{{ c.id }}">
+                                        {% for sec in c.sections.all %}
+                                        {% with sid=sec.id|stringformat:"s" %}
+                                        <label class="section-checkbox-label" for="secChk-{{ sec.id }}">
+                                            <input type="checkbox" name="assigned_sections" value="{{ sec.id }}" class="custom-quiz-checkbox section-chk-{{ c.id }}" id="secChk-{{ sec.id }}" {% if sid in selected_section_ids %}checked{% endif %} {% if cid not in selected_class_ids %}disabled{% endif %} onchange="onSectionCheckboxChange({{ c.id }})">
+                                            <span>Section {{ sec.name }}</span>
+                                        </label>
+                                        {% endwith %}
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}
+                                    <span style="color:var(--text-muted); font-size:var(--text-xs);">All Students in {{ c.name }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span style="font-size:var(--text-xs); color:var(--text-secondary);"><i class="fa-solid fa-users" style="margin-right:6px; color:var(--accent-primary);"></i>{{ c.student_count }} Student{{ c.student_count|pluralize }}</span>
+                                </td>
+                                <td style="text-align:center;">
+                                    <span id="accessBadge-{{ c.id }}" class="pill {% if cid in selected_class_ids %}success{% else %}warning{% endif %}" style="font-size: 11px;">
+                                        {% if cid in selected_class_ids %}Assigned{% else %}Not Assigned{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endwith %}
+                            {% empty %}
+                            <tr><td colspan="5"><div class="empty-state"><div class="empty-state-title">No classes available</div><div class="empty-state-desc">Create classes in the Class Management dashboard first.</div></div></td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {% if title == "Edit Quiz" and form.instance.id %}
-            <hr style="margin: 28px 0; border: 0; border-top: 1px solid var(--border-subtle);">
-            <div class="section-heading" style="margin-bottom: 8px;">
-                <h2><i class="fa-solid fa-cubes-stacked" style="color: var(--accent-primary); margin-right: 8px;"></i> Question Sequence &amp; Bank</h2>
+            <!-- Section 4: Question Bank Link -->
+            <div class="form-section-card" style="border-left: 3px solid var(--accent-primary);">
+                <div class="form-section-header">
+                    <div class="form-section-title-group">
+                        <h3 class="form-section-title"><i class="fa-solid fa-cubes-stacked" style="color: var(--accent-primary);"></i> Question Bank</h3>
+                        <p class="form-section-desc">Manage the ordered questions, answer choices, and Bloom's taxonomy classifications.</p>
+                    </div>
+                    <span class="pill accent" style="font-size: 11px;">{{ form.instance.questions.count }} Question{{ form.instance.questions.count|pluralize }}</span>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <a class="btn btn-secondary" href="{% url 'dashboard_quiz_questions' form.instance.id %}">
+                        <i class="fa-solid fa-clipboard-question"></i> Manage Assessment Questions
+                    </a>
+                    <a class="btn btn-secondary" href="{% url 'dashboard_question_create' %}?quiz={{ form.instance.id }}">
+                        <i class="fa-solid fa-plus"></i> Add Question Directly
+                    </a>
+                </div>
             </div>
-            <p style="color:var(--text-secondary); font-size:var(--text-sm); margin-bottom:16px;">
-                Configure the ordered question sequence, points, and items for this examination.
-            </p>
-            <a class="btn btn-secondary" href="{% url 'dashboard_quiz_questions' form.instance.id %}">
-                <i class="fa-solid fa-list-ol"></i> Manage Assessment Questions ({{ form.instance.questions.count }})
-            </a>
             {% endif %}
 
         {% elif title == "Create Student" or title == "Edit Student" %}
@@ -510,13 +583,13 @@
             {% endfor %}
         {% endif %}
 
-        <div class="form-actions">
-            <button class="btn btn-primary" type="submit">
-                <i class="fa-solid fa-check"></i> {{ submit_label|default:"Save Changes" }}
-            </button>
-            <a class="btn btn-secondary" href="{{ request.META.HTTP_REFERER|default:'/dashboard/' }}">
+        <div class="form-actions" style="margin-top: 28px; display: flex; gap: 12px; align-items: center; justify-content: flex-end;">
+            <a class="btn btn-secondary" href="{% if title == 'Create Quiz' or title == 'Edit Quiz' %}{% url 'dashboard_quizzes' %}{% else %}{{ request.META.HTTP_REFERER|default:'/dashboard/' }}{% endif %}">
                 Cancel
             </a>
+            <button class="btn btn-primary" type="submit" id="submitFormBtn">
+                <i class="fa-solid {% if title == 'Create Quiz' or title == 'Create Question' or title == 'Create Student' %}fa-plus{% else %}fa-check{% endif %}"></i> {{ submit_label|default:"Save Changes" }}
+            </button>
         </div>
     </form>
 </div>
@@ -1001,4 +1074,173 @@ function onSectionCheckboxChange(classId) {
 }
 </script>
 {% endif %}
+
+{% if title == "Create Question" or title == "Edit Question" %}
+<script>
+function suggestBloomClassification() {
+    const textElem = document.getElementById('id_text') || document.querySelector('textarea[name="text"]');
+    if (!textElem || !textElem.value.trim()) {
+        alert("Please enter question text first before requesting a Bloom suggestion.");
+        return;
+    }
+
+    const btn = document.getElementById('btnSuggestBloom');
+    const box = document.getElementById('bloomSuggestionBox');
+    const originalBtnHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const formData = new FormData();
+    formData.append('text', textElem.value);
+    formData.append('csrfmiddlewaretoken', csrfToken);
+
+    fetch('/dashboard/questions/classify-bloom-ajax/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = originalBtnHTML;
+
+        if (data.error) {
+            alert('Classification error: ' + data.error);
+            return;
+        }
+
+        const level = data.level;
+        const dbLevel = data.db_level;
+        const conf = data.confidence;
+        const confPct = Math.round(conf * 100);
+        const needsReview = data.needs_review;
+
+        let reviewBadgeHTML = needsReview 
+            ? '<span class="pill warning" style="font-size: 10px;"><i class="fa-solid fa-triangle-exclamation"></i> Needs Teacher Review</span>'
+            : '<span class="pill success" style="font-size: 10px;"><i class="fa-solid fa-check"></i> High Confidence</span>';
+
+        box.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span>Suggested: <strong style="color: var(--accent-primary); font-size: 13px;">${level}</strong></span>
+                <span class="pill accent" style="font-size: 10px;">${confPct}% conf</span>
+                ${reviewBadgeHTML}
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" class="btn btn-primary btn-small" style="font-size: 11px; padding: 3px 8px;" onclick="acceptBloomSuggestion('${dbLevel}', ${conf})">
+                    <i class="fa-solid fa-check"></i> Accept Suggestion
+                </button>
+            </div>
+        `;
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = originalBtnHTML;
+        alert('Failed to connect to local classifier: ' + err);
+    });
+}
+
+function acceptBloomSuggestion(dbLevel, conf) {
+    const levelSelect = document.getElementById('id_bloom_level');
+    const confInput = document.getElementById('id_bloom_confidence');
+    const sourceInput = document.getElementById('id_bloom_classification_source');
+    const reviewedInput = document.getElementById('id_bloom_reviewed');
+    const actionInput = document.getElementById('id_bloom_action');
+
+    if (levelSelect) levelSelect.value = dbLevel;
+    if (confInput) confInput.value = conf;
+    if (sourceInput) sourceInput.value = 'zero_shot';
+    if (reviewedInput) reviewedInput.value = 'True';
+    if (actionInput) actionInput.value = 'accept_suggestion';
+
+    const box = document.getElementById('bloomSuggestionBox');
+    if (box) {
+        box.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="pill success" style="font-size: 11px;"><i class="fa-solid fa-circle-check"></i> Accepted ${levelSelect.options[levelSelect.selectedIndex].text}</span>
+                <span class="pill accent" style="font-size: 10px;">${Math.round(conf * 100)}% Zero-shot</span>
+            </div>
+            <span style="font-size: 11px; color: var(--text-muted);">Will be saved on form submission</span>
+        `;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const levelSelect = document.getElementById('id_bloom_level');
+    if (levelSelect) {
+        levelSelect.addEventListener('change', function() {
+            const sourceInput = document.getElementById('id_bloom_classification_source');
+            const reviewedInput = document.getElementById('id_bloom_reviewed');
+            const actionInput = document.getElementById('id_bloom_action');
+            if (this.value) {
+                if (sourceInput) sourceInput.value = 'manual';
+                if (reviewedInput) reviewedInput.value = 'True';
+                if (actionInput) actionInput.value = 'manual_override';
+                const reviewBadge = document.getElementById('bloomReviewBadge');
+                if (reviewBadge) reviewBadge.remove();
+            } else {
+                if (sourceInput) sourceInput.value = '';
+                if (reviewedInput) reviewedInput.value = 'False';
+                if (actionInput) actionInput.value = '';
+            }
+        });
+    }
+});
+</script>
+{% elif title == "Create Quiz" or title == "Edit Quiz" %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const timerChk = document.getElementById('id_timer_enabled');
+    const durationInput = document.getElementById('id_duration_minutes');
+    const durationGroup = document.getElementById('durationGroup');
+    const formEl = document.querySelector('.dash-form');
+
+    function updateTimerState() {
+        if (!timerChk || !durationInput) return;
+        if (timerChk.checked) {
+            durationInput.removeAttribute('disabled');
+            if (durationGroup) {
+                durationGroup.style.opacity = '1';
+                durationGroup.style.pointerEvents = 'auto';
+            }
+        } else {
+            durationInput.setAttribute('disabled', 'disabled');
+            if (durationGroup) {
+                durationGroup.style.opacity = '0.5';
+                durationGroup.style.pointerEvents = 'none';
+            }
+        }
+    }
+
+    if (timerChk) {
+        timerChk.addEventListener('change', updateTimerState);
+        updateTimerState();
+    }
+
+    if (formEl) {
+        let isFormDirty = false;
+        let isSubmitting = false;
+
+        formEl.addEventListener('input', () => { isFormDirty = true; });
+        formEl.addEventListener('change', () => { isFormDirty = true; });
+        
+        formEl.addEventListener('submit', () => {
+            isSubmitting = true;
+            if (durationInput) durationInput.removeAttribute('disabled');
+        });
+
+        window.addEventListener('beforeunload', (e) => {
+            if (isFormDirty && !isSubmitting) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    }
+});
+</script>
+{% endif %}
 {% endblock %}
+

@@ -75,13 +75,25 @@
         activeAnimation: null,
 
         getCoords(link, nav) {
-            if (!link) return { top: 0, left: 0, width: 0, height: 0 };
+            if (!link) return { top: 0, height: 44 };
             return {
                 top: link.offsetTop,
-                left: link.offsetLeft,
-                width: link.offsetWidth,
-                height: link.offsetHeight
+                height: link.offsetHeight || 44
             };
+        },
+
+        getCurrentPillCoords(pill, defaultLink, nav) {
+            if (pill && pill.style.transform) {
+                const match = pill.style.transform.match(/translate3d\(0(?:px)?,\s*([\d.-]+)px/);
+                if (match) {
+                    const currentY = parseFloat(match[1]);
+                    const currentHeight = parseFloat(pill.style.height) || (defaultLink ? defaultLink.offsetHeight : 44);
+                    if (!isNaN(currentY)) {
+                        return { top: currentY, height: currentHeight };
+                    }
+                }
+            }
+            return this.getCoords(defaultLink, nav);
         },
 
         animateBlob(pill, startCoords, endCoords, duration = 380, onComplete = null) {
@@ -93,41 +105,46 @@
             }
 
             const deltaY = endCoords.top - startCoords.top;
+            if (Math.abs(deltaY) < 1) {
+                this.updatePillPosition(pill, null, endCoords);
+                if (typeof onComplete === 'function') onComplete();
+                return;
+            }
+
             const shell = document.getElementById('appShell') || document.getElementById('dashboardShell');
             const isCollapsed = shell ? shell.classList.contains('sidebar-collapsed') : false;
 
             // Distance intensity ratio (0.2 to 1.0)
             const distRatio = Math.min(1.0, Math.max(0.2, Math.abs(deltaY) / 180));
-
-            // Liquid deformation limits:
-            // Collapsed: stretch up to +18% vertically, squeeze -10% horizontally
-            // Expanded: stretch up to +14% vertically, squeeze -6% horizontally
             const maxStretchY = (isCollapsed ? 0.18 : 0.14) * distRatio;
             const maxSqueezeX = (isCollapsed ? 0.10 : 0.06) * distRatio;
 
+            // Ensure transitions on transform are disabled during rAF animation
+            pill.style.transition = 'none';
+
             // Immediately position at start point
-            pill.style.transform = `translate3d(${startCoords.left}px, ${startCoords.top}px, 0) scale(1, 1)`;
-            pill.style.width = `${startCoords.width}px`;
-            pill.style.height = `${startCoords.height}px`;
+            pill.style.transform = `translate3d(0, ${startCoords.top.toFixed(2)}px, 0) scale(1, 1)`;
+            pill.style.height = `${startCoords.height.toFixed(2)}px`;
             pill.style.opacity = '1';
 
-            const startTime = performance.now();
+            // Force reflow to guarantee the browser commits the start position BEFORE stepping
+            void pill.offsetHeight;
+
+            let startTime = null;
 
             const step = (now) => {
+                if (!startTime) {
+                    startTime = now;
+                }
                 let t = (now - startTime) / duration;
+                if (t < 0) t = 0;
                 if (t > 1) t = 1;
 
                 // Motion translation curve (cubic spring ease)
                 const ease = 1 + 1.5 * Math.pow(t - 1, 3) + 0.5 * Math.pow(t - 1, 2);
-
                 const currentTop = startCoords.top + (endCoords.top - startCoords.top) * ease;
-                const currentLeft = startCoords.left + (endCoords.left - startCoords.left) * ease;
-                const currentWidth = startCoords.width + (endCoords.width - startCoords.width) * ease;
                 const currentHeight = startCoords.height + (endCoords.height - startCoords.height) * ease;
 
-                // Liquid deformation physics:
-                // During flight (t < 0.72): stretches vertically and squeezes horizontally
-                // On arrival (t >= 0.72): gentle elastic landing rebound before settling
                 let scaleY = 1.0;
                 let scaleX = 1.0;
 
@@ -144,16 +161,15 @@
                     }
                 }
 
-                pill.style.transform = `translate3d(${currentLeft}px, ${currentTop}px, 0) scale(${scaleX.toFixed(4)}, ${scaleY.toFixed(4)})`;
-                pill.style.width = `${currentWidth}px`;
-                pill.style.height = `${currentHeight}px`;
+                pill.style.transform = `translate3d(0, ${currentTop.toFixed(2)}px, 0) scale(${scaleX.toFixed(4)}, ${scaleY.toFixed(4)})`;
+                pill.style.height = `${currentHeight.toFixed(2)}px`;
 
                 if (t < 1) {
                     this.activeAnimation = requestAnimationFrame(step);
                 } else {
-                    pill.style.transform = `translate3d(${endCoords.left}px, ${endCoords.top}px, 0) scale(1, 1)`;
-                    pill.style.width = `${endCoords.width}px`;
-                    pill.style.height = `${endCoords.height}px`;
+                    pill.style.transform = `translate3d(0, ${endCoords.top.toFixed(2)}px, 0) scale(1, 1)`;
+                    pill.style.height = `${endCoords.height.toFixed(2)}px`;
+                    pill.style.transition = '';
                     this.activeAnimation = null;
                     if (typeof onComplete === 'function') onComplete();
                 }
@@ -162,20 +178,22 @@
             this.activeAnimation = requestAnimationFrame(step);
         },
 
-        updatePillPosition(pill, targetLink) {
-            const nav = targetLink.closest('.app-sidebar-nav, .dashboard-nav');
-            if (!nav || !pill) return;
+        updatePillPosition(pill, targetLink, coords = null) {
+            if (!pill) return;
+            const targetCoords = coords || (targetLink ? this.getCoords(targetLink) : null);
+            if (!targetCoords) return;
 
             if (this.activeAnimation) {
                 cancelAnimationFrame(this.activeAnimation);
                 this.activeAnimation = null;
             }
 
-            const coords = this.getCoords(targetLink, nav);
-            pill.style.transform = `translate3d(${coords.left}px, ${coords.top}px, 0) scale(1, 1)`;
-            pill.style.width = `${coords.width}px`;
-            pill.style.height = `${coords.height}px`;
+            pill.style.transition = 'none';
+            pill.style.transform = `translate3d(0, ${targetCoords.top}px, 0) scale(1, 1)`;
+            pill.style.height = `${targetCoords.height}px`;
             pill.style.opacity = '1';
+            void pill.offsetHeight;
+            pill.style.transition = '';
         },
 
         init() {
@@ -190,24 +208,10 @@
                         const isCollapsed = shell.classList.contains('sidebar-collapsed');
                         sessionStorage.setItem('quizx_sidebar_collapsed', isCollapsed ? '1' : '0');
 
-                        // Animate pill smoothly during the sidebar width CSS transition (280ms)
                         const pill = nav ? nav.querySelector('.nav-active-pill') : null;
                         const activeItem = nav ? nav.querySelector('.app-nav-item.active') : null;
                         if (pill && activeItem) {
-                            if (this.activeAnimation) cancelAnimationFrame(this.activeAnimation);
-                            const start = performance.now();
-                            const duration = 280; // matches sidebar CSS transition duration
-                            const tick = (now) => {
-                                const elapsed = now - start;
-                                this.updatePillPosition(pill, activeItem);
-                                if (elapsed < duration) {
-                                    this.activeAnimation = requestAnimationFrame(tick);
-                                } else {
-                                    this.updatePillPosition(pill, activeItem);
-                                    this.activeAnimation = null;
-                                }
-                            };
-                            this.activeAnimation = requestAnimationFrame(tick);
+                            this.updatePillPosition(pill, activeItem);
                         }
                     });
                 });
@@ -228,7 +232,7 @@
                 if (!pill) {
                     pill = document.createElement('div');
                     pill.className = 'nav-active-pill';
-                    nav.appendChild(pill);
+                    nav.insertBefore(pill, nav.firstChild);
                 }
 
                 const normalizePath = (p) => {
@@ -240,7 +244,7 @@
                 };
 
                 const currentNorm = normalizePath(window.location.pathname);
-                const links = Array.from(nav.querySelectorAll('a[href]'));
+                const links = Array.from(nav.querySelectorAll('a.app-nav-item[href]'));
 
                 // 1. Exact match with path normalization (e.g. /home/ matches /home)
                 let activeLink = links.find(l => {
@@ -268,55 +272,87 @@
                 if (activeLink) {
                     activeLink.classList.add('active');
 
-                    // Check for previous sidebar navigation path from sessionStorage
-                    let previousPath = null;
+                    // Check for previous navigation state from sessionStorage
+                    let navState = null;
                     try {
-                        previousPath = sessionStorage.getItem('quizx_previous_sidebar_path');
+                        const raw = sessionStorage.getItem('quizx_sidebar_nav_state');
+                        if (raw) navState = JSON.parse(raw);
                     } catch (e) {}
 
-                    let previousLink = null;
-                    if (previousPath) {
-                        const prevNorm = normalizePath(previousPath);
-                        previousLink = links.find(l => {
-                            const linkNorm = normalizePath(new URL(l.href, window.location.origin).pathname);
-                            return linkNorm === prevNorm;
-                        });
-                    }
+                    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    const endCoords = this.getCoords(activeLink, nav);
 
-                    if (previousLink && previousLink !== activeLink) {
-                        // Animate blob smoothly across page load from previous position to active position
-                        const startCoords = this.getCoords(previousLink, nav);
-                        const endCoords = this.getCoords(activeLink, nav);
-                        this.animateBlob(pill, startCoords, endCoords, 380, () => {
-                            try { sessionStorage.removeItem('quizx_previous_sidebar_path'); } catch (e) {}
-                        });
+                    if (navState && typeof navState.fromTop === 'number' && !prefersReducedMotion) {
+                        const elapsed = Date.now() - (navState.timestamp || 0);
+                        // If navigation occurred within the last 450ms and start was at a different position
+                        if (elapsed < 450 && Math.abs(navState.fromTop - endCoords.top) >= 2) {
+                            const startCoords = {
+                                top: navState.fromTop,
+                                height: navState.fromHeight || endCoords.height
+                            };
+                            this.animateBlob(pill, startCoords, endCoords, 380, () => {
+                                try { sessionStorage.removeItem('quizx_sidebar_nav_state'); } catch (e) {}
+                            });
+                        } else {
+                            this.updatePillPosition(pill, activeLink);
+                            try { sessionStorage.removeItem('quizx_sidebar_nav_state'); } catch (e) {}
+                        }
                     } else {
                         // Position instantly on page load without animation (no flash)
                         this.updatePillPosition(pill, activeLink);
-                        try { sessionStorage.removeItem('quizx_previous_sidebar_path'); } catch (e) {}
+                        try { sessionStorage.removeItem('quizx_sidebar_nav_state'); } catch (e) {}
                     }
                 } else {
                     pill.style.opacity = '0';
-                    try { sessionStorage.removeItem('quizx_previous_sidebar_path'); } catch (e) {}
+                    try { sessionStorage.removeItem('quizx_sidebar_nav_state'); } catch (e) {}
                 }
 
-                // Record clicked path before navigation
+                // Record clicked path and animate optimistically on sidebar link click
                 links.forEach(link => {
                     link.addEventListener('click', () => {
-                        try {
-                            sessionStorage.setItem('quizx_previous_sidebar_path', window.location.pathname);
-                        } catch (e) {}
+                        const currentActive = nav.querySelector('.app-nav-item.active');
+                        if (currentActive) {
+                            const startCoords = this.getCurrentPillCoords(pill, currentActive, nav);
+                            const endCoords = this.getCoords(link, nav);
+
+                            try {
+                                const targetUrl = new URL(link.href, window.location.origin);
+                                sessionStorage.setItem('quizx_sidebar_nav_state', JSON.stringify({
+                                    fromTop: startCoords.top,
+                                    fromHeight: startCoords.height,
+                                    targetPath: targetUrl.pathname,
+                                    targetTop: endCoords.top,
+                                    targetHeight: endCoords.height,
+                                    timestamp: Date.now()
+                                }));
+                            } catch (err) {}
+
+                            if (currentActive !== link) {
+                                links.forEach(l => l.classList.remove('active'));
+                                link.classList.add('active');
+                                this.animateBlob(pill, startCoords, endCoords, 380);
+                            }
+                        }
                     });
                 });
 
-                // Also record previous path for general internal link navigation
+                // Also record previous path for general internal link navigation (e.g. from page content)
                 document.addEventListener('click', (e) => {
                     const link = e.target.closest('a');
-                    if (!link || !link.href) return;
+                    if (!link || !link.href || link.closest('.app-sidebar-nav, .dashboard-nav')) return;
                     try {
                         const url = new URL(link.href, window.location.origin);
                         if (url.origin === window.location.origin && url.pathname !== window.location.pathname) {
-                            sessionStorage.setItem('quizx_previous_sidebar_path', window.location.pathname);
+                            const currentActive = nav.querySelector('.app-nav-item.active');
+                            if (currentActive) {
+                                const startCoords = this.getCurrentPillCoords(pill, currentActive, nav);
+                                sessionStorage.setItem('quizx_sidebar_nav_state', JSON.stringify({
+                                    fromTop: startCoords.top,
+                                    fromHeight: startCoords.height,
+                                    targetPath: url.pathname,
+                                    timestamp: Date.now()
+                                }));
+                            }
                         }
                     } catch (err) {}
                 });
@@ -339,9 +375,8 @@
                 return;
             }
 
-            const elements = document.querySelectorAll('[data-count-to]:not([data-counted="true"])');
+            const elements = document.querySelectorAll('[data-count-to]');
             elements.forEach(el => {
-                el.setAttribute('data-counted', 'true');
                 const targetStr = el.getAttribute('data-count-to');
                 const target = parseFloat(targetStr);
                 if (isNaN(target)) return;
@@ -385,8 +420,20 @@
     // 4. Global Modal System
     // --------------------------------------------------------------------------
     window.showModal = function (modalId) {
-        const modal = document.getElementById(modalId);
+        const modal = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
         if (modal) {
+            // Teleport to document.body if nested inside a transformed or animated container
+            // (e.g. .panel-card-fade-in, animated cards) to ensure position: fixed is strictly
+            // anchored to the viewport rather than trapped off-screen.
+            if (modal.parentElement !== document.body) {
+                if (modal.id) {
+                    const stale = document.body.querySelector(`:scope > #${modal.id}`);
+                    if (stale && stale !== modal) {
+                        stale.remove();
+                    }
+                }
+                document.body.appendChild(modal);
+            }
             modal.classList.add('show');
             document.body.classList.add('modal-open');
             const focusInput = modal.querySelector('input:not([type="hidden"]), select, textarea, button.primary');
@@ -413,9 +460,9 @@
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            const openModal = document.querySelector('.modal-overlay.show');
-            if (openModal) {
-                window.hideModal(openModal);
+            const openModals = document.querySelectorAll('.modal-overlay.show');
+            if (openModals.length > 0) {
+                window.hideModal(openModals[openModals.length - 1]);
             }
         }
     });
@@ -480,12 +527,52 @@
 
         if (isExpanded) {
             content.classList.remove('expanded');
+            if (triggerElement) {
+                triggerElement.setAttribute('aria-expanded', 'false');
+                triggerElement.classList.remove('is-open');
+            }
             if (chevron) chevron.style.transform = 'rotate(0deg)';
         } else {
             content.classList.add('expanded');
+            if (triggerElement) {
+                triggerElement.setAttribute('aria-expanded', 'true');
+                triggerElement.classList.add('is-open');
+            }
             if (chevron) chevron.style.transform = 'rotate(180deg)';
+
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise([content]).catch(function () {});
+            }
         }
     };
+
+    window.toggleQuestionOptions = function (cardIdOrQid) {
+        let card = document.getElementById('bloom-q-card-' + cardIdOrQid);
+        if (!card) {
+            card = document.getElementById(cardIdOrQid);
+        }
+        if (!card) return;
+
+        const isOpen = card.classList.contains('is-open');
+        const header = card.querySelector('.bloom-question-card-header');
+        const toggleBtn = card.querySelector('.bloom-options-toggle-btn');
+
+        if (isOpen) {
+            card.classList.remove('is-open');
+            if (header) header.setAttribute('aria-expanded', 'false');
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+        } else {
+            card.classList.add('is-open');
+            if (header) header.setAttribute('aria-expanded', 'true');
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+
+            const accordionGrid = card.querySelector('.accordion-grid');
+            if (accordionGrid && window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise([accordionGrid]).catch(function () {});
+            }
+        }
+    };
+
 
     // --------------------------------------------------------------------------
     // 7. Command Palette (Ctrl+K / Cmd+K) - Progressive Enhancement
@@ -621,14 +708,14 @@
     };
 
     // --------------------------------------------------------------------------
-    // 7. Scroll State Retention
+    // 7. Universal Scroll & State Memory
     // --------------------------------------------------------------------------
-    const ScrollState = {
+    const StateMemory = {
         init() {
-            // Restore and save sidebar scroll
+            // 1. Restore & track sidebar scroll
             const sidebars = document.querySelectorAll('.app-sidebar-nav, .dashboard-nav');
             sidebars.forEach(sidebar => {
-                const sidebarKey = 'scroll_sidebar';
+                const sidebarKey = 'quizx_scroll_sidebar';
                 const savedScroll = sessionStorage.getItem(sidebarKey);
                 if (savedScroll) {
                     sidebar.scrollTop = parseInt(savedScroll, 10);
@@ -637,6 +724,79 @@
                     sessionStorage.setItem(sidebarKey, sidebar.scrollTop);
                 }, { passive: true });
             });
+
+            // 2. Track & restore window scroll position (unified across analytics tabs, per-path for other pages)
+            const isAnalyticsPage = () => window.location.pathname.includes('/analytics') || window.location.pathname.includes('/bloom-analytics');
+
+            const restorePageScroll = () => {
+                if (window.location.hash) return;
+                const scrollKey = isAnalyticsPage() ? 'quizx_analytics_scroll' : ('quizx_scroll_page_' + window.location.pathname);
+                const savedPageScroll = sessionStorage.getItem(scrollKey);
+                if (savedPageScroll !== null) {
+                    const top = parseInt(savedPageScroll, 10);
+                    requestAnimationFrame(() => {
+                        window.scrollTo({ top, behavior: 'instant' });
+                    });
+                    setTimeout(() => {
+                        window.scrollTo({ top, behavior: 'instant' });
+                    }, 80);
+                }
+            };
+            restorePageScroll();
+
+            window.addEventListener('scroll', () => {
+                if (window._isSwappingPanel) return;
+                if (isAnalyticsPage()) {
+                    sessionStorage.setItem('quizx_analytics_scroll', window.scrollY);
+                } else {
+                    const pathKey = 'quizx_scroll_page_' + window.location.pathname;
+                    sessionStorage.setItem(pathKey, window.scrollY);
+                }
+            }, { passive: true });
+
+            // 3. Track & restore table-wrapper scroll position (e.g. Scorecard, student roster, results)
+            const restoreTableScroll = () => {
+                const tables = document.querySelectorAll('.table-wrapper');
+                tables.forEach((tw, idx) => {
+                    const tableKey = 'quizx_scroll_table_' + window.location.pathname + '_' + idx;
+                    const savedTableScroll = sessionStorage.getItem(tableKey);
+                    if (savedTableScroll) {
+                        const sLeft = parseInt(savedTableScroll, 10);
+                        tw.scrollLeft = sLeft;
+                        setTimeout(() => { tw.scrollLeft = sLeft; }, 80);
+                    }
+                    if (!tw._hasScrollTracker) {
+                        tw._hasScrollTracker = true;
+                        tw.addEventListener('scroll', () => {
+                            if (window._isSwappingPanel) return;
+                            sessionStorage.setItem(tableKey, tw.scrollLeft);
+                        }, { passive: true });
+                    }
+                });
+            };
+            restoreTableScroll();
+
+            window.restorePageAndTableScroll = () => {
+                restorePageScroll();
+                restoreTableScroll();
+                setTimeout(() => {
+                    restorePageScroll();
+                    restoreTableScroll();
+                    window._isSwappingPanel = false;
+                }, 120);
+            };
+
+            window.addEventListener('load', () => {
+                restorePageScroll();
+                restoreTableScroll();
+            });
+
+            // 3. Track active quiz ID in sessionStorage for easy lookup
+            const urlParams = new URLSearchParams(window.location.search);
+            const quizParam = urlParams.get('quiz');
+            if (quizParam) {
+                sessionStorage.setItem('quizx_active_quiz_id', quizParam);
+            }
         }
     };
 
@@ -645,7 +805,7 @@
     // --------------------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', () => {
         ProgressBar.init();
-        ScrollState.init();
+        StateMemory.init();
         Navigation.init();
         StatCounters.init();
         CommandPalette.init();
@@ -653,4 +813,7 @@
     });
 
     window.ProgressBar = ProgressBar;
+    window.StatCounter = StatCounters;
+    window.Navigation = Navigation;
+    window.StateMemory = StateMemory;
 })();

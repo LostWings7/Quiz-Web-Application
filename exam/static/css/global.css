@@ -167,7 +167,7 @@ button, input, textarea, select {
     bottom: 0;
     left: 0;
     z-index: 1000;
-    transition: width var(--transition-normal), transform var(--transition-normal);
+    transition: width var(--sidebar-transition), transform var(--sidebar-transition);
     box-shadow: var(--shadow-sm);
 }
 
@@ -183,17 +183,27 @@ button, input, textarea, select {
     justify-content: space-between;
     padding: 0 19px;
     border-bottom: 1px solid var(--border-subtle);
-    gap: var(--space-3);
     box-sizing: border-box;
+    position: relative;
+    white-space: nowrap;
 }
 
 .brand-link {
     display: flex;
     align-items: center;
-    gap: 12px;
     text-decoration: none;
     min-width: 0;
-    justify-content: flex-start;
+    gap: 12px;
+}
+
+.brand-link img {
+    max-height: 38px;
+    max-width: 38px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-xs);
+    flex-shrink: 0;
 }
 
 .brand-icon-box {
@@ -216,7 +226,10 @@ button, input, textarea, select {
     flex-direction: column;
     overflow: hidden;
     white-space: nowrap;
-    transition: opacity var(--transition-fast);
+    max-width: 140px;
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 180ms ease, transform var(--sidebar-transition), max-width var(--sidebar-transition);
 }
 
 .brand-title {
@@ -235,10 +248,17 @@ button, input, textarea, select {
 }
 
 .sidebar-collapsed .brand-info {
-    display: none;
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(-8px);
+    pointer-events: none;
 }
 
 .sidebar-toggle-btn {
+    position: absolute;
+    right: 19px;
+    top: 50%;
+    transform: translateY(-50%) scale(1);
     width: 32px;
     height: 32px;
     border-radius: var(--radius-sm);
@@ -248,14 +268,21 @@ button, input, textarea, select {
     display: grid;
     place-items: center;
     cursor: pointer;
-    transition: all var(--transition-fast);
     flex-shrink: 0;
+    opacity: 1;
+    transition: background var(--transition-fast), color var(--transition-fast), opacity 180ms ease, transform var(--sidebar-transition);
 }
 
 .sidebar-toggle-btn:hover {
     background: var(--surface-hover);
     color: var(--text-primary);
     border-color: var(--border-strong);
+}
+
+.sidebar-collapsed .sidebar-toggle-btn {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%) scale(0.8);
 }
 
 /* Sidebar Navigation Items */
@@ -297,26 +324,41 @@ button, input, textarea, select {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-muted);
-    padding: 12px 24px 6px;
+    padding: 0 24px;
     height: 36px;
     line-height: 16px;
     white-space: nowrap;
     box-sizing: border-box;
     display: flex;
-    align-items: flex-end;
-    transition: color var(--transition-fast);
-}
-
-/* First section label is more compact */
-.nav-section-label:first-of-type {
-    padding: 4px 24px 4px;
-    height: 24px;
-}
-
-/* Non-first section labels have top margin — applied in CSS not inline */
-.nav-section-label + .app-nav-item ~ .nav-section-label,
-.nav-section-label ~ .app-nav-item ~ .nav-section-label {
+    align-items: center;
+    position: relative;
+    overflow: hidden;
     margin-top: 12px;
+    opacity: 1;
+    transition: opacity var(--sidebar-transition), padding var(--sidebar-transition);
+}
+
+/* First section label directly following active pill */
+.nav-active-pill + .nav-section-label {
+    margin-top: 0;
+}
+
+/* Divider line replacing the label in collapsed view */
+.nav-section-label::after {
+    content: '';
+    position: absolute;
+    left: 24px;
+    right: 24px;
+    height: 1px;
+    background: var(--border-strong);
+    border-radius: 1px;
+    opacity: 0;
+    transition: opacity var(--sidebar-transition);
+}
+
+/* First section label has no divider line */
+.nav-active-pill + .nav-section-label::after {
+    display: none !important;
 }
 
 .sidebar-collapsed .app-sidebar-nav {
@@ -328,55 +370,33 @@ button, input, textarea, select {
     display: none;
 }
 
-/* In collapsed view, labels become spacer+divider lines matching expanded heights */
 .sidebar-collapsed .nav-section-label {
-    color: transparent;
-    font-size: 0;
-    height: 36px;       /* matches expanded .nav-section-label height: 36px */
     padding: 0;
-    margin-top: 18px;   
-    display: flex;
-    align-items: center;
     justify-content: center;
-    box-sizing: border-box;
+    color: transparent;
 }
 
-/* Divider line replacing the label text */
 .sidebar-collapsed .nav-section-label::after {
-    content: '';
-    display: block;
-    width: 28px;
-    height: 1px;
-    background: var(--border-strong);
-    border-radius: 1px;
-}
-
-/* First label: matches expanded first-of-type compact size, no margin */
-.sidebar-collapsed .nav-section-label:first-of-type {
-    height: 24px;       /* matches expanded .nav-section-label:first-of-type height: 24px */
-    margin-top: 0;      /* first label has no top margin in either view */
-}
-
-/* First label has no divider (no section above it) */
-.sidebar-collapsed .nav-section-label:first-of-type::after {
-    display: none;
+    opacity: 1;
 }
 
 .nav-active-pill {
     position: absolute;
-    left: 0;
+    left: 12px;
     top: 0;
     margin: 0;
-    background: linear-gradient(135deg, rgba(99, 91, 255, 0.15) 0%, rgba(34, 184, 199, 0.08) 100%);
+    width: calc(100% - 24px);
+    height: 44px;
+    background: linear-gradient(135deg, rgba(99, 91, 255, 0.16) 0%, rgba(34, 184, 199, 0.09) 100%);
     border-radius: var(--radius-md);
     pointer-events: none;
     z-index: 0;
-    border: 1px solid rgba(99, 91, 255, 0.22);
+    border: 1px solid rgba(99, 91, 255, 0.25);
     box-shadow: 0 4px 14px rgba(99, 91, 255, 0.08);
     box-sizing: border-box;
-    transform-origin: 50% 50%;
-    will-change: transform, width, height;
-    transition: opacity 120ms ease;
+    will-change: transform, width;
+    opacity: 0;
+    transition: width var(--sidebar-transition), opacity 160ms ease;
 }
 
 .app-nav-item {
@@ -386,7 +406,7 @@ button, input, textarea, select {
     align-items: center;
     justify-content: flex-start;
     margin: 0 12px;
-    padding: 0 0 0 16px;
+    padding: 0;
     height: 44px;
     min-height: 44px;
     max-height: 44px;
@@ -396,30 +416,57 @@ button, input, textarea, select {
     font-weight: 500;
     font-size: var(--text-sm);
     text-decoration: none;
-    transition: color var(--transition-fast), background-color var(--transition-fast);
     white-space: nowrap;
     overflow: hidden;
     box-sizing: border-box;
+    transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.app-nav-item:hover {
+    color: var(--text-primary);
+}
+
+.app-nav-item.active {
+    color: var(--accent-primary);
+    font-weight: 600;
 }
 
 .app-nav-item i {
-    width: 20px;
-    min-width: 20px;
-    text-align: center;
+    width: 52px;
+    min-width: 52px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 1.05rem;
     flex-shrink: 0;
-    margin-right: 16px;
-    transition: color var(--transition-fast);
+    margin: 0;
+    transition: color var(--transition-fast), transform 200ms ease;
+}
+
+.app-nav-item:hover i {
+    transform: scale(1.1);
+}
+
+.app-nav-item.active i {
+    color: var(--accent-primary);
 }
 
 .app-nav-item span {
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: opacity var(--transition-fast);
+    white-space: nowrap;
+    max-width: 160px;
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 180ms ease, transform var(--sidebar-transition), max-width var(--sidebar-transition);
 }
 
 .sidebar-collapsed .app-nav-item span {
-    display: none;
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(-8px);
+    pointer-events: none;
 }
 
 /* Sidebar Expand Tab (Hump on the right edge in collapsed view) */
@@ -427,13 +474,13 @@ button, input, textarea, select {
     position: absolute;
     right: -13px;
     top: 50%;
-    transform: translateY(-50%);
+    transform: translateY(-50%) scale(0.8);
     width: 26px;
     height: 26px;
     background: var(--surface);
     border: 1px solid var(--border-strong);
     border-radius: 50%;
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     color: var(--text-secondary);
@@ -441,7 +488,9 @@ button, input, textarea, select {
     cursor: pointer;
     z-index: 1001;
     box-shadow: var(--shadow-sm);
-    transition: background var(--duration-fast), color var(--duration-fast), border-color var(--duration-fast), transform var(--duration-fast);
+    opacity: 0;
+    pointer-events: none;
+    transition: background var(--duration-fast), color var(--duration-fast), border-color var(--duration-fast), transform var(--sidebar-transition), opacity var(--sidebar-transition);
 }
 
 .sidebar-expand-tab:hover {
@@ -453,30 +502,9 @@ button, input, textarea, select {
 }
 
 .sidebar-collapsed .sidebar-expand-tab {
-    display: flex;
-}
-
-.sidebar-collapsed .sidebar-toggle-btn {
-    display: none !important;
-}
-
-.sidebar-collapsed .app-sidebar-header {
-    padding: 0 19px;
-    justify-content: flex-start;
-}
-
-.sidebar-collapsed .brand-link {
-    justify-content: flex-start;
-    width: 100%;
-    gap: 0;
-}
-
-.sidebar-collapsed .brand-info {
-    display: none;
-}
-
-.sidebar-collapsed .app-nav-item i {
-    transform: none !important;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) scale(1);
 }
 
 .app-sidebar-footer {
@@ -487,6 +515,8 @@ button, input, textarea, select {
     gap: 10px;
     background: var(--surface);
     box-sizing: border-box;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 .user-profile-chip {
@@ -494,7 +524,7 @@ button, input, textarea, select {
     align-items: center;
     justify-content: flex-start;
     margin: 0 12px;
-    padding: 0 0 0 8px;
+    padding: 0;
     height: 52px;
     min-height: 52px;
     max-height: 52px;
@@ -504,6 +534,7 @@ button, input, textarea, select {
     border-radius: var(--radius-md);
     overflow: hidden;
     box-sizing: border-box;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .user-avatar {
@@ -511,7 +542,6 @@ button, input, textarea, select {
     height: 36px;
     min-width: 36px;
     min-height: 36px;
-    margin-right: 12px;
     border-radius: 50%;
     display: grid;
     place-items: center;
@@ -520,6 +550,7 @@ button, input, textarea, select {
     font-weight: 700;
     font-size: 13px;
     flex-shrink: 0;
+    margin-left: 8px;
 }
 
 .user-details {
@@ -528,159 +559,11 @@ button, input, textarea, select {
     min-width: 0;
     overflow: hidden;
     white-space: nowrap;
-}
-
-.app-sidebar-footer .btn,
-.app-sidebar-footer .btn.btn-small {
-    margin: 0 12px;
-    width: calc(100% - 24px);
-    height: 44px;
-    min-height: 44px;
-    max-height: 44px;
-    padding: 0 0 0 18px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    font-size: var(--text-sm);
-    font-weight: 600;
-    border-radius: var(--radius-md);
-    box-sizing: border-box;
-}
-
-.app-sidebar-footer .btn i,
-.app-sidebar-footer .btn.btn-small i {
-    width: 16px;
-    min-width: 16px;
-    margin-right: 12px;
-    font-size: 14px;
-    display: flex;
-    justify-content: center;
-}
-
-.sidebar-collapsed .app-sidebar-footer {
-    padding: 16px 0;
-}
-
-.sidebar-collapsed .app-sidebar-footer .user-avatar,
-.sidebar-collapsed .app-sidebar-footer .btn i {
-    margin-right: 0;
-}
-
-.sidebar-collapsed .app-sidebar-footer .user-details {
-    display: none;
-}
-
-.sidebar-collapsed .app-sidebar-footer form {
-    width: 100%;
-}
-
-.sidebar-collapsed .app-sidebar-footer .btn span {
-    display: none;
-}
-
-/* Zero-flash preload state for collapsed sidebar */
-html.sidebar-collapsed-preload .app-shell .app-sidebar {
-    width: var(--sidebar-collapsed-width) !important;
-    transition: none !important;
-}
-html.sidebar-collapsed-preload .app-shell .app-main-layout {
-    margin-left: var(--sidebar-collapsed-width) !important;
-    transition: none !important;
-}
-html.sidebar-collapsed-preload .app-shell .brand-info,
-html.sidebar-collapsed-preload .app-shell .app-nav-item span,
-html.sidebar-collapsed-preload .app-shell .app-sidebar-footer .user-details,
-html.sidebar-collapsed-preload .app-shell .app-sidebar-footer .btn span,
-html.sidebar-collapsed-preload .app-shell .sidebar-toggle-btn {
-    display: none !important;
-}
-html.sidebar-collapsed-preload .app-shell .nav-section-label {
-    color: transparent !important;
-    font-size: 0 !important;
-    height: 36px !important;
-    padding: 0 !important;
-    margin-top: 18px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-html.sidebar-collapsed-preload .app-shell .nav-section-label:first-of-type {
-    height: 24px !important;
-    margin-top: 0 !important;
-}
-html.sidebar-collapsed-preload .app-shell .sidebar-expand-tab {
-    display: flex !important;
-}
-html.sidebar-collapsed-preload .app-shell .app-sidebar-nav {
-    padding: 12px 0 16px !important;
-    scrollbar-width: none !important;
-}
-html.sidebar-collapsed-preload .app-shell .app-nav-item i {
-    margin-right: 0 !important;
-}
-html.sidebar-collapsed-preload .app-shell .app-sidebar-footer .user-avatar,
-html.sidebar-collapsed-preload .app-shell .app-sidebar-footer .btn i {
-    margin-right: 0 !important;
-}
-
-.app-nav-item:hover {
-    color: var(--text-primary);
-}
-
-.app-nav-item:hover i {
-    transform: translateX(2px);
-    color: var(--accent-primary);
-}
-
-.app-nav-item.active {
-    color: var(--accent-primary);
-    font-weight: 600;
-}
-
-.app-nav-item.active i {
-    color: var(--accent-primary);
-}
-
-/* Sidebar Footer & User Profile */
-.app-sidebar-footer {
-    padding: var(--space-3);
-    border-top: 1px solid var(--border-subtle);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    background: var(--bg-secondary);
-}
-
-.user-profile-chip {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-md);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    min-width: 0;
-}
-
-.user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--surface-subtle);
-    border: 1px solid var(--border-strong);
-    color: var(--text-primary);
-    font-weight: 600;
-    font-size: var(--text-xs);
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-}
-
-.user-details {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    white-space: nowrap;
+    margin-left: 12px;
+    max-width: 140px;
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 180ms ease, transform var(--sidebar-transition), max-width var(--sidebar-transition);
 }
 
 .user-name {
@@ -700,12 +583,123 @@ html.sidebar-collapsed-preload .app-shell .app-sidebar-footer .btn i {
 }
 
 .sidebar-collapsed .user-details {
-    display: none;
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(-8px);
+    pointer-events: none;
 }
 
-.sidebar-collapsed .user-profile-chip {
+.app-sidebar-footer form {
+    margin: 0;
+    width: 100%;
+}
+
+.app-sidebar-footer .btn,
+.app-sidebar-footer .btn.btn-small {
+    margin: 0 12px;
+    width: calc(100% - 24px);
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    box-sizing: border-box;
+    overflow: hidden;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.app-sidebar-footer .btn i,
+.app-sidebar-footer .btn.btn-small i {
+    width: 52px;
+    min-width: 52px;
+    height: 44px;
+    display: flex;
+    align-items: center;
     justify-content: center;
-    padding: var(--space-2);
+    font-size: 14px;
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.app-sidebar-footer .btn span,
+.app-sidebar-footer .btn.btn-small span {
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 140px;
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 180ms ease, transform var(--sidebar-transition), max-width var(--sidebar-transition);
+}
+
+.sidebar-collapsed .app-sidebar-footer .btn span,
+.sidebar-collapsed .app-sidebar-footer .btn.btn-small span {
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(-8px);
+    pointer-events: none;
+}
+
+/* Zero-flash preload state for collapsed sidebar */
+html.sidebar-collapsed-preload .app-shell .app-sidebar {
+    width: var(--sidebar-collapsed-width) !important;
+    transition: none !important;
+}
+html.sidebar-collapsed-preload .app-shell .app-main-layout {
+    margin-left: var(--sidebar-collapsed-width) !important;
+    transition: none !important;
+}
+html.sidebar-collapsed-preload .app-shell .brand-info,
+html.sidebar-collapsed-preload .app-shell .app-nav-item span,
+html.sidebar-collapsed-preload .app-shell .app-sidebar-footer .user-details,
+html.sidebar-collapsed-preload .app-shell .app-sidebar-footer .btn span,
+html.sidebar-collapsed-preload .app-shell .app-sidebar-footer .btn.btn-small span {
+    max-width: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: none !important;
+}
+html.sidebar-collapsed-preload .app-shell .sidebar-toggle-btn {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: none !important;
+}
+html.sidebar-collapsed-preload .app-shell .sidebar-expand-tab {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: translateY(-50%) scale(1) !important;
+    transition: none !important;
+}
+html.sidebar-collapsed-preload .app-shell .nav-section-label {
+    color: transparent !important;
+}
+html.sidebar-collapsed-preload .app-shell .nav-section-label::after {
+    opacity: 1 !important;
+    transition: none !important;
+}
+
+/* Scoped prefers-reduced-motion for sidebar & layout */
+@media (prefers-reduced-motion: reduce) {
+    .app-sidebar,
+    .app-main-layout,
+    .app-nav-item,
+    .app-nav-item span,
+    .brand-info,
+    .user-details,
+    .app-sidebar-footer .btn,
+    .app-sidebar-footer .btn span,
+    .app-sidebar-footer .btn.btn-small span,
+    .nav-active-pill,
+    .sidebar-toggle-btn,
+    .sidebar-expand-tab,
+    .nav-section-label,
+    .nav-section-label::after {
+        transition-duration: 0.01ms !important;
+    }
 }
 
 /* Main Content Area */
@@ -716,7 +710,7 @@ html.sidebar-collapsed-preload .app-shell .app-sidebar-footer .btn i {
     flex-direction: column;
     min-height: 100vh;
     min-width: 0;
-    transition: margin-left var(--transition-normal);
+    transition: margin-left var(--sidebar-transition);
 }
 
 .sidebar-collapsed .app-main-layout {

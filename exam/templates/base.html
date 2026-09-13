@@ -20,6 +20,10 @@
 
     {% block extra_css %}{% endblock %}
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+    <link rel="alternate icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}">
+
     <!-- MathJax for formula formatting -->
     <script>
     window.MathJax = {
@@ -27,8 +31,8 @@
         inlineMath: [['$', '$'], ['\\(', '\\)']],
         displayMath: [['$$', '$$'], ['\\[', '\\]']]
       },
-      svg: {
-        fontCache: 'global'
+      chtml: {
+        fontURL: "{% static 'js/vendor/output/chtml/fonts/woff-v2' %}"
       }
     };
     </script>

@@ -1,0 +1,467 @@
+{% load static %}
+<div class="analytics-subnav-container">
+    {% if quizzes %}
+    <!-- Searchable Quiz Picker (Persistent across all analytics sections) -->
+    <div class="quiz-picker-wrapper" id="quizPickerWrapper">
+        <div class="quiz-picker-trigger" id="quizPickerTrigger" onclick="togglePicker()" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false" aria-label="Select Quiz for Analytics">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                <i class="fa-solid fa-clipboard-list" style="color: var(--accent-primary); font-size: 14px;"></i>
+                <span class="trigger-text" id="triggerLabel">
+                    {% if selected_quiz %}{{ selected_quiz.title }}{% else %}Select an assessment to view analytics{% endif %}
+                </span>
+            </div>
+            <i class="fa-solid fa-chevron-down trigger-icon"></i>
+        </div>
+        <div class="quiz-picker-dropdown" id="quizPickerDropdown">
+            <div class="quiz-picker-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="quizSearchInput" placeholder="Search quizzes by title or code…" oninput="filterQuizzes(this.value)" autocomplete="off">
+            </div>
+            <div class="quiz-picker-list" id="quizPickerList">
+                {% for quiz in quizzes %}
+                <div class="quiz-picker-item {% if selected_quiz and quiz.id == selected_quiz.id %}selected{% endif %}"
+                     data-id="{{ quiz.id }}"
+                     data-title="{{ quiz.title|lower }}"
+                     data-code="{{ quiz.code|lower }}"
+                     onclick="switchAnalyticsQuiz('{{ quiz.id }}')">
+                    <div class="item-icon"><i class="fa-solid fa-file-lines"></i></div>
+                    <span class="item-label" data-original="{{ quiz.title }}">{{ quiz.title }}</span>
+                    <span class="item-code">{{ quiz.code }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Secondary Analytics Tabs Navigation -->
+    <nav class="analytics-tabs-wrapper" aria-label="Analytics Deep-Dive Sections">
+        <a href="{% url 'dashboard_analytics' %}{% if selected_quiz %}?quiz={{ selected_quiz.id }}{% endif %}" class="analytics-tab-item {% if current_analytics_section == 'overview' %}active{% endif %}" title="Overview Summary">
+            <i class="fa-solid fa-chart-pie"></i>
+            <span>Overview</span>
+        </a>
+        <a href="{% url 'dashboard_analytics_detail' 'score' %}{% if selected_quiz %}?quiz={{ selected_quiz.id }}{% endif %}" class="analytics-tab-item {% if current_analytics_section == 'score' %}active{% endif %}" title="Score Distribution">
+            <i class="fa-solid fa-chart-column"></i>
+            <span>Score Dist.</span>
+        </a>
+        <a href="{% url 'dashboard_analytics_detail' 'overall' %}{% if selected_quiz %}?quiz={{ selected_quiz.id }}{% endif %}" class="analytics-tab-item {% if current_analytics_section == 'overall' %}active{% endif %}" title="Performance Gauge">
+            <i class="fa-solid fa-gauge-high"></i>
+            <span>Gauge</span>
+        </a>
+        <a href="{% url 'dashboard_analytics_detail' 'cro' %}{% if selected_quiz %}?quiz={{ selected_quiz.id }}{% endif %}" class="analytics-tab-item {% if current_analytics_section == 'cro' %}active{% endif %}" title="Critical Focus Priority">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>CRO Priority</span>
+        </a>
+        <a href="{% url 'dashboard_analytics_detail' 'subtopic' %}{% if selected_quiz %}?quiz={{ selected_quiz.id }}{% endif %}" class="analytics-tab-item {% if current_analytics_section == 'subtopic' %}active{% endif %}" title="Subtopic Mastery">
+            <i class="fa-solid fa-bullseye"></i>
+            <span>Subtopic</span>
+        </a>
+        <a href="{% url 'dashboard_analytics_detail' 'difficulty' %}{% if selected_quiz %}?quiz={{ selected_quiz.id }}{% endif %}" class="analytics-tab-item {% if current_analytics_section == 'difficulty' %}active{% endif %}" title="Question Difficulty">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Difficulty</span>
+        </a>
+        <a href="{% url 'dashboard_analytics_detail' 'ranking' %}{% if selected_quiz %}?quiz={{ selected_quiz.id }}{% endif %}" class="analytics-tab-item {% if current_analytics_section == 'ranking' %}active{% endif %}" title="Student Rankings">
+            <i class="fa-solid fa-trophy"></i>
+            <span>Ranking</span>
+        </a>
+        <a href="{% url 'dashboard_analytics_detail' 'scorecard' %}{% if selected_quiz %}?quiz={{ selected_quiz.id }}{% endif %}" class="analytics-tab-item {% if current_analytics_section == 'scorecard' %}active{% endif %}" title="Class Scorecard">
+            <i class="fa-solid fa-table-list"></i>
+            <span>Scorecard</span>
+        </a>
+        <a href="{% url 'dashboard_bloom_analytics' %}{% if selected_quiz %}?quiz={{ selected_quiz.id }}{% endif %}" class="analytics-tab-item bloom-tab {% if current_analytics_section == 'bloom' %}active{% endif %}" title="Bloom Cognitive Analysis">
+            <i class="fa-solid fa-brain" style="color: var(--accent-primary);"></i>
+            <span>Bloom's Taxonomy</span>
+        </a>
+    </nav>
+</div>
+
+<script>
+function togglePicker() {
+    const dropdown = document.getElementById('quizPickerDropdown');
+    const trigger = document.getElementById('quizPickerTrigger');
+    if (!dropdown || !trigger) return;
+    const isOpen = dropdown.classList.contains('open');
+    dropdown.classList.toggle('open');
+    trigger.classList.toggle('open');
+    trigger.setAttribute('aria-expanded', !isOpen);
+    if (!isOpen) {
+        const input = document.getElementById('quizSearchInput');
+        if (input) setTimeout(() => input.focus(), 50);
+    }
+}
+
+function filterQuizzes(query) {
+    const list = document.getElementById('quizPickerList');
+    if (!list) return;
+    const q = query.trim().toLowerCase();
+    const items = list.querySelectorAll('.quiz-picker-item');
+    items.forEach(item => {
+        const title = item.getAttribute('data-title') || '';
+        const code = item.getAttribute('data-code') || '';
+        if (!q || title.includes(q) || code.includes(q)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function executeInjectedScripts(container) {
+    const scripts = container.querySelectorAll('script');
+    scripts.forEach(oldScript => {
+        const newScript = document.createElement('script');
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+        newScript.textContent = oldScript.textContent;
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
+}
+
+// Single canonical quiz ID resolver:
+// 1. URL search param ?quiz=<id> (primary client truth)
+// 2. Currently selected item in the picker DOM
+// 3. Canonical sessionStorage ('quizx_active_quiz_id')
+function getActiveQuizId() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const q = urlParams.get('quiz');
+        if (q) return q;
+    } catch(e) {}
+
+    const selectedItem = document.querySelector('#quizPickerList .quiz-picker-item.selected');
+    if (selectedItem && selectedItem.getAttribute('data-id')) {
+        return selectedItem.getAttribute('data-id');
+    }
+
+    try {
+        const saved = sessionStorage.getItem('quizx_active_quiz_id');
+        if (saved) return saved;
+    } catch(e) {}
+
+    return null;
+}
+
+// Single synchronization function required by Phase 2:
+// Ensures all analytics navigation targets, picker UI, and storage use active quizId
+function syncAnalyticsNavigation(quizId) {
+    if (!quizId) return;
+
+    // 1. Store in canonical sessionStorage and purge legacy keys
+    try {
+        sessionStorage.setItem('quizx_active_quiz_id', String(quizId));
+        sessionStorage.removeItem('analytics_selected_quiz');
+        sessionStorage.removeItem('analytics_selected_quiz_id');
+    } catch(e) {}
+
+    // 2. Update all analytics tab hrefs
+    const tabsWrapper = document.querySelector('.analytics-tabs-wrapper');
+    if (tabsWrapper) {
+        tabsWrapper.querySelectorAll('.analytics-tab-item').forEach(tab => {
+            if (!tab.href) return;
+            try {
+                const u = new URL(tab.href, window.location.origin);
+                u.searchParams.set('quiz', String(quizId));
+                tab.href = u.pathname + u.search;
+            } catch(e) {}
+        });
+    }
+
+    // 3. Update any "Back to Analytics" action links on the page
+    document.querySelectorAll('a[href*="/dashboard/analytics"]').forEach(link => {
+        if (link.classList.contains('analytics-tab-item')) return;
+        try {
+            const u = new URL(link.href, window.location.origin);
+            if (u.pathname === '{% url "dashboard_analytics" %}' || u.pathname.startsWith('/dashboard/analytics')) {
+                u.searchParams.set('quiz', String(quizId));
+                link.href = u.pathname + u.search;
+            }
+        } catch(e) {}
+    });
+
+    // 4. Update quiz picker label & active highlight
+    const list = document.getElementById('quizPickerList');
+    const trigger = document.getElementById('triggerLabel');
+    if (list) {
+        const targetItem = list.querySelector(`.quiz-picker-item[data-id="${quizId}"]`);
+        if (targetItem) {
+            list.querySelectorAll('.quiz-picker-item').forEach(item => item.classList.remove('selected'));
+            targetItem.classList.add('selected');
+            if (trigger) {
+                const label = targetItem.querySelector('.item-label');
+                if (label) trigger.textContent = label.textContent;
+            }
+        }
+    }
+}
+
+function restoreAnalyticsNavScroll() {
+    const tabsWrapper = document.querySelector('.analytics-tabs-wrapper');
+    if (!tabsWrapper) return;
+    const savedNavScroll = sessionStorage.getItem('quizx_analytics_nav_scroll');
+    if (savedNavScroll !== null) {
+        tabsWrapper.scrollLeft = parseInt(savedNavScroll, 10);
+    } else {
+        const activeTab = tabsWrapper.querySelector('.analytics-tab-item.active');
+        if (activeTab) {
+            activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    }
+}
+
+function setupTabsWrapperScrolling(tabsWrapper) {
+    if (!tabsWrapper || tabsWrapper._hasWheelAttached) return;
+    tabsWrapper._hasWheelAttached = true;
+
+    tabsWrapper.addEventListener('wheel', function(e) {
+        if (e.deltaY !== 0 && !e.shiftKey) {
+            e.preventDefault();
+            tabsWrapper.scrollLeft += e.deltaY;
+            try {
+                sessionStorage.setItem('quizx_analytics_nav_scroll', tabsWrapper.scrollLeft);
+            } catch(err) {}
+        }
+    }, { passive: false });
+
+    tabsWrapper.addEventListener('scroll', function() {
+        try {
+            sessionStorage.setItem('quizx_analytics_nav_scroll', tabsWrapper.scrollLeft);
+        } catch(err) {}
+    }, { passive: true });
+}
+
+window.loadAnalyticsPanel = function(targetUrl, pushState = true) {
+    const dynamicPanel = document.getElementById('analyticsDynamicPanel');
+    const tabsWrapper = document.querySelector('.analytics-tabs-wrapper');
+    if (!dynamicPanel) {
+        window.location.href = targetUrl;
+        return;
+    }
+
+    // Preserve the current vertical scroll position across analytics tabs
+    const targetScroll = window.scrollY;
+    try {
+        sessionStorage.setItem('quizx_analytics_scroll', targetScroll);
+        const currentTables = document.querySelectorAll('.table-wrapper');
+        currentTables.forEach((tw, idx) => {
+            sessionStorage.setItem('quizx_scroll_table_' + window.location.pathname + '_' + idx, tw.scrollLeft);
+        });
+    } catch(e) {}
+    window._isSwappingPanel = true;
+
+    // Isolated card exit transition
+    dynamicPanel.style.transition = 'opacity 140ms ease, transform 140ms cubic-bezier(0.16, 1, 0.3, 1)';
+    dynamicPanel.style.opacity = '0.3';
+    dynamicPanel.style.transform = 'translate3d(0, 4px, 0)';
+
+    fetch(targetUrl)
+        .then(res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.text();
+        })
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newPanel = doc.getElementById('analyticsDynamicPanel');
+
+            if (newPanel) {
+                if (doc.title) document.title = doc.title;
+
+                // Destroy existing Chart.js instances before replacing markup to avoid canvas reuse errors
+                if (window.Chart && typeof window.Chart.getChart === 'function') {
+                    dynamicPanel.querySelectorAll('canvas').forEach(canvas => {
+                        try {
+                            const existingChart = window.Chart.getChart(canvas);
+                            if (existingChart) existingChart.destroy();
+                        } catch(e) {}
+                    });
+                }
+
+                // Replace only the cards panel
+                dynamicPanel.innerHTML = newPanel.innerHTML;
+                dynamicPanel.style.opacity = '';
+                dynamicPanel.style.transform = '';
+                dynamicPanel.className = 'analytics-dynamic-panel panel-card-fade-in';
+
+                // Synchronize navigation state with targetUrl quiz param
+                const targetUrlObj = new URL(targetUrl, window.location.origin);
+                const quizIdFromTarget = targetUrlObj.searchParams.get('quiz');
+                if (quizIdFromTarget) {
+                    syncAnalyticsNavigation(quizIdFromTarget);
+                }
+
+                // Update active tab state
+                const targetPath = targetUrlObj.pathname;
+                if (tabsWrapper) {
+                    tabsWrapper.querySelectorAll('.analytics-tab-item').forEach(t => {
+                        try {
+                            const tabUrl = new URL(t.href, window.location.origin);
+                            if (tabUrl.pathname === targetPath) {
+                                t.classList.add('active');
+                            } else {
+                                t.classList.remove('active');
+                            }
+                        } catch(e) {}
+                    });
+                }
+
+                if (pushState) {
+                    window.history.pushState({ url: targetUrl }, '', targetUrl);
+                }
+
+                // Restore tabs scroll position
+                restoreAnalyticsNavScroll();
+
+                // Keep scroll position exactly the same when changing tabs in analytics
+                window.scrollTo({ top: targetScroll, behavior: 'instant' });
+                requestAnimationFrame(() => {
+                    window.scrollTo({ top: targetScroll, behavior: 'instant' });
+                });
+
+                // Execute inline chart rendering scripts
+                executeInjectedScripts(dynamicPanel);
+
+                // Re-apply scroll position and table-wrapper scroll after DOM reflow
+                setTimeout(() => {
+                    window.scrollTo({ top: targetScroll, behavior: 'instant' });
+                    // Restore table scroll for scorecard or wide tables
+                    const tables = dynamicPanel.querySelectorAll('.table-wrapper');
+                    tables.forEach((tw, idx) => {
+                        const tableKey = 'quizx_scroll_table_' + targetUrlObj.pathname + '_' + idx;
+                        const savedTableScroll = sessionStorage.getItem(tableKey);
+                        if (savedTableScroll) {
+                            tw.scrollLeft = parseInt(savedTableScroll, 10);
+                        }
+                    });
+                    window._isSwappingPanel = false;
+                }, 60);
+
+                setTimeout(() => {
+                    window.scrollTo({ top: targetScroll, behavior: 'instant' });
+                    window._isSwappingPanel = false;
+                }, 160);
+
+                // Trigger stat counters if present
+                if (window.StatCounter && typeof window.StatCounter.init === 'function') {
+                    window.StatCounter.init();
+                }
+            } else {
+                window.location.href = targetUrl;
+            }
+        })
+        .catch(() => {
+            window._isSwappingPanel = false;
+            window.location.href = targetUrl;
+        });
+};
+
+function switchAnalyticsQuiz(quizId) {
+    if (!quizId) return;
+
+    // 1. Sync navigation state immediately
+    syncAnalyticsNavigation(quizId);
+
+    // 2. Build target URL maintaining the current view (stays on bloom if on bloom, overview if on overview)
+    const url = new URL(window.location.href);
+    url.searchParams.set('quiz', String(quizId));
+    const targetUrl = url.pathname + url.search;
+
+    // 3. Close picker dropdown
+    const dropdown = document.getElementById('quizPickerDropdown');
+    const triggerEl = document.getElementById('quizPickerTrigger');
+    if (dropdown) dropdown.classList.remove('open');
+    if (triggerEl) {
+        triggerEl.classList.remove('open');
+        triggerEl.setAttribute('aria-expanded', 'false');
+    }
+
+    const dynamicPanel = document.getElementById('analyticsDynamicPanel');
+    if (dynamicPanel && typeof window.loadAnalyticsPanel === 'function') {
+        window.loadAnalyticsPanel(targetUrl, true);
+    } else {
+        window.location.href = targetUrl;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Synchronize navigation targets on initial load
+    const initialQuizId = getActiveQuizId();
+    if (initialQuizId) {
+        syncAnalyticsNavigation(initialQuizId);
+    }
+
+    // 2. Setup scroll tracking and restore tabs scroll position
+    const tabsWrapper = document.querySelector('.analytics-tabs-wrapper');
+    if (tabsWrapper) {
+        setupTabsWrapperScrolling(tabsWrapper);
+        restoreAnalyticsNavScroll();
+    }
+
+    // 3. Tab click behavior (Phase 3)
+    if (tabsWrapper) {
+        tabsWrapper.addEventListener('click', function(e) {
+            const tabLink = e.target.closest('.analytics-tab-item');
+            if (!tabLink || !tabLink.href) return;
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+            const parsedTabUrl = new URL(tabLink.href, window.location.origin);
+            if (parsedTabUrl.origin !== window.location.origin) return;
+
+            e.preventDefault();
+
+            // Determine active quiz ID at click time
+            const activeQuiz = getActiveQuizId();
+            if (activeQuiz) {
+                parsedTabUrl.searchParams.set('quiz', String(activeQuiz));
+            }
+
+            const currentUrl = new URL(window.location.href);
+            if (tabLink.classList.contains('active') && currentUrl.pathname === parsedTabUrl.pathname && currentUrl.searchParams.get('quiz') === parsedTabUrl.searchParams.get('quiz')) {
+                return;
+            }
+
+            tabsWrapper.querySelectorAll('.analytics-tab-item').forEach(t => t.classList.remove('active'));
+            tabLink.classList.add('active');
+
+            if (activeQuiz) {
+                syncAnalyticsNavigation(activeQuiz);
+            }
+
+            const targetUrl = parsedTabUrl.pathname + parsedTabUrl.search;
+            window.loadAnalyticsPanel(targetUrl, true);
+        });
+    }
+});
+
+window.addEventListener('popstate', function() {
+    if (document.getElementById('analyticsDynamicPanel')) {
+        window.loadAnalyticsPanel(window.location.href, false);
+    }
+});
+
+document.addEventListener('click', function(e) {
+    const wrapper = document.getElementById('quizPickerWrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        const dropdown = document.getElementById('quizPickerDropdown');
+        const trigger = document.getElementById('quizPickerTrigger');
+        if (dropdown) dropdown.classList.remove('open');
+        if (trigger) {
+            trigger.classList.remove('open');
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+    }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const dropdown = document.getElementById('quizPickerDropdown');
+        const trigger = document.getElementById('quizPickerTrigger');
+        if (dropdown && dropdown.classList.contains('open')) {
+            dropdown.classList.remove('open');
+            if (trigger) {
+                trigger.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+                trigger.focus();
+            }
+        }
+    }
+});
+</script>

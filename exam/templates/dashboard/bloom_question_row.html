@@ -1,0 +1,82 @@
+<div class="bloom-question-card tier-{{ q.bloom_level|lower|default:'unclassified' }}" id="bloom-q-card-{{ q.id }}">
+    <!-- Clickable Question Card Header (Toggles Options Breakdown) -->
+    <div class="bloom-question-card-header" 
+         role="button" 
+         tabindex="0" 
+         aria-expanded="false" 
+         aria-controls="bloom-q-options-{{ q.id }}"
+         onclick="toggleQuestionOptions('{{ q.id }}')" 
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleQuestionOptions('{{ q.id }}');}">
+        
+        <div class="bloom-question-header-content">
+            <div class="bloom-question-meta-row">
+                <span class="pill" style="font-family: var(--font-mono); font-weight: 700; font-size: 11px;">Q{{ q.order }}</span>
+                {% if q.subtopic %}
+                    <span class="pill accent" style="font-size: 10px;">{{ q.subtopic }}</span>
+                {% endif %}
+                <span class="pill {% if q.accuracy >= 70 %}success{% elif q.accuracy >= 40 %}warning{% else %}danger{% endif %}" style="font-size: 10px; font-weight: 700;">
+                    {{ q.accuracy }}% Accuracy
+                </span>
+                {% if q.bloom_confidence %}
+                    <span class="pill" style="font-size: 10px; color: var(--text-muted);" title="Classification Confidence">{{ q.bloom_confidence }}% Conf</span>
+                {% endif %}
+                {% if q.needs_review %}
+                    <span class="pill warning" style="font-size: 10px;"><i class="fa-solid fa-triangle-exclamation"></i> Needs Review</span>
+                {% elif q.bloom_reviewed %}
+                    <span class="pill success" style="font-size: 10px;"><i class="fa-solid fa-check"></i> Teacher Reviewed</span>
+                {% endif %}
+            </div>
+            
+            <div class="bloom-question-text">
+                {{ q.text|safe }}
+            </div>
+        </div>
+
+        <div class="bloom-question-header-actions">
+            <a href="{% url 'dashboard_question_edit' q.id %}" class="btn-small secondary" style="font-size: 11px; white-space: nowrap;" title="Edit question and review Bloom classification" onclick="event.stopPropagation()">
+                <i class="fa-solid fa-pen"></i>
+                <span>Review</span>
+            </a>
+            {% if q.options %}
+            <button type="button" class="bloom-options-toggle-btn" aria-label="Toggle candidate options" onclick="event.stopPropagation(); toggleQuestionOptions('{{ q.id }}');">
+                <i class="fa-solid fa-list-check"></i>
+                <span class="options-toggle-label">{{ q.options|length }} Options</span>
+                <i class="fa-solid fa-chevron-down chevron-icon"></i>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Candidate Selection Options Breakdown (Expandable via CSS Grid) -->
+    {% if q.options %}
+    <div class="accordion-grid" id="bloom-q-options-{{ q.id }}">
+        <div class="accordion-inner">
+            <div class="option-stats-panel" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-subtle);">
+                <div class="option-stats-header">
+                    <i class="fa-solid fa-chart-simple"></i>
+                    <span>Candidate Selection Breakdown</span>
+                </div>
+                {% for opt in q.options %}
+                <div class="option-stat-row {% if opt.is_correct %}correct{% endif %}">
+                    <span class="option-stat-icon {% if opt.is_correct %}correct{% else %}incorrect{% endif %}">
+                        {% if opt.is_correct %}
+                            <i class="fa-solid fa-check" title="Correct Answer"></i>
+                        {% else %}
+                            <i class="fa-regular fa-circle" title="Distractor"></i>
+                        {% endif %}
+                    </span>
+                    <span class="option-stat-label">{{ opt.text|safe }}</span>
+                    <div class="option-stat-track">
+                        <div class="option-stat-fill {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" style="width: {{ opt.percentage }}%;"></div>
+                    </div>
+                    <span class="option-stat-pct {% if opt.is_correct %}correct{% else %}incorrect{% endif %}">
+                        {{ opt.percentage }}%
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+

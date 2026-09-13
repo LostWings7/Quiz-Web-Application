@@ -51,6 +51,21 @@ class Question(models.Model):
 	option_d=models.CharField(max_length=255, blank=True)
 	correct_answer=models.CharField(max_length=20, blank=True)
 
+	BLOOM_CHOICES = [
+		('remember', 'Remember'),
+		('understand', 'Understand'),
+		('apply', 'Apply'),
+		('analyze', 'Analyze'),
+	]
+	BLOOM_SOURCE_CHOICES = [
+		('manual', 'Manual'),
+		('zero_shot', 'Zero-shot'),
+	]
+	bloom_level = models.CharField(max_length=20, choices=BLOOM_CHOICES, null=True, blank=True)
+	bloom_confidence = models.FloatField(null=True, blank=True)
+	bloom_classification_source = models.CharField(max_length=20, choices=BLOOM_SOURCE_CHOICES, null=True, blank=True)
+	bloom_reviewed = models.BooleanField(default=False)
+
 	def __str__(self):
 		return self.text
 

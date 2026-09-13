@@ -14,6 +14,8 @@ urlpatterns = [
     path('quizzes/<int:quiz_id>/report/pdf/', views.quiz_detailed_report_pdf, name='dashboard_quiz_report_pdf'),
     path('quizzes/<int:quiz_id>/toggle/', views.quiz_toggle, name='dashboard_quiz_toggle'),
     path('quizzes/<int:quiz_id>/toggle-review/', views.quiz_toggle_review, name='dashboard_quiz_toggle_review'),
+    path('quizzes/<int:quiz_id>/classify-bloom-batch-preview/', views.quiz_classify_bloom_batch_preview_ajax, name='dashboard_quiz_classify_bloom_batch_preview'),
+    path('quizzes/<int:quiz_id>/save-bloom-batch/', views.quiz_save_bloom_batch_ajax, name='dashboard_quiz_save_bloom_batch'),
     path('results/<int:result_id>/delete/', views.result_delete, name='dashboard_result_delete'),
 
     path('questions/create/', views.question_create, name='dashboard_question_create'),
@@ -22,6 +24,7 @@ urlpatterns = [
     path('questions/reorder/', views.question_reorder, name='dashboard_question_reorder'),
     path('questions/<int:question_id>/edit/', views.question_edit, name='dashboard_question_edit'),
     path('questions/<int:question_id>/delete/', views.question_delete, name='dashboard_question_delete'),
+    path('questions/classify-bloom-ajax/', views.question_classify_bloom_ajax, name='dashboard_question_classify_bloom_ajax'),
     path('students/', views.student_list, name='dashboard_students'),
     path('students/create/', views.student_create, name='dashboard_student_create'),
     path('students/import/', views.student_import, name='dashboard_student_import'),
@@ -52,6 +55,7 @@ urlpatterns = [
     path('results/export/csv/', views.results_export_csv, name='dashboard_results_export_csv'),
     path('results/export/pdf/', views.results_export_pdf, name='dashboard_results_export_pdf'),
     path('analytics/', views.analytics, name='dashboard_analytics'),
+    path('analytics/bloom/', views.bloom_analytics_view, name='dashboard_bloom_analytics'),
     path('analytics/<str:chart_type>/', views.analytics_detail, name='dashboard_analytics_detail'),
     path('settings/', views.settings_view, name='dashboard_settings'),
 ]

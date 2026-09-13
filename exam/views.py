@@ -629,7 +629,8 @@ def question_analysis_view(request, quiz_id):
                     'text': option['text'],
                     'percent': option_percentages[option['value']],
                     'is_correct': option['is_correct'],
-                    'image_url': option['image_url'],
+                    'image_url': option['image_urls'][0] if option.get('image_urls') else None,
+                    'image_urls': option.get('image_urls', []),
                 }
                 for option in options
             ],
@@ -878,7 +879,7 @@ def cro_chart_view(request, quiz_id):
         'questions': analysis_data,
         'cro_counts': cro_counts,
     }
-    return render(request, 'admin/cro_chart.html', context)
+    return render(request, 'admin/overall_analysis.html', context)
 
 def send_quiz_response_email(user, quiz_id, quiz_result):
     if not user.email:

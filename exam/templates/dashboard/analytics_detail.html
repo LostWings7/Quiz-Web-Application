@@ -15,42 +15,40 @@
 {% endblock %}
 
 {% block extra_css %}
-<style>
-.accordion-row { cursor: pointer; transition: background-color var(--transition-fast); }
-.accordion-row:hover { background-color: var(--surface-hover); }
-.accordion-content { display: none; }
-.accordion-content.expanded { display: table-row; }
-.option-stats { padding: 16px 20px; background: var(--bg-secondary); border-radius: var(--radius-md); margin: 8px 0; border: 1px solid var(--border-subtle); }
-.option-bar { display: flex; align-items: center; margin-bottom: 8px; }
-.option-icon { width: 24px; text-align: center; margin-right: 8px; font-size: 13px; }
-.option-icon.correct { color: var(--success); }
-.option-icon.incorrect { color: var(--text-muted); }
-.option-bar-label { width: 40%; padding-right: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); }
-.option-bar-track { flex: 1; height: 8px; background: var(--surface-sunken); border-radius: 4px; overflow: hidden; margin-right: 16px; }
-.option-bar-fill { height: 100%; border-radius: 4px; }
-.option-bar-fill.correct { background: var(--success); }
-.option-bar-fill.incorrect { background: var(--error); }
-.option-bar-value { width: 50px; text-align: right; font-weight: 700; font-size: var(--text-xs); }
-.question-breakdown { padding: 20px; background: var(--surface); border-radius: var(--radius-lg); margin-top: 16px; border: 1px solid var(--border); }
-.question-breakdown h4 { margin-bottom: 14px; padding: 10px 14px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); }
-.question-breakdown.easiest h4 { background: var(--success-light); border: 1px solid var(--success-border); color: var(--success); }
-.question-breakdown.hardest h4 { background: var(--error-light); border: 1px solid var(--error-border); color: var(--error); }
-</style>
 {% endblock %}
 
 {% block content %}
+{% with current_analytics_section=chart_type %}
+    {% include 'dashboard/partials/analytics_nav.html' %}
+{% endwith %}
+
+<div class="analytics-dynamic-panel panel-card-fade-in" id="analyticsDynamicPanel">
 {% if attempt_count == 0 %}
 <div class="card empty-state fade-up" style="margin-top: 24px;">
     <div class="empty-state-icon"><i class="fa-solid fa-chart-bar"></i></div>
-    <h2 class="empty-state-title">No Data Available</h2>
-    <p class="empty-state-desc">This assessment hasn't received any submissions yet. Analytics details will appear here once candidates complete the quiz.</p>
+    <h2 class="empty-state-title">No Candidate Submissions Yet</h2>
+    <p class="empty-state-desc">This assessment has not received any candidate submissions. Deep-dive statistics, distributions, and item-level response breakdowns will appear here once candidates complete the quiz.</p>
 </div>
 {% else %}
 
 {% if chart_data.type != 'none' %}
-<section class="chart-grid" style="grid-template-columns: 1fr; margin-bottom: 28px;">
+<section class="chart-grid" style="grid-template-columns: 1fr; margin-bottom: 28px;" aria-label="Detailed Analytics Chart">
     <div class="chart-box" style="height: 480px; min-height: 480px;">
-        <div class="section-heading" style="margin-bottom:12px;"><h2>{{ chart_data.title }}</h2></div>
+        <div class="chart-box-header">
+            <div class="chart-box-title-group">
+                <h3 class="chart-box-title">{{ chart_data.title }}</h3>
+                <p class="chart-box-desc">
+                    {% if chart_type == 'score' %}Complete distribution of student scores across performance tiers.
+                    {% elif chart_type == 'overall' %}Cohort average score percentage and overall performance gauge.
+                    {% elif chart_type == 'cro' %}Curriculum questions grouped by remediation priority (Critical, Recommended, Optional).
+                    {% elif chart_type == 'subtopic' %}Mastery and accuracy ranking across all curriculum subtopics.
+                    {% elif chart_type == 'difficulty' %}Question-by-question candidate accuracy curve from first to last question.
+                    {% elif chart_type == 'ranking' %}Ranked distribution of candidate percentage scores across the cohort.
+                    {% else %}Comprehensive performance metrics for {{ selected_quiz.title }}.{% endif %}
+                </p>
+            </div>
+            <span class="pill" style="font-size: 11px;">Detailed Breakdown</span>
+        </div>
         <div class="canvas-container">
             <canvas id="detailChart"></canvas>
         </div>
@@ -59,11 +57,11 @@
 {% endif %}
 
 <!-- Text Metric Cards -->
-<section class="metric-grid" style="margin-bottom: 28px;">
+<section class="metric-grid" style="margin-bottom: 28px;" aria-label="Summary Statistics">
     {% for label, value in text_metrics.items %}
     <div class="metric-card fade-up">
         <span>{{ label }}</span>
-        <strong>{{ value }}</strong>
+        <strong style="color: var(--text-primary);">{{ value }}</strong>
     </div>
     {% endfor %}
 </section>
@@ -147,26 +145,63 @@ function executeExport(sortParam) {
 {% if chart_type == 'difficulty' %}
     {% if table_data.easiest %}
     <section class="card fade-up" style="margin-bottom: 28px; padding: 24px;">
-        <div class="section-heading">
-            <h2 style="color: var(--success);"><i class="fa-solid fa-circle-check" style="margin-right: 6px;"></i> High Accuracy Questions</h2>
+        <div class="section-heading" style="margin-bottom: 20px;">
+            <h2 style="color: var(--success); display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-circle-check"></i> High Accuracy Questions
+            </h2>
         </div>
         {% for q in table_data.easiest %}
-        <div class="question-breakdown easiest">
-            <h4><i class="fa-solid fa-check-circle"></i> {{ q.label }}: {{ q.question_text|striptags }}</h4>
-            <div class="option-stats">
+        <div class="question-breakdown-card easiest">
+            <div class="question-header-meta">
+                <div class="question-meta-tags">
+                    <span class="pill" style="font-family: var(--font-mono); font-weight: 700; font-size: 11px;">{{ q.label }}</span>
+                    {% if q.subtopic %}
+                        <span class="pill accent" style="font-size: 11px;">{{ q.subtopic }}</span>
+                    {% endif %}
+                    <span class="pill success" style="font-size: 11px; font-weight: 700;">
+                        <i class="fa-solid fa-circle-check"></i> {{ q.accuracy }}% Accuracy
+                    </span>
+                </div>
+                {% if q.id %}
+                <div>
+                    <a href="{% url 'dashboard_question_edit' q.id %}" class="btn-small secondary" style="font-size: 11px;" title="Edit Question">
+                        <i class="fa-solid fa-pen"></i> Edit Question
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="question-prompt-text">
+                {{ q.question_text|safe }}
+            </div>
+
+            {% if q.options %}
+            <div class="option-stats-panel">
+                <div class="option-stats-header">
+                    <i class="fa-solid fa-chart-column"></i> Candidate Selection Breakdown
+                </div>
                 {% for opt in q.options %}
-                <div class="option-bar">
-                    <div class="option-icon {% if opt.is_correct %}correct{% else %}incorrect{% endif %}">
-                        <i class="fa-solid {% if opt.is_correct %}fa-check{% else %}fa-times{% endif %}"></i>
+                <div class="option-stat-row {% if opt.is_correct %}correct{% endif %}">
+                    <span class="option-stat-icon {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" title="{% if opt.is_correct %}Correct Answer{% else %}Incorrect Option{% endif %}">
+                        {% if opt.is_correct %}
+                            <i class="fa-solid fa-check"></i>
+                        {% else %}
+                            <i class="fa-regular fa-circle"></i>
+                        {% endif %}
+                    </span>
+                    <span class="option-stat-label" title="{{ opt.text|striptags }}">
+                        {{ opt.text|safe }}
+                    </span>
+                    <div class="option-stat-track">
+                        <div class="option-stat-fill {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" style="width: {{ opt.percentage }}%;"></div>
                     </div>
-                    <div class="option-bar-label">{{ opt.text|striptags }}</div>
-                    <div class="option-bar-track">
-                        <div class="option-bar-fill {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" style="width: {{ opt.percentage }}%;"></div>
-                    </div>
-                    <div class="option-bar-value {% if opt.is_correct %}text-success{% endif %}">{{ opt.percentage }}%</div>
+                    <span class="option-stat-pct {% if opt.is_correct %}correct{% else %}incorrect{% endif %}">
+                        {{ opt.percentage }}%
+                    </span>
                 </div>
                 {% endfor %}
             </div>
+            {% endif %}
         </div>
         {% endfor %}
     </section>
@@ -174,26 +209,63 @@ function executeExport(sortParam) {
 
     {% if table_data.hardest %}
     <section class="card fade-up" style="margin-bottom: 28px; padding: 24px;">
-        <div class="section-heading">
-            <h2 style="color: var(--error);"><i class="fa-solid fa-circle-exclamation" style="margin-right: 6px;"></i> Low Accuracy / Critical Questions</h2>
+        <div class="section-heading" style="margin-bottom: 20px;">
+            <h2 style="color: var(--error); display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-circle-exclamation"></i> Low Accuracy / Critical Questions
+            </h2>
         </div>
         {% for q in table_data.hardest %}
-        <div class="question-breakdown hardest">
-            <h4><i class="fa-solid fa-times-circle"></i> {{ q.label }}: {{ q.question_text|striptags }}</h4>
-            <div class="option-stats">
+        <div class="question-breakdown-card hardest">
+            <div class="question-header-meta">
+                <div class="question-meta-tags">
+                    <span class="pill" style="font-family: var(--font-mono); font-weight: 700; font-size: 11px;">{{ q.label }}</span>
+                    {% if q.subtopic %}
+                        <span class="pill accent" style="font-size: 11px;">{{ q.subtopic }}</span>
+                    {% endif %}
+                    <span class="pill danger" style="font-size: 11px; font-weight: 700;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> {{ q.accuracy }}% Accuracy
+                    </span>
+                </div>
+                {% if q.id %}
+                <div>
+                    <a href="{% url 'dashboard_question_edit' q.id %}" class="btn-small secondary" style="font-size: 11px;" title="Edit Question">
+                        <i class="fa-solid fa-pen"></i> Edit Question
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="question-prompt-text">
+                {{ q.question_text|safe }}
+            </div>
+
+            {% if q.options %}
+            <div class="option-stats-panel">
+                <div class="option-stats-header">
+                    <i class="fa-solid fa-chart-column"></i> Candidate Selection Breakdown
+                </div>
                 {% for opt in q.options %}
-                <div class="option-bar">
-                    <div class="option-icon {% if opt.is_correct %}correct{% else %}incorrect{% endif %}">
-                        <i class="fa-solid {% if opt.is_correct %}fa-check{% else %}fa-times{% endif %}"></i>
+                <div class="option-stat-row {% if opt.is_correct %}correct{% endif %}">
+                    <span class="option-stat-icon {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" title="{% if opt.is_correct %}Correct Answer{% else %}Incorrect Option{% endif %}">
+                        {% if opt.is_correct %}
+                            <i class="fa-solid fa-check"></i>
+                        {% else %}
+                            <i class="fa-regular fa-circle"></i>
+                        {% endif %}
+                    </span>
+                    <span class="option-stat-label" title="{{ opt.text|striptags }}">
+                        {{ opt.text|safe }}
+                    </span>
+                    <div class="option-stat-track">
+                        <div class="option-stat-fill {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" style="width: {{ opt.percentage }}%;"></div>
                     </div>
-                    <div class="option-bar-label">{{ opt.text|striptags }}</div>
-                    <div class="option-bar-track">
-                        <div class="option-bar-fill {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" style="width: {{ opt.percentage }}%;"></div>
-                    </div>
-                    <div class="option-bar-value {% if opt.is_correct %}text-success{% endif %}">{{ opt.percentage }}%</div>
+                    <span class="option-stat-pct {% if opt.is_correct %}correct{% else %}incorrect{% endif %}">
+                        {{ opt.percentage }}%
+                    </span>
                 </div>
                 {% endfor %}
             </div>
+            {% endif %}
         </div>
         {% endfor %}
     </section>
@@ -202,49 +274,97 @@ function executeExport(sortParam) {
 
 {% if chart_type == 'cro' %}
 <section class="card fade-up" style="padding: 24px;">
-    <div class="section-heading">
+    <div class="section-heading" style="margin-bottom: 20px;">
         <h2>Focus Priority Questions (Click to expand)</h2>
     </div>
     <div class="table-wrapper">
         <table class="data-table">
             <thead>
                 <tr>
-                    <th style="width: 10%; text-align: center;">Q#</th>
-                    <th style="width: 50%;">Question Text</th>
+                    <th style="width: 8%; text-align: center;">Q#</th>
+                    <th style="width: 52%;">Question Prompt</th>
                     <th style="width: 15%; text-align: center;">Accuracy</th>
-                    <th style="width: 20%; text-align: center;">Category</th>
-                    <th style="width: 5%;"></th>
+                    <th style="width: 18%; text-align: center;">Category</th>
+                    <th style="width: 7%; text-align: center;"></th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in table_data %}
-                <tr class="accordion-row" onclick="toggleAccordion('acc-{{ item.id }}', this)">
+                <tr class="accordion-row" onclick="toggleAccordion('acc-{{ item.id }}', this)" role="button" tabindex="0" aria-expanded="false" aria-controls="acc-{{ item.id }}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAccordion('acc-{{ item.id }}', this);}">
                     <td style="text-align: center; font-weight: 700; font-family: var(--font-mono);">Q{{ item.id }}</td>
-                    <td><div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;">{{ item.text|striptags }}</div></td>
-                    <td style="text-align: center; font-weight: 700;">{{ item.accuracy }}%</td>
+                    <td>
+                        <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; color: var(--text-primary); max-width: 500px;">
+                            {{ item.text }}
+                        </div>
+                    </td>
+                    <td style="text-align: center; font-weight: 700; font-family: var(--font-mono);">{{ item.accuracy }}%</td>
                     <td style="text-align: center;">
                         <span class="pill" style="background: {{ item.color }}; border-color: {{ item.color }}; color: {{ item.text_color }}; font-size: 11px;">
                             <i class="{{ item.icon }}"></i> {{ item.category }}
                         </span>
                     </td>
-                    <td><i class="fa-solid fa-chevron-down chevron-icon" style="color: var(--text-muted);"></i></td>
+                    <td style="text-align: center;">
+                        <i class="fa-solid fa-chevron-down chevron-icon" style="color: var(--text-muted);"></i>
+                    </td>
                 </tr>
                 <tr id="acc-{{ item.id }}" class="accordion-content">
                     <td colspan="5" style="padding: 0; border: none;">
-                        <div class="accordion-inner" style="max-height: 0; overflow: hidden; transition: max-height 0.35s ease-in-out;">
-                            <div class="option-stats" style="margin: 12px 20px 20px 20px;">
-                                {% for opt in item.options %}
-                                <div class="option-bar">
-                                    <div class="option-icon {% if opt.is_correct %}correct{% else %}incorrect{% endif %}">
-                                        <i class="fa-solid {% if opt.is_correct %}fa-check{% else %}fa-times{% endif %}"></i>
+                        <div class="accordion-grid">
+                            <div class="accordion-inner">
+                                <div class="cro-accordion-container">
+                                    <div class="cro-expanded-card">
+                                        <div class="question-header-meta">
+                                            <div class="question-meta-tags">
+                                                <span class="pill" style="font-family: var(--font-mono); font-weight: 700; font-size: 11px;">Question {{ item.id }}</span>
+                                                {% if item.subtopic %}
+                                                    <span class="pill accent" style="font-size: 11px;">{{ item.subtopic }}</span>
+                                                {% endif %}
+                                                <span class="pill" style="background: {{ item.color }}; border-color: {{ item.color }}; color: {{ item.text_color }}; font-size: 11px; font-weight: 700;">
+                                                    <i class="{{ item.icon }}"></i> {{ item.category }} ({{ item.accuracy }}% Accuracy)
+                                                </span>
+                                            </div>
+                                            {% if item.question_id %}
+                                            <div>
+                                                <a href="{% url 'dashboard_question_edit' item.question_id %}" class="btn-small secondary" style="font-size: 11px;" title="Edit Question">
+                                                    <i class="fa-solid fa-pen"></i> Edit Question
+                                                </a>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="question-prompt-text">
+                                            {{ item.full_text|safe }}
+                                        </div>
+
+                                        {% if item.options %}
+                                        <div class="option-stats-panel">
+                                            <div class="option-stats-header">
+                                                <i class="fa-solid fa-chart-column"></i> Candidate Selection Breakdown
+                                            </div>
+                                            {% for opt in item.options %}
+                                            <div class="option-stat-row {% if opt.is_correct %}correct{% endif %}">
+                                                <span class="option-stat-icon {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" title="{% if opt.is_correct %}Correct Answer{% else %}Incorrect Option{% endif %}">
+                                                    {% if opt.is_correct %}
+                                                        <i class="fa-solid fa-check"></i>
+                                                    {% else %}
+                                                        <i class="fa-regular fa-circle"></i>
+                                                    {% endif %}
+                                                </span>
+                                                <span class="option-stat-label" title="{{ opt.text|striptags }}">
+                                                    {{ opt.text|safe }}
+                                                </span>
+                                                <div class="option-stat-track">
+                                                    <div class="option-stat-fill {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" style="width: {{ opt.percentage }}%;"></div>
+                                                </div>
+                                                <span class="option-stat-pct {% if opt.is_correct %}correct{% else %}incorrect{% endif %}">
+                                                    {{ opt.percentage }}%
+                                                </span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
                                     </div>
-                                    <div class="option-bar-label">{{ opt.text|striptags }}</div>
-                                    <div class="option-bar-track">
-                                        <div class="option-bar-fill {% if opt.is_correct %}correct{% else %}incorrect{% endif %}" style="width: {{ opt.percentage }}%;"></div>
-                                    </div>
-                                    <div class="option-bar-value {% if opt.is_correct %}text-success{% endif %}">{{ opt.percentage }}%</div>
                                 </div>
-                                {% endfor %}
                             </div>
                         </div>
                     </td>
@@ -258,146 +378,209 @@ function executeExport(sortParam) {
         </table>
     </div>
 </section>
-<script>
-function toggleAccordion(id, rowElement) {
-    const contentRow = document.getElementById(id);
-    const inner = contentRow.querySelector('.accordion-inner');
-    const icon = rowElement.querySelector('.chevron-icon');
-
-    if (contentRow.classList.contains('expanded')) {
-        inner.style.maxHeight = '0px';
-        if (icon) icon.style.transform = 'rotate(0deg)';
-        setTimeout(() => { contentRow.classList.remove('expanded'); }, 350);
-    } else {
-        contentRow.classList.add('expanded');
-        inner.style.maxHeight = inner.scrollHeight + 'px';
-        if (icon) icon.style.transform = 'rotate(180deg)';
-    }
-}
-</script>
 {% endif %}
 {% endif %}
-{% endblock %}
 
-{% block extra_js %}
 {% if chart_data.type != 'none' %}
 {{ chart_data|json_script:"chart-data" }}
 <script src="{% static 'js/vendor/chart.min.js' %}"></script>
 <script>
 {% if selected_quiz %}
-sessionStorage.setItem('analytics_selected_quiz_id', '{{ selected_quiz.id }}');
+try {
+    sessionStorage.setItem('quizx_active_quiz_id', '{{ selected_quiz.id }}');
+    sessionStorage.removeItem('analytics_selected_quiz');
+    sessionStorage.removeItem('analytics_selected_quiz_id');
+} catch(e) {}
 {% endif %}
-const chartData = JSON.parse(document.getElementById("chart-data").textContent);
-const lightGrid = { color: "rgba(24, 24, 27, 0.06)" };
-const lightTicks = { color: "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
+(function() {
+    const dataEl = document.getElementById("chart-data");
+    if (!dataEl) return;
+    const chartData = JSON.parse(dataEl.textContent);
+    const lightGrid = { color: "rgba(24, 24, 27, 0.06)" };
+    const lightTicks = { color: "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
 
-const speedDialNeedle = {
-    id: 'speedDialNeedle',
-    afterDatasetDraw(chart, args, options) {
-        const { ctx, config, data, chartArea: { width } } = chart;
-        if (config.options.plugins.speedDialNeedle && data.datasets[0].type === 'doughnut') {
-            ctx.save();
-            const value = data.datasets[0].data[0];
-            const max = data.datasets[0].data[0] + data.datasets[0].data[1];
+    const speedDialNumberPlugin = {
+        id: 'speedDialNumberPlugin',
+        afterDraw(chart) {
+            if (!chart.config.options.plugins.speedDialNumberPlugin) return;
+            const { ctx, chartArea } = chart;
+            const meta = chart.getDatasetMeta(0);
+            if (!meta || !meta.data || !meta.data[0]) return;
 
-            let animatedValue = value;
-            if (chart._activeAnimationProgress !== undefined) {
-                animatedValue = value * chart._activeAnimationProgress;
+            const value = chart.data.datasets[0].data[0] || 0;
+            let progress = 0;
+            if (chart._entranceDone) {
+                progress = 1;
+            } else if (chart._activeAnimationProgress !== undefined) {
+                progress = chart._activeAnimationProgress;
             }
 
-            const angle = Math.PI + (1 / max * animatedValue * Math.PI);
-            const cx = width / 2;
-            const cy = chart._metasets[0].data[0].y;
+            const animatedValue = Math.round(value * progress);
+            const cx = (chartArea.left + chartArea.right) / 2;
+            const cy = meta.data[0].y;
+            const innerRadius = meta.data[0].innerRadius || ((chartArea.bottom - chartArea.top) * 0.7);
 
-            ctx.translate(cx, cy);
-            ctx.rotate(angle);
+            // True vertical center of the hollow semicircle area
+            const centerY = cy - (innerRadius * 0.48);
 
-            ctx.beginPath();
-            ctx.moveTo(0, -4);
-            ctx.lineTo(chart.outerRadius - 14, 0);
-            ctx.lineTo(0, 4);
-            ctx.fillStyle = '#18181B';
-            ctx.fill();
+            // Responsive typography scaled for the expanded 480px view
+            const numFontSize = Math.min(68, Math.max(38, Math.round(innerRadius * 0.32)));
+            const labelFontSize = Math.min(18, Math.max(13, Math.round(numFontSize * 0.32)));
 
-            ctx.beginPath();
-            ctx.arc(0, 0, 8, 0, 2 * Math.PI);
-            ctx.fillStyle = '#635BFF';
-            ctx.fill();
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Main score text: Solid black
+            ctx.font = `bold ${numFontSize}px 'Inter', -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillStyle = "#000000";
+            ctx.fillText(animatedValue + '%', cx, centerY - (labelFontSize * 0.6));
+
+            // Sub-label
+            ctx.font = `600 ${labelFontSize}px 'Inter', -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillStyle = "#71717A";
+            ctx.fillText("Average Score", cx, centerY + (numFontSize * 0.48));
 
             ctx.restore();
         }
-    }
-};
-Chart.register(speedDialNeedle);
-
-const ctx = document.getElementById('detailChart');
-if (ctx && window.Chart) {
-    let backgroundColor = [
-        "rgba(99, 91, 255, 0.8)",
-        "rgba(34, 184, 199, 0.8)",
-        "rgba(124, 111, 255, 0.8)",
-        "rgba(46, 155, 103, 0.8)"
-    ];
-
-    if (chartData.title === 'CRO Chart') {
-        backgroundColor = ["rgba(217, 87, 99, 0.85)", "rgba(217, 154, 50, 0.85)", "rgba(46, 155, 103, 0.85)"];
-    } else if (chartData.isSpeedDial) {
-        backgroundColor = ["rgba(99, 91, 255, 0.9)", "rgba(24, 24, 27, 0.06)"];
+    };
+    try {
+        if (!window.Chart.registry.plugins.get('speedDialNumberPlugin')) {
+            window.Chart.register(speedDialNumberPlugin);
+        }
+    } catch(e) {
+        try { window.Chart.register(speedDialNumberPlugin); } catch(err) {}
     }
 
-    let customOptions = {};
-    if (chartData.isSpeedDial) {
-        customOptions = { circumference: 180, rotation: 270, cutout: "75%" };
-    }
+    const ctx = document.getElementById('detailChart');
+    if (ctx && window.Chart) {
+        try {
+            const existing = window.Chart.getChart(ctx);
+            if (existing) existing.destroy();
+        } catch(e) {}
+        let backgroundColor = [
+            "rgba(99, 91, 255, 0.8)",
+            "rgba(34, 184, 199, 0.8)",
+            "rgba(124, 111, 255, 0.8)",
+            "rgba(46, 155, 103, 0.8)"
+        ];
 
-    new Chart(ctx, {
-        type: chartData.type,
-        data: {
-            labels: chartData.labels,
-            datasets: [{
-                label: 'Data',
-                data: chartData.values,
-                borderColor: chartData.type === "doughnut" || chartData.type === "pie" ? "#FFFFFF" : "#635BFF",
-                backgroundColor: backgroundColor,
-                borderWidth: 2,
-                tension: 0.35,
-                fill: chartData.type === "line"
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-                duration: 900,
-                easing: "easeOutQuart",
-                onProgress: function(animation) {
-                    if (chartData.title === 'Overall Score') {
-                        animation.chart._activeAnimationProgress = animation.currentStep / animation.numSteps;
+        if (chartData.title === 'CRO Chart') {
+            backgroundColor = ["rgba(217, 87, 99, 0.85)", "rgba(217, 154, 50, 0.85)", "rgba(46, 155, 103, 0.85)"];
+        } else if (chartData.isSpeedDial) {
+            backgroundColor = ["rgba(99, 91, 255, 0.9)", "rgba(24, 24, 27, 0.06)"];
+        }
+
+        let customOptions = {};
+        let targetCircumference = 360;
+        if (chartData.isSpeedDial) {
+            targetCircumference = 180;
+            customOptions = { circumference: 0, rotation: 270, cutout: "75%" };
+        } else if (chartData.type === 'doughnut' || chartData.type === 'pie') {
+            targetCircumference = 360;
+            customOptions = { circumference: 0 };
+        }
+
+        const initialData = (chartData.type === 'bar' || chartData.type === 'line')
+            ? chartData.values.map(() => 0)
+            : chartData.values;
+
+        const chart = new Chart(ctx, {
+            type: chartData.type,
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Data',
+                    data: initialData,
+                    borderColor: "#000000",
+                    backgroundColor: backgroundColor,
+                    borderWidth: 2,
+                    borderRadius: chartData.type === "bar" ? 6 : 0,
+                    tension: 0.35,
+                    fill: chartData.type === "line",
+                    pointBorderColor: "#000000",
+                    pointBackgroundColor: "#635BFF",
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    hoverOffset: chartData.isSpeedDial ? 0 : 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                hover: {
+                    mode: chartData.isSpeedDial ? null : 'nearest'
+                },
+                animation: {
+                    duration: 1200,
+                    easing: "easeOutQuart",
+                    onProgress: function(animation) {
+                        if (animation.chart._isEntranceAnimating) {
+                            animation.chart._activeAnimationProgress = animation.currentStep / animation.numSteps;
+                        }
+                    },
+                    onComplete: (animation) => {
+                        if (animation.chart._isEntranceAnimating) {
+                            animation.chart._activeAnimationProgress = 1;
+                            animation.chart._isEntranceAnimating = false;
+                            animation.chart._entranceDone = true;
+                        }
                     }
                 },
-                onComplete: (animation) => {
-                    if (chartData.title === 'Overall Score') {
-                        animation.chart._activeAnimationProgress = 1;
+                plugins: {
+                    speedDialNumberPlugin: !!chartData.isSpeedDial,
+                    legend: {
+                        display: chartData.type === "pie" || chartData.type === "doughnut",
+                        labels: { color: "#18181B", font: { family: "'Inter', sans-serif", size: 12 } }
+                    },
+                    tooltip: {
+                        enabled: !chartData.isSpeedDial,
+                        backgroundColor: "#FFFFFF",
+                        titleColor: "#18181B",
+                        bodyColor: "#71717A",
+                        borderColor: "rgba(24, 24, 27, 0.12)",
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8
                     }
-                }
-            },
-            plugins: {
-                speedDialNeedle: chartData.title === 'Overall Score',
-                legend: {
-                    display: chartData.type === "pie" || chartData.type === "doughnut",
-                    labels: { color: "#18181B", font: { family: "'Inter', sans-serif", size: 12 } }
-                }
-            },
-            scales: chartData.type === "doughnut" || chartData.type === "pie" ? {} : {
-                x: { grid: lightGrid, ticks: lightTicks },
-                y: { beginAtZero: true, grid: lightGrid, ticks: lightTicks }
-            },
-            ...customOptions
+                },
+                scales: chartData.type === "doughnut" || chartData.type === "pie" ? {} : {
+                    x: { grid: lightGrid, ticks: lightTicks },
+                    y: { beginAtZero: true, grid: lightGrid, ticks: lightTicks }
+                },
+                ...customOptions
+            }
+        });
+
+        if (chartData.type === 'doughnut' || chartData.type === 'pie') {
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    chart.options.circumference = targetCircumference;
+                    chart._isEntranceAnimating = true;
+                    chart.update();
+                }, 40);
+            });
+        } else {
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    chart.data.datasets[0].data = chartData.values;
+                    chart.update();
+                }, 40);
+            });
         }
-    });
-}
+    }
+})();
 </script>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise().catch(function(err) {});
+    }
+});
+</script>
+</div>
 {% endblock %}
 
 {% block modals %}

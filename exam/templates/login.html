@@ -69,7 +69,7 @@
         position: relative;
         margin-bottom: var(--space-4);
     }
-    .login-input-group i {
+    .login-input-group > i {
         position: absolute;
         left: 14px;
         top: 50%;
@@ -83,8 +83,46 @@
         padding-left: 42px;
         height: 46px;
     }
+    .login-input-group input[type="password"] {
+        padding-right: 44px;
+    }
     .login-input-group input:focus + i {
         color: var(--accent-primary);
+    }
+    .login-input-group .pwd-toggle-btn {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        margin: 0;
+        background: transparent;
+        border: none;
+        border-radius: var(--radius-sm);
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+        z-index: 3;
+        transition: color var(--transition-fast), background-color var(--transition-fast);
+    }
+    .login-input-group .pwd-toggle-btn:hover {
+        color: var(--text-primary);
+        background-color: var(--surface-hover);
+    }
+    .login-input-group .pwd-toggle-btn i {
+        position: static;
+        left: auto;
+        top: auto;
+        transform: none;
+        font-size: 14px;
+        color: inherit;
+        pointer-events: auto;
     }
     .login-submit-btn {
         width: 100%;
@@ -186,5 +224,46 @@
 </div>
 
 <script src="{% static 'js/app.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const pwdInput = document.querySelector('input[type="password"]');
+    if (pwdInput) {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'pwd-toggle-btn';
+        toggleBtn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+        toggleBtn.setAttribute('aria-label', 'Toggle password visibility');
+
+        pwdInput.parentElement.appendChild(toggleBtn);
+
+        toggleBtn.addEventListener('mousedown', (e) => {
+            // Prevent button from stealing focus from the input
+            e.preventDefault();
+        });
+
+        toggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const wasFocused = document.activeElement === pwdInput;
+            const start = pwdInput.selectionStart;
+            const end = pwdInput.selectionEnd;
+
+            const isPassword = pwdInput.type === 'password';
+            pwdInput.type = isPassword ? 'text' : 'password';
+            toggleBtn.innerHTML = isPassword ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
+            if (isPassword) {
+                toggleBtn.style.color = 'var(--accent-primary)';
+            } else {
+                toggleBtn.style.color = '';
+            }
+
+            // Keep focus and caret position if input was focused, or focus it directly
+            pwdInput.focus();
+            if (start !== null && end !== null) {
+                pwdInput.setSelectionRange(start, end);
+            }
+        });
+    }
+});
+</script>
 </body>
 </html>

@@ -30,3 +30,5 @@ media/*
 .vscode/
 .idea/
 *.swp
+.agent/
+UI_UX_AUDIT_REPORT.md
