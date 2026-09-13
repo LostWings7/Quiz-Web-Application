@@ -107,13 +107,31 @@ function filterQuizzes(query) {
 }
 
 function executeInjectedScripts(container) {
-    const scripts = container.querySelectorAll('script');
-    scripts.forEach(oldScript => {
+    const scripts = Array.from(container.querySelectorAll('script'));
+    function runScript(index) {
+        if (index >= scripts.length) return;
+        const oldScript = scripts[index];
+        if (!oldScript.parentNode) {
+            runScript(index + 1);
+            return;
+        }
         const newScript = document.createElement('script');
         Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-        newScript.textContent = oldScript.textContent;
-        oldScript.parentNode.replaceChild(newScript, oldScript);
-    });
+        if (oldScript.src) {
+            newScript.onload = () => runScript(index + 1);
+            newScript.onerror = () => runScript(index + 1);
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        } else {
+            newScript.textContent = oldScript.textContent;
+            try {
+                oldScript.parentNode.replaceChild(newScript, oldScript);
+            } catch (err) {
+                console.error("Error executing injected script:", err);
+            }
+            runScript(index + 1);
+        }
+    }
+    runScript(0);
 }
 
 // Single canonical quiz ID resolver:

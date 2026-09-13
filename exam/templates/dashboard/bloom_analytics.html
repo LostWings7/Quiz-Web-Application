@@ -639,6 +639,8 @@
 
 <script src="{% static 'js/vendor/chart.min.js' %}"></script>
 <script>
+(function() {
+    'use strict';
 // Fluid CSS Grid Accordion Handler with MathJax Typesetting
 window.toggleBloomAccordion = function(id) {
     const item = document.getElementById('accordion-' + id);
@@ -974,141 +976,153 @@ if (window.MathJax && window.MathJax.typesetPromise) {
     window.MathJax.typesetPromise().catch(function(err) {});
 }
 
-// Chart.js Visualizations
-(function() {
-    try {
-        sessionStorage.setItem('quizx_active_quiz_id', '{{ selected_quiz.id }}');
-        sessionStorage.removeItem('analytics_selected_quiz');
-        sessionStorage.removeItem('analytics_selected_quiz_id');
-    } catch(e) {}
+    // Chart.js Visualizations
+    function initBloomCharts(retries = 0) {
+        const barCtx = document.getElementById('bloomAccuracyChart');
+        const doughnutCtx = document.getElementById('bloomDistributionChart');
+        if (!barCtx && !doughnutCtx) return;
 
-    const lightGrid = { color: "rgba(24, 24, 27, 0.06)", borderColor: "rgba(24, 24, 27, 0.1)" };
-    const lightTicks = { color: "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
-
-    const bloomLevelColors = [
-        'rgba(99, 91, 255, 0.85)',   // Remember
-        'rgba(14, 159, 173, 0.85)',   // Understand
-        'rgba(217, 154, 50, 0.85)',   // Apply
-        'rgba(46, 155, 103, 0.85)'    // Analyze
-    ];
-
-    // Bar Chart: Accuracy by Level
-    const barCtx = document.getElementById('bloomAccuracyChart');
-    if (barCtx && window.Chart) {
-        try {
-            const existing = window.Chart.getChart(barCtx);
-            if (existing) existing.destroy();
-        } catch(e) {}
-
-        const realBarValues = {{ bloom_data.chart_data.barValues|safe }};
-        const zeroBarValues = realBarValues.map(() => 0);
-
-        const barChart = new window.Chart(barCtx, {
-            type: 'bar',
-            data: {
-                labels: {{ bloom_data.chart_data.barLabels|safe }},
-                datasets: [{
-                    label: 'Class Accuracy (%)',
-                    data: zeroBarValues,
-                    backgroundColor: bloomLevelColors,
-                    borderWidth: 0,
-                    borderRadius: 6,
-                    maxBarThickness: 44
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: {
-                    duration: 1000,
-                    easing: 'easeOutQuart'
-                },
-                scales: {
-                    x: { grid: lightGrid, ticks: lightTicks },
-                    y: { beginAtZero: true, max: 100, grid: lightGrid, ticks: lightTicks }
-                },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: "#FFFFFF",
-                        titleColor: "#18181B",
-                        bodyColor: "#71717A",
-                        borderColor: "rgba(24, 24, 27, 0.12)",
-                        borderWidth: 1,
-                        padding: 10,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: (ctx) => `Accuracy: ${ctx.formattedValue}%`
-                        }
-                    }
-                }
+        if (!window.Chart) {
+            if (retries < 40) {
+                setTimeout(() => initBloomCharts(retries + 1), 50);
             }
-        });
+            return;
+        }
 
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                barChart.data.datasets[0].data = realBarValues;
-                barChart.update();
-            }, 40);
-        });
-    }
-
-    // Donut Chart: Question Distribution
-    const doughnutCtx = document.getElementById('bloomDistributionChart');
-    if (doughnutCtx && window.Chart) {
         try {
-            const existing = window.Chart.getChart(doughnutCtx);
-            if (existing) existing.destroy();
+            sessionStorage.setItem('quizx_active_quiz_id', '{{ selected_quiz.id }}');
+            sessionStorage.removeItem('analytics_selected_quiz');
+            sessionStorage.removeItem('analytics_selected_quiz_id');
         } catch(e) {}
 
-        const doughnutChart = new window.Chart(doughnutCtx, {
-            type: 'doughnut',
-            data: {
-                labels: {{ bloom_data.chart_data.doughnutLabels|safe }},
-                datasets: [{
-                    data: {{ bloom_data.chart_data.doughnutValues|safe }},
-                    backgroundColor: bloomLevelColors,
-                    borderWidth: 2,
-                    borderColor: '#FFFFFF',
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                circumference: 0,
-                animation: {
-                    duration: 1000,
-                    easing: 'easeOutQuart'
+        const lightGrid = { color: "rgba(24, 24, 27, 0.06)", borderColor: "rgba(24, 24, 27, 0.1)" };
+        const lightTicks = { color: "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
+
+        const bloomLevelColors = [
+            'rgba(99, 91, 255, 0.85)',   // Remember
+            'rgba(14, 159, 173, 0.85)',   // Understand
+            'rgba(217, 154, 50, 0.85)',   // Apply
+            'rgba(46, 155, 103, 0.85)'    // Analyze
+        ];
+
+        // Bar Chart: Accuracy by Level
+        if (barCtx) {
+            try {
+                const existing = window.Chart.getChart(barCtx);
+                if (existing) existing.destroy();
+            } catch(e) {}
+
+            const realBarValues = {{ bloom_data.chart_data.barValues|safe }};
+            const zeroBarValues = realBarValues.map(() => 0);
+
+            const barChart = new window.Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: {{ bloom_data.chart_data.barLabels|safe }},
+                    datasets: [{
+                        label: 'Class Accuracy (%)',
+                        data: zeroBarValues,
+                        backgroundColor: bloomLevelColors,
+                        borderWidth: 0,
+                        borderRadius: 6,
+                        maxBarThickness: 44
+                    }]
                 },
-                cutout: '68%',
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { color: "#18181B", font: { family: "'Inter', sans-serif", size: 12 }, padding: 14 }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
                     },
-                    tooltip: {
-                        backgroundColor: "#FFFFFF",
-                        titleColor: "#18181B",
-                        bodyColor: "#71717A",
-                        borderColor: "rgba(24, 24, 27, 0.12)",
-                        borderWidth: 1,
-                        padding: 10,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: (ctx) => `${ctx.label}: ${ctx.formattedValue} questions`
+                    scales: {
+                        x: { grid: lightGrid, ticks: lightTicks },
+                        y: { beginAtZero: true, max: 100, grid: lightGrid, ticks: lightTicks }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: "#FFFFFF",
+                            titleColor: "#18181B",
+                            bodyColor: "#71717A",
+                            borderColor: "rgba(24, 24, 27, 0.12)",
+                            borderWidth: 1,
+                            padding: 10,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: (ctx) => `Accuracy: ${ctx.formattedValue}%`
+                            }
                         }
                     }
                 }
-            }
-        });
+            });
 
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                doughnutChart.options.circumference = 360;
-                doughnutChart.update();
-            }, 40);
-        });
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    barChart.data.datasets[0].data = realBarValues;
+                    barChart.update();
+                }, 40);
+            });
+        }
+
+        // Donut Chart: Question Distribution
+        if (doughnutCtx) {
+            try {
+                const existing = window.Chart.getChart(doughnutCtx);
+                if (existing) existing.destroy();
+            } catch(e) {}
+
+            const doughnutChart = new window.Chart(doughnutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: {{ bloom_data.chart_data.doughnutLabels|safe }},
+                    datasets: [{
+                        data: {{ bloom_data.chart_data.doughnutValues|safe }},
+                        backgroundColor: bloomLevelColors,
+                        borderWidth: 2,
+                        borderColor: '#FFFFFF',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    circumference: 0,
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    },
+                    cutout: '68%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: "#18181B", font: { family: "'Inter', sans-serif", size: 12 }, padding: 14 }
+                        },
+                        tooltip: {
+                            backgroundColor: "#FFFFFF",
+                            titleColor: "#18181B",
+                            bodyColor: "#71717A",
+                            borderColor: "rgba(24, 24, 27, 0.12)",
+                            borderWidth: 1,
+                            padding: 10,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: (ctx) => `${ctx.label}: ${ctx.formattedValue} questions`
+                            }
+                        }
+                    }
+                }
+            });
+
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    doughnutChart.options.circumference = 360;
+                    doughnutChart.update();
+                }, 40);
+            });
+        }
     }
+
+    initBloomCharts();
 })();
 </script>
 {% endif %}
