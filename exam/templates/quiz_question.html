@@ -4,16 +4,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ quiz.title }}</title>
+<title>{{ quiz.title }} | Examination Runner</title>
 
 <link href="{% static 'css/google_fonts_inter_outfit.css' %}" rel="stylesheet">
-
 <link rel="stylesheet" href="{% static 'css/variables.css' %}">
 <link rel="stylesheet" href="{% static 'css/global.css' %}">
 <link rel="stylesheet" href="{% static 'css/animations.css' %}">
 <link rel="stylesheet" href="{% static 'css/quiz.css' %}">
 <link rel="stylesheet" href="{% static 'css/modal.css' %}">
 <link rel="stylesheet" href="{% static 'fontawesome/css/all.min.css' %}">
+
 <!-- MathJax for formula formatting -->
 <script>
 window.MathJax = {
@@ -42,796 +42,908 @@ if ('serviceWorker' in navigator) {
 
 <div class="quiz-shell">
 
-<header class="exam-header">
+<!-- Main Examination Header -->
+<header class="exam-header" role="banner">
 
-<div class="exam-left">
-    {% if school_profile.has_custom_branding %}
-        {% if school_profile.school_banner_image %}
-        <div class="school-branding">
-            <img src="{{ school_profile.school_banner_image.url }}" alt="{{ school_profile.school_name|default:'Institution' }}" class="school-banner-img no-lightbox" style="max-height: 40px; max-width: 240px; width: auto; height: auto; object-fit: contain;">
-        </div>
+    <div class="exam-left">
+        {% if school_profile.has_custom_branding %}
+            {% if school_profile.school_banner_image %}
+            <div class="school-branding">
+                <img src="{{ school_profile.school_banner_image.url }}" alt="{{ school_profile.school_name|default:'Institution' }}" class="school-banner-img no-lightbox">
+            </div>
+            {% else %}
+                <div class="school-branding">
+                    {% if school_profile.school_logo %}
+                    <img src="{{ school_profile.school_logo.url }}" alt="{{ school_profile.school_name }}" class="school-logo-img no-lightbox">
+                    {% endif %}
+                    {% if school_profile.school_name %}
+                    <span class="school-name" title="{{ school_profile.school_name }}">{{ school_profile.school_name }}</span>
+                    {% endif %}
+                </div>
+            {% endif %}
         {% else %}
             <div class="school-branding">
-                {% if school_profile.school_logo %}
-                <img src="{{ school_profile.school_logo.url }}" alt="{{ school_profile.school_name }}" class="school-logo-img no-lightbox" style="max-height: 36px; max-width: 100px; width: auto; height: auto; object-fit: contain;">
-                {% endif %}
-                {% if school_profile.school_name %}
-                <span class="school-name">{{ school_profile.school_name }}</span>
-                {% endif %}
+                <div class="school-icon-default" aria-hidden="true">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                </div>
+                <span class="school-name">QuizX</span>
             </div>
         {% endif %}
-    {% else %}
-        <div class="school-branding">
-            <div class="school-icon-default">
-                <i class="fa-solid fa-layer-group"></i>
-            </div>
-            <span class="school-name">QuizX</span>
-        </div>
-    {% endif %}
-</div>
-
-<div class="exam-center">
-    <div class="exam-meta">
-        <span class="exam-label">Exam</span>
-        <h2 class="exam-title{% if quiz.title|length > 45 %} title-long{% elif quiz.title|length > 25 %} title-medium{% endif %}" title="{{ quiz.title }}">{{ quiz.title }}</h2>
     </div>
-</div>
 
-<div class="exam-right">
+    <div class="exam-center">
+        <div class="exam-meta">
+            <span class="exam-badge"><i class="fa-solid fa-file-lines" aria-hidden="true"></i> Assessment</span>
+            <h1 class="exam-title{% if quiz.title|length > 45 %} title-long{% elif quiz.title|length > 25 %} title-medium{% endif %}" title="{{ quiz.title }}">{{ quiz.title }}</h1>
+            <div class="exam-subtext">Question {{ question_num }} of {{ total_questions }}</div>
+        </div>
+    </div>
 
-<div class="candidate-chip">
-    <span class="candidate-label">Candidate</span>
-    <strong>
-        {% if user.first_name %}
-            {{ user.first_name }} {{ user.last_name }}
-        {% else %}
-            {{ user.username }}
+    <div class="exam-right">
+        <div class="candidate-chip" title="Candidate: {% if user.first_name %}{{ user.first_name }} {{ user.last_name }}{% else %}{{ user.username }}{% endif %}">
+            <i class="fa-solid fa-user-graduate candidate-icon" aria-hidden="true"></i>
+            <div class="candidate-info">
+                <span class="candidate-label">Candidate</span>
+                <strong class="candidate-name">
+                    {% if user.first_name %}
+                        {{ user.first_name }} {{ user.last_name }}
+                    {% else %}
+                        {{ user.username }}
+                    {% endif %}
+                </strong>
+            </div>
+        </div>
+
+        {% if timer_enabled %}
+        <div class="candidate-chip timer-chip" id="timerChip" role="timer" aria-live="polite">
+            <i class="fa-regular fa-clock timer-icon" aria-hidden="true"></i>
+            <div class="timer-info">
+                <span class="candidate-label">Time Remaining</span>
+                <strong id="examTimer">--:--</strong>
+            </div>
+        </div>
+        <script>
+            (function(){
+                try {
+                    var el = document.getElementById("examTimer");
+                    var chip = document.getElementById("timerChip");
+                    var k = "quiz_{{ quiz.id }}_deadline";
+                    var d = parseInt(sessionStorage.getItem(k), 10);
+                    var dur = parseInt("{{ duration_seconds|default:0 }}", 10) || 0;
+                    if (!d && dur > 0) {
+                        d = Date.now() + dur * 1000;
+                        sessionStorage.setItem(k, d);
+                    }
+                    if (d && el) {
+                        var rem = Math.max(0, Math.ceil((d - Date.now()) / 1000));
+                        var m = String(Math.floor(rem / 60)).padStart(2, "0");
+                        var s = String(rem % 60).padStart(2, "0");
+                        el.textContent = m + ":" + s;
+                        if (rem <= 60 && chip) {
+                            chip.classList.add("timer-critical");
+                        } else if (rem <= 300 && chip) {
+                            chip.classList.add("timer-warning");
+                        }
+                    }
+                } catch(e){}
+            })();
+        </script>
         {% endif %}
-    </strong>
-</div>
 
-{% if timer_enabled %}
-<div class="candidate-chip">
-    <span class="candidate-label">Time Left</span>
-    <strong id="examTimer">--:--</strong>
-    <script>
-        (function(){
-            try {
-                var el = document.getElementById("examTimer");
-                var k = "quiz_{{ quiz.id }}_deadline";
-                var d = parseInt(sessionStorage.getItem(k), 10);
-                var dur = parseInt("{{ duration_seconds|default:0 }}", 10) || 0;
-                if (!d && dur > 0) {
-                    d = Date.now() + dur * 1000;
-                    sessionStorage.setItem(k, d);
-                }
-                if (d && el) {
-                    var rem = Math.max(0, Math.ceil((d - Date.now()) / 1000));
-                    var m = String(Math.floor(rem / 60)).padStart(2, "0");
-                    var s = String(rem % 60).padStart(2, "0");
-                    el.textContent = m + ":" + s;
-                    if (rem <= 60) el.style.color = "#fbbf24";
-                }
-            } catch(e){}
-        })();
-    </script>
-</div>
-{% endif %}
-
-<a href="/home"
-   class="exit-btn"
-   id="exitExam">
-
-    Exit Exam
-
-</a>
-
-</div>
+        <a href="/home" class="exit-btn" id="exitExam" role="button" aria-label="Exit examination">
+            <i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
+            <span>Exit Exam</span>
+        </a>
+    </div>
 
 </header>
 
-<main class="quiz-layout">
-
-<section class="quiz-card">
-
 <form method="post" id="quizForm">
-
 {% csrf_token %}
 
-<div class="quiz-header">
-
-    <!-- Previous Button -->
-    {% if question_num > 1 %}
-    <button
-        type="submit"
-        name="prev"
-        value="1"
-        class="nav-circle"
-        aria-label="Previous Question">
-
-        <i class="fa-solid fa-angle-left" style="color: rgb(30, 48, 80);"></i>
-
-    </button>
-    {% else %}
-    <button
-        type="button"
-        class="nav-circle disabled"
-        disabled
-        aria-label="Previous Question">
-
-        <i class="fa-solid fa-angle-left" style="color: rgb(30, 48, 80);"></i>
-
-    </button>
-    {% endif %}
-
-
-    <!-- Header Content -->
-
-    <div class="header-center">
-
-        <div class="question-title">
-
-            Question {{ question_num }} of {{ total_questions }}
-
+<!-- Mobile Quick Palette Strip (shown on tablet/mobile screens) -->
+<div class="mobile-palette-strip" aria-label="Mobile Question Navigator">
+    <button type="button" class="mobile-palette-toggle" id="mobilePaletteToggle" aria-expanded="false" aria-controls="mobilePaletteDrawer">
+        <div class="mobile-toggle-left">
+            <i class="fa-solid fa-table-cells-large" aria-hidden="true"></i>
+            <span>Question <strong>{{ question_num }}</strong> of {{ total_questions }}</span>
         </div>
-
-        <div class="question-progress">
-
-            {{ question_num }} / {{ total_questions }}
-
+        <div class="mobile-toggle-right">
+            <span class="mobile-answered-badge" id="mobileAnsweredBadge">{{ answered_count }}/{{ total_questions }} answered</span>
+            <i class="fa-solid fa-chevron-down mobile-caret" id="mobileToggleCaret" aria-hidden="true"></i>
         </div>
-
-    </div>
-
-
-    <!-- Next / Submit Button -->
-
-    {% if question_num < total_questions %}
-
-    <button
-        type="submit"
-        class="nav-circle"
-        aria-label="Next Question">
-
-        <i class="fa-solid fa-angle-right" style="color: rgb(30, 48, 80);"></i>
-
     </button>
-
-    {% else %}
-
-    <button
-        type="submit"
-        id="submitExam"
-        class="nav-circle submit-circle"
-        aria-label="Submit Quiz">
-
-        ✓
-
-    </button>
-
-    {% endif %}
-
-</div>
-
-<div class="question-content">
-
-<div class="question-text">
-{{ question.text|safe }}
-</div>
-
-{% if question.subtopic and question.subtopic.get_all_images %}
-<div class="subtopic-images-wrapper" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
-    {% for sub_img in question.subtopic.get_all_images %}
-    <img src="{{ sub_img.url }}" class="subtopic-image" style="max-height:220px; max-width:100%; border-radius:12px; border:1px solid rgba(255,255,255,0.12); object-fit:contain;">
-    {% endfor %}
-</div>
-{% endif %}
-
-{% if question.get_all_images %}
-<div class="question-images-wrapper" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
-    {% for q_img in question.get_all_images %}
-    <img src="{{ q_img.url }}" class="question-image" style="max-height:260px; max-width:100%; border-radius:12px; border:1px solid rgba(255,255,255,0.12); object-fit:contain;">
-    {% endfor %}
-</div>
-{% endif %}
-
-<div class="options">
-
-    {% for option in question_options %}
-    <label class="option-card">
-    <input type="radio" name="answer" value="{{ option.value }}" {% if selected_answer == option.value or selected_answer == option.legacy_value %}checked{% endif %}>
-    <div class="option-body">
-    <span class="option-letter">{{ option.label }}</span>
-    <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
-        <span>{{ option.text|safe }}</span>
-        {% if option.image_urls %}
-        <div class="option-image-container" style="display:flex; flex-wrap:wrap; gap:8px; margin-top: 6px;">
-            {% for img_url in option.image_urls %}
-            <img src="{{ img_url }}" alt="Option {{ option.label }}" style="max-height: 180px; max-width: 100%; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); object-fit: contain;">
+    <div class="mobile-palette-drawer" id="mobilePaletteDrawer" hidden>
+        <div class="mobile-drawer-header">
+            <span>Quick Question Jump</span>
+            <button type="button" class="mobile-drawer-close" id="mobileDrawerClose" aria-label="Close question menu">&times;</button>
+        </div>
+        <div class="question-grid mobile-grid">
+            {% for q in questions %}
+            {% with q_id=q.id|stringformat:"s" %}
+            <button
+                type="submit"
+                name="goto"
+                value="{{ forloop.counter }}"
+                class="question-number{% if forloop.counter == question_num %} current-question{% endif %}{% if q_id in answered_ids or forloop.counter == question_num and selected_answer %} attended-question{% endif %}"
+                data-qnum="{{ forloop.counter }}"
+                aria-label="Question {{ forloop.counter }}{% if forloop.counter == question_num %}, Current Question{% elif q_id in answered_ids or forloop.counter == question_num and selected_answer %}, Answered{% else %}, Unanswered{% endif %}"
+                {% if forloop.counter == question_num %}aria-current="step"{% endif %}>
+                {{ forloop.counter }}
+            </button>
+            {% endwith %}
             {% endfor %}
         </div>
+    </div>
+</div>
+
+<main class="quiz-layout">
+
+<!-- Main Question Area -->
+<section class="quiz-card" aria-label="Current Question Card">
+
+    <!-- Card Header / Stepper -->
+    <div class="quiz-header">
+
+        {% if question_num > 1 %}
+        <button
+            type="submit"
+            name="prev"
+            value="1"
+            class="nav-circle"
+            title="Go to previous question (Question {{ question_num|add:-1 }})"
+            aria-label="Previous Question">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        </button>
+        {% else %}
+        <button
+            type="button"
+            class="nav-circle disabled"
+            disabled
+            aria-disabled="true"
+            aria-label="Previous Question (Disabled, on first question)">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        </button>
         {% endif %}
+
+        <div class="header-center">
+            <div class="question-title">
+                Question {{ question_num }} of {{ total_questions }}
+            </div>
+            <div class="question-progress-indicator">
+                <span class="sr-only">Question Progress: </span>{{ question_num }} / {{ total_questions }}
+            </div>
+        </div>
+
+        {% if question_num < total_questions %}
+        <button
+            type="submit"
+            class="nav-circle"
+            title="Go to next question (Question {{ question_num|add:1 }})"
+            aria-label="Next Question">
+            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+        </button>
+        {% else %}
+        <button
+            type="button"
+            id="submitExamHeader"
+            class="nav-circle submit-circle"
+            title="Review and Submit Examination"
+            aria-label="Submit Examination">
+            <i class="fa-solid fa-check" aria-hidden="true"></i>
+        </button>
+        {% endif %}
+
     </div>
+
+    <!-- Question Content & Options -->
+    <div class="question-content">
+
+        <fieldset class="question-fieldset">
+            <legend class="sr-only">Question {{ question_num }}</legend>
+
+            <div class="question-text" id="questionText">
+                {{ question.text|safe }}
+            </div>
+
+            {% if question.subtopic and question.subtopic.get_all_images %}
+            <div class="subtopic-images-wrapper">
+                {% for sub_img in question.subtopic.get_all_images %}
+                <figure class="media-figure">
+                    <img src="{{ sub_img.url }}" class="subtopic-image" alt="Subtopic Diagram {{ forloop.counter }}" loading="lazy">
+                </figure>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if question.get_all_images %}
+            <div class="question-images-wrapper">
+                {% for q_img in question.get_all_images %}
+                <figure class="media-figure">
+                    <img src="{{ q_img.url }}" class="question-image" alt="Question Diagram {{ forloop.counter }}" loading="lazy">
+                </figure>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="options" role="radiogroup" aria-labelledby="questionText">
+                {% for option in question_options %}
+                <label class="option-card" for="opt_{{ forloop.counter }}">
+                    <input
+                        type="radio"
+                        id="opt_{{ forloop.counter }}"
+                        name="answer"
+                        value="{{ option.value }}"
+                        {% if selected_answer == option.value or selected_answer == option.legacy_value %}checked{% endif %}
+                        tabindex="0">
+                    <div class="option-body">
+                        <span class="option-letter" aria-hidden="true">{{ option.label }}</span>
+                        <div class="option-content">
+                            <span class="option-text">{{ option.text|safe }}</span>
+                            {% if option.image_urls %}
+                            <div class="option-image-container">
+                                {% for img_url in option.image_urls %}
+                                <img src="{{ img_url }}" alt="Option {{ option.label }} visual" loading="lazy">
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="option-indicator" aria-hidden="true">
+                            <i class="fa-solid fa-check option-check-icon"></i>
+                        </div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+        <!-- Primary Bottom Action Bar -->
+        <nav class="answer-actions" aria-label="Question Navigation and Response Actions">
+
+            <div class="actions-left">
+                <button
+                    type="button"
+                    id="clear-answer"
+                    class="action-btn clear-action"
+                    title="Clear selected answer">
+                    <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+                    <span>Clear Response</span>
+                </button>
+            </div>
+
+            <div class="actions-center">
+                <div id="save-status" class="save-status-indicator" role="status" aria-live="polite">
+                    {% if selected_answer %}
+                    <span class="status-pill status-saved"><i class="fa-solid fa-check" aria-hidden="true"></i> Answer saved</span>
+                    {% else %}
+                    <span class="status-pill status-neutral"><i class="fa-regular fa-circle" aria-hidden="true"></i> Not answered yet</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="actions-right">
+                {% if question_num > 1 %}
+                <button
+                    type="submit"
+                    name="prev"
+                    value="1"
+                    class="action-btn prev-action"
+                    aria-label="Previous question">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span>Previous</span>
+                </button>
+                {% else %}
+                <button
+                    type="button"
+                    class="action-btn prev-action disabled"
+                    disabled
+                    aria-disabled="true">
+                    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+                    <span>Previous</span>
+                </button>
+                {% endif %}
+
+                {% if question_num < total_questions %}
+                <button
+                    type="submit"
+                    class="action-btn next-action"
+                    aria-label="Next question">
+                    <span>Next</span>
+                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                </button>
+                {% else %}
+                <button
+                    type="button"
+                    id="submitExam"
+                    class="action-btn finish-action"
+                    aria-label="Review and Submit Examination">
+                    <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+                    <span>Submit Exam</span>
+                </button>
+                {% endif %}
+            </div>
+
+        </nav>
+
     </div>
-    </label>
-    {% endfor %}
-
-</div>
-
-<div class="answer-actions">
-
-    <button
-        type="button"
-        id="clear-answer"
-        class="secondary-action">
-
-        Clear Response
-
-    </button>
-
-    <div id="save-status"></div>
-
-    <button
-        type="button"
-        id="save-answer"
-        class="primary-action">
-
-        Save Answer
-
-    </button>
-
-</div>
-
-</div>
 
 </section>
 
-<aside class="quiz-sidebar">
+<!-- Sidebar: Progress, Questions, and Legend -->
+<aside class="quiz-sidebar" aria-label="Exam Overview & Navigator">
 
-<div class="sidebar-card">
+    <!-- Progress Card -->
+    <div class="sidebar-card progress-card">
+        <div class="sidebar-card-header">
+            <h3 class="sidebar-title"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i> Progress</h3>
+            <span class="progress-percent" id="progressPercent">{{ progress_percentage }}%</span>
+        </div>
 
-<h3>Progress</h3>
+        <div class="progress-bar" role="progressbar" aria-valuenow="{{ progress_percentage }}" aria-valuemin="0" aria-valuemax="100" id="progressBarContainer">
+            <div class="progress-fill" style="width: {{ progress_percentage }}%;"></div>
+        </div>
 
-<div class="progress-bar">
-<div class="progress-fill">
-</div>
-</div>
+        <p class="progress-text" id="progress-text">
+            <strong>{{ answered_count }}</strong> of <strong>{{ total_questions }}</strong> Answered
+        </p>
+    </div>
 
-<p class="progress-text" id="progress-text">
+    <!-- Questions Palette Card -->
+    <div class="sidebar-card questions-card">
+        <div class="sidebar-card-header">
+            <h3 class="sidebar-title"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i> Questions</h3>
+        </div>
 
-<strong>{{ answered_count }}</strong>
-of
-<strong>{{ total_questions }}</strong>
-Answered
+        <div class="question-grid" id="sidebarQuestionGrid">
+            {% for q in questions %}
+            {% with q_id=q.id|stringformat:"s" %}
+            <button
+                type="submit"
+                name="goto"
+                value="{{ forloop.counter }}"
+                class="question-number{% if forloop.counter == question_num %} current-question{% endif %}{% if q_id in answered_ids or forloop.counter == question_num and selected_answer %} attended-question{% endif %}"
+                data-qnum="{{ forloop.counter }}"
+                aria-label="Question {{ forloop.counter }}{% if forloop.counter == question_num %}, Current Question{% elif q_id in answered_ids or forloop.counter == question_num and selected_answer %}, Answered{% else %}, Unanswered{% endif %}"
+                {% if forloop.counter == question_num %}aria-current="step"{% endif %}>
+                {{ forloop.counter }}
+            </button>
+            {% endwith %}
+            {% endfor %}
+        </div>
 
-</p>
+        <button
+            type="button"
+            id="submitExamSidebar"
+            class="sidebar-submit-btn">
+            <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+            <span>Finish Examination</span>
+        </button>
+    </div>
 
-</div>
-
-<div class="sidebar-card">
-
-<h3>Questions</h3>
-
-<div class="question-grid">
-
-{% for q in questions %}
-{% with q_id=q.id|stringformat:"s" %}
-<button
-    type="submit"
-    name="goto"
-    value="{{ forloop.counter }}"
-    class="question-number{% if forloop.counter == question_num %} current-question{% elif q_id in answered_ids %} attended-question{% endif %}">
-
-    {{ forloop.counter }}
-
-</button>
-{% endwith %}
-{% endfor %}
-
-</div>
-
-    <button
-        type="button"
-        id="submitExamSidebar"
-        class="sidebar-submit-btn">
-
-        <i class="fa-solid fa-paper-plane"></i>
-
-        Finish Examination
-
-    </button>
-
-</div>
-
-<div class="sidebar-card">
-
-<h3>Legend</h3>
-
-<div class="legend">
-
-<div><span class="legend-dot current"></span> Current Question</div>
-<div><span class="legend-dot answered"></span> Answered</div>
-<div><span class="legend-dot unanswered"></span> Unanswered</div>
-
-</div>
-
-</div>
+    <!-- Legend Card -->
+    <div class="sidebar-card legend-card">
+        <h3 class="sidebar-title"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Legend</h3>
+        <div class="legend">
+            <div class="legend-item"><span class="legend-dot current"></span> <span>Current Question</span></div>
+            <div class="legend-item"><span class="legend-dot answered"></span> <span>Answered</span></div>
+            <div class="legend-item"><span class="legend-dot unanswered"></span> <span>Unanswered</span></div>
+        </div>
+    </div>
 
 </aside>
 
-</form>
-
 </main>
+
+</form>
 
 </div>
 
-<div class="modal-overlay" id="confirmModal">
-
-    <div class="glass-modal">
-
+<!-- Universal Confirmation Modal (Preserved for Exit and enhanced for Submission) -->
+<div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="glass-modal exam-confirm-modal">
         <div class="modal-icon" id="modalIcon">
             ⚠
         </div>
-
         <h2 id="modalTitle">
             Leave Examination?
         </h2>
-
-        <p id="modalMessage">
-            Unsaved changes may be lost.
-        </p>
-
+        <div id="modalBody">
+            <p id="modalMessage">
+                Unsaved changes may be lost.
+            </p>
+        </div>
         <div class="modal-actions">
-
             <button
                 type="button"
                 class="modal-btn secondary"
                 id="modalCancel">
-
                 Cancel
-
             </button>
-
             <button
                 type="button"
                 class="modal-btn primary"
                 id="modalConfirm">
-
                 Confirm
-
             </button>
-
         </div>
-
     </div>
-
 </div>
 
 <script>
+(function() {
+    "use strict";
 
-const progressFill = document.querySelector(".progress-fill");
-const progressText = document.getElementById("progress-text");
-const saveBtn = document.getElementById("save-answer");
-const clearBtn = document.getElementById("clear-answer");
-const status = document.getElementById("save-status");
+    // DOM Elements
+    const quizForm = document.getElementById("quizForm");
+    const progressFill = document.querySelector(".progress-fill");
+    const progressText = document.getElementById("progress-text");
+    const progressPercent = document.getElementById("progressPercent");
+    const clearBtn = document.getElementById("clear-answer");
+    const statusContainer = document.getElementById("save-status");
+    const mobileAnsweredBadge = document.getElementById("mobileAnsweredBadge");
 
-// Store the current progress
-let currentProgress = parseFloat("{{ progress_percentage }}") || 0;
-let currentAnswered = parseInt("{{ answered_count }}", 10) || 0;
-let totalQuestions = parseInt("{{ total_questions }}", 10) || 0;
-let timerEnabled = "{{ timer_enabled|yesno:'true,false' }}" === "true";
-let durationSeconds = parseInt("{{ duration_seconds|default:0 }}", 10) || 0;
+    // State Variables
+    let currentProgress = parseFloat("{{ progress_percentage }}") || 0;
+    let currentAnswered = parseInt("{{ answered_count }}", 10) || 0;
+    let totalQuestions = parseInt("{{ total_questions }}", 10) || 0;
+    const currentQuestionNum = parseInt("{{ question_num }}", 10);
+    const timerEnabled = "{{ timer_enabled|yesno:'true,false' }}" === "true";
+    const durationSeconds = parseInt("{{ duration_seconds|default:0 }}", 10) || 0;
 
-// Initial width
-progressFill.style.width = currentProgress + "%";
+    let saveSequence = 0;
+    let isSubmitting = false;
 
-function showStatus(message, color){
-
-    status.textContent = message;
-    status.style.color = color;
-
-    setTimeout(() => {
-        status.textContent = "";
-    }, 1500);
-
-}
-
-function animateProgress(newProgress){
-
-    // If nothing changed, don't animate
-    if(newProgress === currentProgress)
-        return;
-
-    // Remove transition temporarily
-    progressFill.style.transition = "none";
-
-    // Set to current width
-    progressFill.style.width = currentProgress + "%";
-
-    // Force browser reflow
-    progressFill.offsetWidth;
-
-    // Restore transition
-    progressFill.style.transition =
-        "width .7s cubic-bezier(.22,.61,.36,1)";
-
-    // Animate to new width
-    progressFill.style.width = newProgress + "%";
-
-    currentProgress = newProgress;
-
-}
-
-async function saveAnswer(action){
-
-    const selected = document.querySelector(
-        'input[name="answer"]:checked'
-    );
-
-    const formData = new FormData();
-
-    formData.append(
-        "csrfmiddlewaretoken",
-        document.querySelector(
-            '[name=csrfmiddlewaretoken]'
-        ).value
-    );
-
-    formData.append("action", action);
-
-    if(selected){
-        formData.append("answer", selected.value);
+    // Set initial progress bar width
+    if (progressFill) {
+        progressFill.style.width = currentProgress + "%";
     }
 
-    const response = await fetch(
-        "{% url 'save_answer_ajax' quiz.id question_num %}",
-        {
-            method:"POST",
-            body:formData
+    // Status Renderer
+    function renderStatus(html) {
+        if (statusContainer) {
+            statusContainer.innerHTML = html;
         }
-    );
+    }
 
-    const data = await response.json();
+    // Update Palette Buttons Across Desktop and Mobile
+    function updatePaletteButtons(questionNum, isAnswered) {
+        const buttons = document.querySelectorAll(`button[data-qnum="${questionNum}"]`);
+        buttons.forEach(btn => {
+            if (isAnswered) {
+                btn.classList.add("attended-question");
+                const isCurrent = parseInt(btn.dataset.qnum, 10) === currentQuestionNum;
+                btn.setAttribute("aria-label", `Question ${questionNum}, ${isCurrent ? 'Current Question, ' : ''}Answered`);
+            } else {
+                btn.classList.remove("attended-question");
+                const isCurrent = parseInt(btn.dataset.qnum, 10) === currentQuestionNum;
+                btn.setAttribute("aria-label", `Question ${questionNum}, ${isCurrent ? 'Current Question' : 'Unanswered'}`);
+            }
+        });
+    }
 
-    if(!data.success)
-        return;
+    // Animate Progress Bar
+    function animateProgress(newProgress) {
+        if (!progressFill || newProgress === currentProgress) return;
+        progressFill.style.transition = "none";
+        progressFill.style.width = currentProgress + "%";
+        progressFill.offsetWidth; // force reflow
+        progressFill.style.transition = "width 0.6s cubic-bezier(0.22, 0.61, 0.36, 1)";
+        progressFill.style.width = newProgress + "%";
+        currentProgress = newProgress;
+    }
 
-    if(action === "clear"){
+    // AJAX Save Answer (with debouncing, race protection, and real-time DOM sync)
+    async function saveAnswer(action) {
+        const seq = ++saveSequence;
+        const selected = document.querySelector('input[name="answer"]:checked');
 
-        if(selected){
-            selected.checked = false;
+        if (action === "save" && !selected) {
+            return;
         }
 
-        showStatus("Response Cleared","#dc2626");
+        renderStatus('<span class="status-pill status-saving"><i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i> Saving...</span>');
 
-    }else{
+        const formData = new FormData();
+        const csrfTokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (csrfTokenEl) {
+            formData.append("csrfmiddlewaretoken", csrfTokenEl.value);
+        }
+        formData.append("action", action);
 
-        showStatus("✓ Answer Saved","#16a34a");
+        if (action === "save" && selected) {
+            formData.append("answer", selected.value);
+        }
 
-    }
+        try {
+            const response = await fetch(
+                "{% url 'save_answer_ajax' quiz.id question_num %}",
+                {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
+                }
+            );
 
-    animateProgress(data.progress);
+            // Stale request response guard
+            if (seq !== saveSequence) return;
 
-    progressText.innerHTML = `
-        <strong>${data.answered}</strong>
-        of
-        <strong>${data.total}</strong>
-        Answered
-    `;
+            const data = await response.json();
 
-    currentAnswered = data.answered;
-    currentProgress = data.progress;
-
-}
-
-saveBtn.addEventListener("click", () => {
-    saveAnswer("save");
-});
-
-clearBtn.addEventListener("click", () => {
-    saveAnswer("clear");
-});
-
-const modal = document.getElementById("confirmModal");
-
-const modalIcon = document.getElementById("modalIcon");
-const modalTitle = document.getElementById("modalTitle");
-const modalMessage = document.getElementById("modalMessage");
-
-const modalCancel = document.getElementById("modalCancel");
-const modalConfirm = document.getElementById("modalConfirm");
-
-let confirmCallback = null;
-
-function showModal({
-
-    icon,
-    title,
-    message,
-    confirmText,
-    confirmAction
-
-}){
-
-    modalIcon.innerHTML = icon;
-
-    modalTitle.textContent = title;
-
-    modalMessage.innerHTML = message;
-
-    modalConfirm.textContent = confirmText;
-
-    confirmCallback = confirmAction;
-
-    modalIcon.classList.remove("success","warning");
-
-    if(confirmText === "Submit")
-        modalIcon.classList.add("success");
-    else
-        modalIcon.classList.add("warning");
-
-    modal.classList.add("show");
-
-}
-
-function closeModal(){
-
-    modal.classList.remove("show");
-
-}
-
-modalCancel.addEventListener("click", closeModal);
-
-modal.addEventListener("click", function(e){
-
-    if(e.target === modal){
-
-        closeModal();
-
-    }
-
-});
-
-document.addEventListener("keydown", function(e){
-
-    if(e.key === "Escape"){
-
-        closeModal();
-
-    }
-
-});
-
-modalConfirm.addEventListener("click", function(){
-
-    closeModal();
-
-    if(confirmCallback){
-
-        confirmCallback();
-
-    }
-
-});
-
-const exitButton = document.getElementById("exitExam");
-
-if(exitButton){
-
-    exitButton.addEventListener("click", function(e){
-
-        e.preventDefault();
-
-        showModal({
-
-            icon:"<i class='fa-solid fa-right-from-bracket'></i>",
-
-            title:"Leave Examination?",
-
-            message:
-                "Your <strong>current unsaved answer</strong> may be lost.<br><br>Are you sure you want to leave the examination?",
-
-            confirmText:"Exit",
-
-            confirmAction:function(){
-
-                window.location.href = exitButton.href;
-
+            if (!data.success) {
+                renderStatus('<span class="status-pill status-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Save failed. <button type="button" class="status-retry-link" id="statusRetryBtn">Retry</button></span>');
+                const retryBtn = document.getElementById("statusRetryBtn");
+                if (retryBtn) retryBtn.onclick = () => saveAnswer(action);
+                return;
             }
 
-        });
+            if (action === "clear") {
+                if (selected) {
+                    selected.checked = false;
+                }
+                renderStatus('<span class="status-pill status-neutral"><i class="fa-regular fa-circle" aria-hidden="true"></i> Response cleared</span>');
+                updatePaletteButtons(currentQuestionNum, false);
+            } else {
+                renderStatus('<span class="status-pill status-saved"><i class="fa-solid fa-check" aria-hidden="true"></i> Answer saved</span>');
+                updatePaletteButtons(currentQuestionNum, true);
+            }
 
+            // Synchronize Progress and Counts
+            animateProgress(data.progress);
+            if (progressPercent) {
+                progressPercent.textContent = data.progress + "%";
+            }
+            if (progressText) {
+                progressText.innerHTML = `<strong>${data.answered}</strong> of <strong>${data.total}</strong> Answered`;
+            }
+            if (mobileAnsweredBadge) {
+                mobileAnsweredBadge.textContent = `${data.answered}/${data.total} answered`;
+            }
+
+            currentAnswered = data.answered;
+            totalQuestions = data.total;
+
+        } catch (error) {
+            if (seq === saveSequence) {
+                renderStatus('<span class="status-pill status-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Network error. <button type="button" class="status-retry-link" id="statusRetryBtn">Retry</button></span>');
+                const retryBtn = document.getElementById("statusRetryBtn");
+                if (retryBtn) retryBtn.onclick = () => saveAnswer(action);
+            }
+        }
+    }
+
+    // Attach Autosave Event Listeners to Radio Options
+    const radioOptions = document.querySelectorAll('input[name="answer"]');
+    radioOptions.forEach(radio => {
+        radio.addEventListener("change", function() {
+            saveAnswer("save");
+        });
     });
 
-}
+    // Clear Button Handler
+    if (clearBtn) {
+        clearBtn.addEventListener("click", function() {
+            saveAnswer("clear");
+        });
+    }
 
-const quizForm = document.getElementById("quizForm");
-const submitButton = document.getElementById("submitExam");
+    // Confirmation Modal Implementation
+    const modal = document.getElementById("confirmModal");
+    const modalIcon = document.getElementById("modalIcon");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalMessage = document.getElementById("modalMessage");
+    const modalCancel = document.getElementById("modalCancel");
+    const modalConfirm = document.getElementById("modalConfirm");
+    let confirmCallback = null;
 
-if(submitButton){
+    function showModal({ icon, title, messageHtml, confirmText, cancelText, confirmVariant, confirmAction }) {
+        if (!modal) return;
 
-    submitButton.addEventListener("click", function(e){
+        modalIcon.innerHTML = icon || "⚠";
+        modalTitle.textContent = title;
+        modalMessage.innerHTML = messageHtml;
+        modalConfirm.textContent = confirmText || "Confirm";
+        modalCancel.textContent = cancelText || "Cancel";
+        confirmCallback = confirmAction;
 
-        e.preventDefault();
+        modalIcon.classList.remove("success", "warning");
+        if (confirmVariant === "success" || confirmText === "Submit" || confirmText === "Confirm & Submit") {
+            modalIcon.classList.add("success");
+            modalConfirm.className = "modal-btn primary";
+        } else {
+            modalIcon.classList.add("warning");
+            modalConfirm.className = "modal-btn primary";
+        }
 
+        modal.classList.add("show");
+        modalConfirm.focus();
+    }
+
+    function closeModal() {
+        if (modal) {
+            modal.classList.remove("show");
+        }
+    }
+
+    if (modalCancel) {
+        modalCancel.addEventListener("click", closeModal);
+    }
+
+    if (modal) {
+        modal.addEventListener("click", function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    }
+
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape" && modal && modal.classList.contains("show")) {
+            closeModal();
+        }
+    });
+
+    if (modalConfirm) {
+        modalConfirm.addEventListener("click", function() {
+            if (confirmCallback) {
+                confirmCallback();
+            }
+        });
+    }
+
+    // Exit Exam Confirmation (PRESERVED 100% as required)
+    const exitButton = document.getElementById("exitExam");
+    if (exitButton) {
+        exitButton.addEventListener("click", function(e) {
+            e.preventDefault();
+            showModal({
+                icon: "<i class='fa-solid fa-arrow-right-from-bracket'></i>",
+                title: "Leave Examination?",
+                messageHtml: "Your <strong>current unsaved answer</strong> may be lost.<br><br>Are you sure you want to leave the examination?",
+                confirmText: "Exit",
+                cancelText: "Continue Exam",
+                confirmVariant: "warning",
+                confirmAction: function() {
+                    window.location.href = exitButton.href;
+                }
+            });
+        });
+    }
+
+    // Submit Examination Handlers (Header, Bottom Action, and Sidebar)
+    function openSubmitModal() {
         const answered = currentAnswered;
         const total = totalQuestions;
-        const unanswered = total - answered;
+        const unanswered = Math.max(0, total - answered);
+
+        let alertHtml = "";
+        if (unanswered > 0) {
+            alertHtml = `
+                <div class="submit-alert-box alert-warning">
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                    <div>You have <strong>${unanswered} unanswered question${unanswered > 1 ? 's' : ''}</strong>. Once submitted, you cannot return to modify your responses.</div>
+                </div>
+            `;
+        } else {
+            alertHtml = `
+                <div class="submit-alert-box alert-success">
+                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                    <div>All <strong>${total} questions</strong> have been answered! Ready to finalize your submission?</div>
+                </div>
+            `;
+        }
+
+        const summaryHtml = `
+            <div class="submit-summary-grid">
+                <div class="summary-chip answered">
+                    <span class="chip-num">${answered}</span>
+                    <span class="chip-label">Answered</span>
+                </div>
+                <div class="summary-chip unanswered">
+                    <span class="chip-num">${unanswered}</span>
+                    <span class="chip-label">Unanswered</span>
+                </div>
+                <div class="summary-chip total">
+                    <span class="chip-num">${total}</span>
+                    <span class="chip-label">Total</span>
+                </div>
+            </div>
+            ${alertHtml}
+        `;
 
         showModal({
+            icon: "<i class='fa-solid fa-paper-plane'></i>",
+            title: "Submit Examination?",
+            messageHtml: summaryHtml,
+            confirmText: "Confirm & Submit",
+            cancelText: "Review Questions",
+            confirmVariant: "success",
+            confirmAction: function() {
+                if (isSubmitting) return;
+                isSubmitting = true;
 
-            icon:"✓",
+                modalConfirm.disabled = true;
+                modalConfirm.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Submitting...';
+                if (modalCancel) modalCancel.disabled = true;
 
-            title:"Submit Examination?",
-
-            message:
-                `You have answered <strong>${answered}</strong> out of <strong>${total}</strong> questions.<br><br>` +
-                `Unanswered Questions : <strong>${unanswered}</strong><br><br>` +
-                `Once submitted, you will <strong>not be able to modify your answers.</strong>`,
-
-            confirmText:"Submit",
-
-            confirmAction:function(){
+                sessionStorage.removeItem("quiz_{{ quiz.id }}_deadline");
 
                 const finishInput = document.createElement("input");
-
                 finishInput.type = "hidden";
                 finishInput.name = "finish";
                 finishInput.value = "1";
-
                 quizForm.appendChild(finishInput);
 
                 quizForm.submit();
+            }
+        });
+    }
 
+    const submitExamBtn = document.getElementById("submitExam");
+    if (submitExamBtn) {
+        submitExamBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+            openSubmitModal();
+        });
+    }
+
+    const submitExamHeaderBtn = document.getElementById("submitExamHeader");
+    if (submitExamHeaderBtn) {
+        submitExamHeaderBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+            openSubmitModal();
+        });
+    }
+
+    const sidebarSubmitBtn = document.getElementById("submitExamSidebar");
+    if (sidebarSubmitBtn) {
+        sidebarSubmitBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+            openSubmitModal();
+        });
+    }
+
+    // Auto-submission on Timer Expiry
+    function submitExamNow() {
+        if (isSubmitting) return;
+        isSubmitting = true;
+        sessionStorage.removeItem("quiz_{{ quiz.id }}_deadline");
+        const finishInput = document.createElement("input");
+        finishInput.type = "hidden";
+        finishInput.name = "finish";
+        finishInput.value = "1";
+        quizForm.appendChild(finishInput);
+        quizForm.submit();
+    }
+
+    // Active Timer Controller
+    if (timerEnabled) {
+        const timerEl = document.getElementById("examTimer");
+        const timerChip = document.getElementById("timerChip");
+        const storageKey = "quiz_{{ quiz.id }}_deadline";
+        let deadline = parseInt(sessionStorage.getItem(storageKey), 10);
+
+        if (!deadline && durationSeconds > 0) {
+            deadline = Date.now() + durationSeconds * 1000;
+            sessionStorage.setItem(storageKey, deadline);
+        }
+
+        function updateTimerDisplay() {
+            if (!deadline) return;
+            const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+            const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
+            const seconds = String(remaining % 60).padStart(2, "0");
+
+            if (timerEl) timerEl.textContent = `${minutes}:${seconds}`;
+
+            if (timerChip) {
+                if (remaining <= 60) {
+                    timerChip.classList.remove("timer-warning");
+                    timerChip.classList.add("timer-critical");
+                } else if (remaining <= 300) {
+                    timerChip.classList.add("timer-warning");
+                    timerChip.classList.remove("timer-critical");
+                } else {
+                    timerChip.classList.remove("timer-warning", "timer-critical");
+                }
             }
 
-        });
-
-    });
-
-}
-
-const sidebarSubmit = document.getElementById("submitExamSidebar");
-
-if(sidebarSubmit){
-
-    sidebarSubmit.addEventListener("click", function(){
-
-        const answered = currentAnswered;
-        const total = totalQuestions;
-        const unanswered = total - answered;
-
-        showModal({
-
-            icon:"✓",
-
-            title:"Submit Examination?",
-
-            message:
-                `You have answered <strong>${answered}</strong> out of <strong>${total}</strong> questions.<br><br>` +
-                `Unanswered Questions : <strong>${unanswered}</strong><br><br>` +
-                `Once submitted, you will <strong>not be able to modify your answers.</strong>`,
-
-            confirmText:"Submit",
-
-            confirmAction:function(){
-
-                const finishInput = document.createElement("input");
-
-                finishInput.type = "hidden";
-                finishInput.name = "finish";
-                finishInput.value = "1";
-
-                quizForm.appendChild(finishInput);
-
-                quizForm.submit();
-
+            if (remaining <= 0) {
+                clearInterval(timerInterval);
+                sessionStorage.removeItem(storageKey);
+                submitExamNow();
             }
+        }
 
+        updateTimerDisplay();
+        const timerInterval = setInterval(updateTimerDisplay, 1000);
+    }
+
+    // Mobile Palette Drawer Toggle
+    const mobileToggle = document.getElementById("mobilePaletteToggle");
+    const mobileDrawer = document.getElementById("mobilePaletteDrawer");
+    const mobileDrawerClose = document.getElementById("mobileDrawerClose");
+
+    if (mobileToggle && mobileDrawer) {
+        mobileToggle.addEventListener("click", function() {
+            const isExpanded = mobileToggle.getAttribute("aria-expanded") === "true";
+            mobileToggle.setAttribute("aria-expanded", !isExpanded);
+            mobileDrawer.hidden = isExpanded;
         });
 
-    });
-
-}
-
-function submitExamNow(){
-    sessionStorage.removeItem("quiz_{{ quiz.id }}_deadline");
-    const finishInput = document.createElement("input");
-    finishInput.type = "hidden";
-    finishInput.name = "finish";
-    finishInput.value = "1";
-    quizForm.appendChild(finishInput);
-    quizForm.submit();
-}
-
-if(timerEnabled){
-    const timerEl = document.getElementById("examTimer");
-    const storageKey = "quiz_{{ quiz.id }}_deadline";
-    let deadline = parseInt(sessionStorage.getItem(storageKey), 10);
-    if(!deadline && durationSeconds > 0){
-        deadline = Date.now() + durationSeconds * 1000;
-        sessionStorage.setItem(storageKey, deadline);
-    }
-    function updateTimerDisplay(){
-        if(!deadline) return;
-        const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-        const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
-        const seconds = String(remaining % 60).padStart(2, "0");
-        if(timerEl) timerEl.textContent = `${minutes}:${seconds}`;
-        if(remaining <= 60 && timerEl){
-            timerEl.style.color = "#fbbf24";
-        }
-        if(remaining <= 0){
-            clearInterval(timerInterval);
-            sessionStorage.removeItem(storageKey);
-            submitExamNow();
+        if (mobileDrawerClose) {
+            mobileDrawerClose.addEventListener("click", function() {
+                mobileToggle.setAttribute("aria-expanded", "false");
+                mobileDrawer.hidden = true;
+            });
         }
     }
-    updateTimerDisplay();
-    const timerInterval = setInterval(updateTimerDisplay, 1000);
-}
 
-document.addEventListener('click', function(e) {
-    if (e.target.tagName === 'IMG' && !e.target.closest('button') && !e.target.closest('.exam-header') && !e.target.classList.contains('no-lightbox')) {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-            cursor: zoom-out;
-            opacity: 0;
-            transition: opacity 0.22s ease-in-out;
-        `;
-        
-        const img = document.createElement('img');
-        img.src = e.target.src;
-        img.style.cssText = `
-            max-width: 90%;
-            max-height: 90%;
-            object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-            transform: scale(0.95);
-            transition: transform 0.22s ease-in-out;
-        `;
-        
-        overlay.appendChild(img);
-        document.body.appendChild(overlay);
-        
-        setTimeout(() => {
-            overlay.style.opacity = '1';
-            img.style.transform = 'scale(1)';
-        }, 10);
-        
-        const closeLightbox = () => {
-            overlay.style.opacity = '0';
-            img.style.transform = 'scale(0.95)';
+    // Question & Option Image Lightbox
+    document.addEventListener("click", function(e) {
+        const target = e.target;
+        if (
+            target.tagName === "IMG" &&
+            !target.closest("button") &&
+            !target.closest(".exam-header") &&
+            !target.classList.contains("no-lightbox")
+        ) {
+            const overlay = document.createElement("div");
+            overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(15, 15, 18, 0.85);
+                backdrop-filter: blur(8px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 99999;
+                cursor: zoom-out;
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            `;
+
+            const img = document.createElement("img");
+            img.src = target.src;
+            img.alt = target.alt || "Diagram Preview";
+            img.style.cssText = `
+                max-width: 90vw;
+                max-height: 90vh;
+                object-fit: contain;
+                border-radius: 12px;
+                box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
+                transform: scale(0.96);
+                transition: transform 0.2s ease;
+            `;
+
+            overlay.appendChild(img);
+            document.body.appendChild(overlay);
+
             setTimeout(() => {
-                overlay.remove();
-            }, 220);
-            document.removeEventListener('keydown', keyHandler);
-        };
-        
-        const keyHandler = (evt) => {
-            if (evt.key === 'Escape') closeLightbox();
-        };
-        
-        overlay.onclick = closeLightbox;
-        document.addEventListener('keydown', keyHandler);
-    }
-});
+                overlay.style.opacity = "1";
+                img.style.transform = "scale(1)";
+            }, 10);
 
-const styleSheet = document.createElement("style");
-styleSheet.innerText = ".question-content img, .subtopic-images-wrapper img, .option-image-container img { cursor: zoom-in; }";
-document.head.appendChild(styleSheet);
+            const closeLightbox = () => {
+                overlay.style.opacity = "0";
+                img.style.transform = "scale(0.96)";
+                setTimeout(() => overlay.remove(), 200);
+                document.removeEventListener("keydown", keyHandler);
+            };
+
+            const keyHandler = (evt) => {
+                if (evt.key === "Escape") closeLightbox();
+            };
+
+            overlay.onclick = closeLightbox;
+            document.addEventListener("keydown", keyHandler);
+        }
+    });
+
+})();
 </script>
 </body>
 </html>
-
