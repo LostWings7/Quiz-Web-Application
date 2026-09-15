@@ -107,14 +107,72 @@
     </div>
 </section>
 
-<script>
-var currentExportFormat = 'csv';
-function openExportModal(format) {
-    currentExportFormat = format;
-    showModal('exportSortModal');
-}
+<!-- Export Sorting Modal (Always attached to DOM for immediate interaction) -->
+<div id="exportSortModal" class="modal-overlay">
+    <div class="glass-modal" style="max-width: 440px; text-align: left;">
+        <div class="modal-icon" style="margin: 0 auto 16px;"><i class="fa-solid fa-file-export"></i></div>
+        <h2 style="text-align: center; margin-bottom: 6px;">Export Scorecard</h2>
 
-function executeExport(sortParam) {
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">Filter by Class Group (Optional)</label>
+            <select id="export_class_id">
+                <option value="">All Classes</option>
+                {% for c in all_classes %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; font-weight: 600;">
+            Select columns to export:
+        </p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; font-size: var(--text-xs);">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="col_sno" checked value="sno"> S.No
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="col_name" checked value="name"> Student Name
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="col_marks" checked value="marks"> Marks
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="col_pct" checked value="pct"> Percentage
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="col_date" checked value="date"> Date
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="col_class" checked value="class"> Class
+            </label>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" id="col_section" checked value="section"> Section
+            </label>
+        </div>
+
+        <div class="modal-actions" style="flex-direction: column; gap: 8px;">
+            <button type="button" class="btn btn-primary" style="width: 100%;" onclick="executeExport('marks')">Highest Marks First</button>
+            <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="executeExport('alpha')">Alphabetical (A to Z)</button>
+            <button type="button" class="btn btn-ghost" style="width: 100%;" onclick="hideModal('exportSortModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+window.currentExportFormat = window.currentExportFormat || 'csv';
+
+window.openExportModal = function(format) {
+    window.currentExportFormat = format || 'csv';
+    if (typeof window.showModal === 'function') {
+        window.showModal('exportSortModal');
+    } else {
+        const modal = document.getElementById('exportSortModal');
+        if (modal) modal.classList.add('show');
+    }
+};
+
+window.executeExport = function(sortParam) {
     const cols = [];
     const possibleCols = ['sno', 'name', 'marks', 'pct', 'date', 'class', 'section'];
     possibleCols.forEach(col => {
@@ -130,15 +188,25 @@ function executeExport(sortParam) {
     const classElem = document.getElementById('export_class_id');
     const classId = classElem ? classElem.value : '';
 
-    hideModal('exportSortModal');
-    let url = (currentExportFormat === 'csv')
+    if (typeof window.hideModal === 'function') {
+        window.hideModal('exportSortModal');
+    } else {
+        const modal = document.getElementById('exportSortModal');
+        if (modal) modal.classList.remove('show');
+    }
+
+    let url = (window.currentExportFormat === 'csv')
         ? "{% url 'export_overall_analysis_csv' selected_quiz.id %}"
         : "{% url 'export_overall_analysis_pdf' selected_quiz.id %}";
 
-    url += '?sort=' + sortParam + '&cols=' + cols.join(',');
-    if (classId) url += '&class_id=' + classId;
+    url += '?sort=' + encodeURIComponent(sortParam || 'marks') + '&cols=' + encodeURIComponent(cols.join(','));
+    if (classId) url += '&class_id=' + encodeURIComponent(classId);
     window.location.href = url;
-}
+};
+
+// Also expose non-prefixed references for inline handler compatibility
+var openExportModal = window.openExportModal;
+var executeExport = window.executeExport;
 </script>
 {% endif %}
 
@@ -584,57 +652,4 @@ document.addEventListener('DOMContentLoaded', () => {
 {% endblock %}
 
 {% block modals %}
-{% if chart_type == 'scorecard' %}
-<!-- Export Sorting Modal -->
-<div id="exportSortModal" class="modal-overlay">
-    <div class="glass-modal" style="max-width: 440px; text-align: left;">
-        <div class="modal-icon" style="margin: 0 auto 16px;"><i class="fa-solid fa-file-export"></i></div>
-        <h2 style="text-align: center; margin-bottom: 6px;">Export Scorecard</h2>
-
-        <div class="form-group" style="margin-bottom: 16px;">
-            <label class="form-label">Filter by Class Group (Optional)</label>
-            <select id="export_class_id">
-                <option value="">All Classes</option>
-                {% for c in all_classes %}
-                <option value="{{ c.id }}">{{ c.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 8px; font-weight: 600;">
-            Select columns to export:
-        </p>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; font-size: var(--text-xs);">
-            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="col_sno" checked value="sno"> S.No
-            </label>
-            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="col_name" checked value="name"> Student Name
-            </label>
-            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="col_marks" checked value="marks"> Marks
-            </label>
-            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="col_pct" checked value="pct"> Percentage
-            </label>
-            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="col_date" checked value="date"> Date
-            </label>
-            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="col_class" checked value="class"> Class
-            </label>
-            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" id="col_section" checked value="section"> Section
-            </label>
-        </div>
-
-        <div class="modal-actions" style="flex-direction: column; gap: 8px;">
-            <button type="button" class="btn btn-primary" style="width: 100%;" onclick="executeExport('marks')">Highest Marks First</button>
-            <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="executeExport('alpha')">Alphabetical (A to Z)</button>
-            <button type="button" class="btn btn-ghost" style="width: 100%;" onclick="hideModal('exportSortModal')">Cancel</button>
-        </div>
-    </div>
-</div>
-{% endif %}
 {% endblock %}

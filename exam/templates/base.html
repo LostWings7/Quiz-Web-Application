@@ -197,11 +197,16 @@
                 <button class="sidebar-toggle-btn mobile-menu-btn" onclick="document.getElementById('appShell').classList.toggle('sidebar-open')" aria-label="Open navigation menu">
                     <i class="fa-solid fa-bars"></i>
                 </button>
-                <div class="topbar-branding" style="display: flex; align-items: center; gap: 10px;">
+                <div class="topbar-branding">
                     {% if school_profile.has_custom_branding and school_profile.school_banner_image %}
-                        <img src="{{ school_profile.school_banner_image.url }}" alt="{{ school_profile.school_name|default:'Institution' }}" style="max-height: 36px; max-width: 240px; object-fit: contain; border-radius: 4px;">
-                    {% elif school_profile.has_custom_branding and school_profile.school_name %}
-                        <span style="font-weight: 700; font-size: 1.05rem; color: var(--text-primary);">{{ school_profile.school_name }}</span>
+                        <img src="{{ school_profile.school_banner_image.url }}" alt="{{ school_profile.school_name|default:'Institution' }}" class="topbar-banner-img">
+                    {% else %}
+                        {% if school_profile.has_custom_branding and school_profile.school_logo %}
+                            <img src="{{ school_profile.school_logo.url }}" alt="{{ school_profile.school_name|default:'Institution' }}" class="topbar-logo-img">
+                        {% endif %}
+                        {% if school_profile.has_custom_branding and school_profile.school_name %}
+                            <span class="topbar-school-name">{{ school_profile.school_name }}</span>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>

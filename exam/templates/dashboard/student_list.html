@@ -9,8 +9,141 @@
 
 {% block actions %}
 <style>
-.bulk-select-col { display: none; }
-.bulk-select-mode .bulk-select-col { display: table-cell; }
+/* Smooth expand/collapse for Bulk Action Bar */
+.bulk-action-bar-container {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 280ms cubic-bezier(0.16, 1, 0.3, 1), 
+                margin-bottom 280ms cubic-bezier(0.16, 1, 0.3, 1);
+    margin-bottom: 0;
+    overflow: hidden;
+}
+.bulk-action-bar-container.open {
+    grid-template-rows: 1fr;
+    margin-bottom: 16px;
+}
+.bulk-action-bar-inner {
+    min-height: 0;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.99);
+    transition: opacity 220ms ease, transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bulk-action-bar-container.open .bulk-action-bar-inner {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* Smooth expansion/collapse for table checkbox column */
+.data-table th.bulk-select-col,
+.data-table td.bulk-select-col {
+    width: 0px;
+    max-width: 0px;
+    min-width: 0px;
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+    opacity: 0;
+    visibility: hidden;
+    overflow: hidden;
+    white-space: nowrap;
+    border-right-width: 0px;
+    border-left-width: 0px;
+    transition: width 280ms cubic-bezier(0.16, 1, 0.3, 1),
+                max-width 280ms cubic-bezier(0.16, 1, 0.3, 1),
+                min-width 280ms cubic-bezier(0.16, 1, 0.3, 1),
+                padding 280ms cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 200ms ease,
+                visibility 280ms;
+}
+
+.data-table .bulk-select-col .theme-checkbox {
+    transform: scale(0.5);
+    opacity: 0;
+    transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), opacity 200ms ease;
+}
+
+.bulk-select-mode .data-table th.bulk-select-col,
+.bulk-select-mode .data-table td.bulk-select-col {
+    width: 44px;
+    max-width: 44px;
+    min-width: 44px;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    opacity: 1;
+    visibility: visible;
+}
+
+.bulk-select-mode .data-table .bulk-select-col .theme-checkbox {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* Smooth expansion/collapse for table actions column */
+.data-table th.actions-col,
+.data-table td.actions-col {
+    width: 170px;
+    max-width: 240px;
+    min-width: 140px;
+    opacity: 1;
+    visibility: visible;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: width 280ms cubic-bezier(0.16, 1, 0.3, 1),
+                max-width 280ms cubic-bezier(0.16, 1, 0.3, 1),
+                min-width 280ms cubic-bezier(0.16, 1, 0.3, 1),
+                padding 280ms cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 200ms ease,
+                visibility 280ms;
+}
+
+.data-table .actions-col > div {
+    transform: scale(1);
+    opacity: 1;
+    transform-origin: right center;
+    transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), opacity 200ms ease;
+}
+
+.bulk-select-mode .data-table th.actions-col,
+.bulk-select-mode .data-table td.actions-col {
+    width: 0px !important;
+    max-width: 0px !important;
+    min-width: 0px !important;
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    border-right-width: 0px !important;
+    border-left-width: 0px !important;
+}
+
+.bulk-select-mode .data-table .actions-col > div {
+    transform: scale(0.5);
+    opacity: 0;
+}
+
+/* Smooth transition for table column re-balancing */
+.data-table th,
+.data-table td {
+    transition: padding 280ms cubic-bezier(0.16, 1, 0.3, 1), width 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Row selection styles in bulk select mode */
+.bulk-select-mode .data-table tbody tr {
+    cursor: pointer;
+    user-select: none;
+}
+
+.bulk-select-mode .data-table tbody tr.selected-row,
+.bulk-select-mode .data-table tbody tr:has(.student-row-checkbox:checked) {
+    background-color: var(--accent-primary-subtle);
+}
+
+.bulk-select-mode .data-table tbody tr.selected-row:hover,
+.bulk-select-mode .data-table tbody tr:has(.student-row-checkbox:checked):hover {
+    background-color: var(--accent-primary-subtle);
+    filter: brightness(0.97);
+}
 </style>
 <a class="btn btn-primary" href="{% url 'dashboard_student_create' %}">
     <i class="fa-solid fa-user-plus"></i>
@@ -207,15 +340,19 @@
     <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
     <input type="hidden" name="action" id="bulkActionInput" value="">
     
-    <!-- Bulk Action Toolbar (hidden by default) -->
-    <div id="bulkActionBar" style="display: none; padding: 12px 16px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 16px; align-items: center; justify-content: space-between;">
-        <div style="font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);">
-            <span id="bulkSelectedCount">0</span> students selected
-        </div>
-        <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn-small secondary" onclick="submitBulkAction('enable')"><i class="fa-solid fa-user-check"></i> Enable</button>
-            <button type="button" class="btn-small secondary" onclick="submitBulkAction('disable')"><i class="fa-solid fa-user-slash"></i> Disable</button>
-            <button type="button" class="btn-small danger" onclick="submitBulkAction('delete')"><i class="fa-solid fa-trash"></i> Delete</button>
+    <!-- Bulk Action Toolbar (smooth expand/collapse container) -->
+    <div class="bulk-action-bar-container ${isBulkSelectMode ? 'open' : ''}" id="bulkActionBarContainer">
+        <div class="bulk-action-bar-inner">
+            <div id="bulkActionBar" style="padding: 12px 16px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between;">
+                <div style="font-size: var(--text-sm); font-weight: 600; color: var(--text-primary);">
+                    <span id="bulkSelectedCount">0</span> students selected
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn-small secondary" onclick="submitBulkAction('enable')"><i class="fa-solid fa-user-check"></i> Enable</button>
+                    <button type="button" class="btn-small secondary" onclick="submitBulkAction('disable')"><i class="fa-solid fa-user-slash"></i> Disable</button>
+                    <button type="button" class="btn-small danger" onclick="submitBulkAction('delete')"><i class="fa-solid fa-trash"></i> Delete</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -226,19 +363,22 @@
                     <th class="bulk-select-col" style="width: 40px; text-align: center;">
                         <input type="checkbox" id="selectAllStudents" class="theme-checkbox">
                     </th>
+                    <th style="width: 50px; text-align: center;">#</th>
                     <th>Candidate Name</th>
                     <th>Username</th>
                     <th style="text-align: center;">Enrolled Class &amp; Section</th>
                     <th style="text-align: center;">Status</th>
-                    <th style="text-align: right;">Actions</th>
+                    <th class="actions-col" style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody>`;
 
         if (students.length === 0) {
-            html += '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-user-graduate"></i></div><div class="empty-state-title">No Students Found</div><div class="empty-state-desc">No candidate records match your criteria.</div></div></td></tr>';
+            html += '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-user-graduate"></i></div><div class="empty-state-title">No Students Found</div><div class="empty-state-desc">No candidate records match your criteria.</div></div></td></tr>';
         } else {
-            students.forEach(s => {
+            const startIdx = pg.start_index || ((pg.current - 1) * 10 + 1);
+            students.forEach((s, idx) => {
+                const rowNum = startIdx + idx;
                 const groupHtml = s.group !== '—'
                     ? `<span class="pill accent" style="font-size:11px;">${s.group}</span>`
                     : `<span style="color:var(--text-muted); font-size:var(--text-xs);">Unassigned</span>`;
@@ -247,12 +387,13 @@
                 const toggleIcon = s.is_active ? 'fa-user-slash' : 'fa-user-check';
                 html += `<tr>
                     <td class="bulk-select-col" style="text-align:center;"><input type="checkbox" name="student_ids" value="${s.id}" class="theme-checkbox student-row-checkbox"></td>
+                    <td style="text-align: center; color: var(--text-muted); font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600;">${rowNum}</td>
                     <td style="font-weight:600;">${s.name}</td>
                     <td style="color:var(--text-secondary); font-family:var(--font-mono); font-size:var(--text-xs);">${s.username}</td>
                     <td style="text-align: center;">${groupHtml}</td>
                     <td style="text-align: center;"><span class="pill ${statusClass}" style="font-size:11px;"><span class="status-dot"></span>${statusLabel}</span></td>
-                    <td>
-                        <div style="display:flex; gap:6px; justify-content:flex-end; align-items:center; flex-wrap:wrap;">
+                    <td class="actions-col">
+                        <div style="display:flex; gap:6px; justify-content:flex-end; align-items:center; flex-wrap:nowrap;">
                             <a class="btn-small secondary" href="${s.edit_url}" title="Edit"><i class="fa-solid fa-pen"></i></a>
                             <a class="btn-small secondary" href="${s.reset_url}" title="Reset PW"><i class="fa-solid fa-key"></i></a>
                             <a class="btn-small secondary" href="${s.toggle_url}" title="Toggle Active"><i class="fa-solid ${toggleIcon}"></i></a>
@@ -309,24 +450,27 @@ function toggleBulkSelectMode() {
     const tableWrap = document.getElementById('studentTableWrap');
     const btnText = document.getElementById('bulkSelectBtnText');
     const btn = document.getElementById('bulkSelectToggleBtn');
-    const bulkBar = document.getElementById('bulkActionBar');
+    const bulkBarContainer = document.getElementById('bulkActionBarContainer');
     
     if (isBulkSelectMode) {
         tableWrap.classList.add('bulk-select-mode');
         btnText.textContent = 'Cancel';
         btn.classList.add('primary');
         btn.classList.remove('secondary');
-        bulkBar.style.display = 'flex';
+        if (bulkBarContainer) bulkBarContainer.classList.add('open');
     } else {
         tableWrap.classList.remove('bulk-select-mode');
         btnText.textContent = 'Select';
         btn.classList.remove('primary');
         btn.classList.add('secondary');
-        bulkBar.style.display = 'none';
+        if (bulkBarContainer) bulkBarContainer.classList.remove('open');
         
-        // Uncheck all
+        // Uncheck all & remove selection classes
         document.querySelectorAll('.student-row-checkbox, #selectAllStudents').forEach(cb => {
             cb.checked = false;
+        });
+        document.querySelectorAll('#studentTableWrap tbody tr').forEach(tr => {
+            tr.classList.remove('selected-row');
         });
     }
     updateBulkActionBar();
@@ -335,17 +479,22 @@ function toggleBulkSelectMode() {
 function updateBulkActionBar() {
     const checkboxes = document.querySelectorAll('.student-row-checkbox');
     const checked = Array.from(checkboxes).filter(cb => cb.checked);
-    const bulkBar = document.getElementById('bulkActionBar');
     const countSpan = document.getElementById('bulkSelectedCount');
     const selectAllCb = document.getElementById('selectAllStudents');
     
-    if (bulkBar && countSpan) {
-        if (isBulkSelectMode) {
-            bulkBar.style.display = 'flex';
-            countSpan.textContent = checked.length;
-        } else {
-            bulkBar.style.display = 'none';
+    checkboxes.forEach(cb => {
+        const tr = cb.closest('tr');
+        if (tr) {
+            if (cb.checked) {
+                tr.classList.add('selected-row');
+            } else {
+                tr.classList.remove('selected-row');
+            }
         }
+    });
+
+    if (countSpan) {
+        countSpan.textContent = checked.length;
     }
     
     if (selectAllCb) {
@@ -362,6 +511,23 @@ document.addEventListener('change', function(e) {
         });
         updateBulkActionBar();
     } else if (e.target && e.target.classList.contains('student-row-checkbox')) {
+        updateBulkActionBar();
+    }
+});
+
+// Click anywhere in row to select when in bulk selection mode
+document.addEventListener('click', function(e) {
+    if (!isBulkSelectMode) return;
+    
+    // Ignore clicks on links, buttons, or direct clicks on inputs
+    if (e.target.closest('a, button, input, select, textarea, label')) return;
+    
+    const row = e.target.closest('#studentTableWrap tbody tr');
+    if (!row) return;
+    
+    const checkbox = row.querySelector('.student-row-checkbox');
+    if (checkbox) {
+        checkbox.checked = !checkbox.checked;
         updateBulkActionBar();
     }
 });

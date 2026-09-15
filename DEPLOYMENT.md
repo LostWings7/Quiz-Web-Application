@@ -217,3 +217,42 @@ When data must be converted:
 
 - `migrate_data_sqlite_to_mssql.py`: Historical utility used for the one-time transition from SQLite to SQL Server. **Not used** for routine updates.
 - `verify_migration.py`: Integrity comparison tool between SQLite and SQL Server used during initial migration sign-off.
+
+---
+
+## 9. Local-Only AI Architecture Standard
+
+QuizX operates strictly on a **Local-AI-Only Architecture**. No cloud AI services, external inference endpoints, or third-party AI API keys are required or permitted for runtime application operations.
+
+### Current Local AI Capabilities
+- **Bloom's Taxonomy Cognitive Classification**: Powered by a local zero-shot pipeline using Hugging Face Transformers (`valhalla/distilbart-mnli-12-3`) and PyTorch executing purely on local CPU.
+- **Offline Operation**: Model weights are cached locally. Once downloaded, classification executes entirely offline without outbound network requests.
+- **Zero API Keys**: No `GEMINI_API_KEY`, `OPENAI_API_KEY`, or other external credentials are required to run QuizX.
+
+### Architectural Standard for Future AI Features
+All present and future AI capabilities (such as exam performance analysis, student progress summaries, and question recommendations) must adhere to the following data flow:
+
+```
+Web Browser / Client
+        │
+        ▼
+Django View / AJAX Endpoint
+        │
+        ▼
+Local Inference Service (Python)
+        │
+        ▼
+Locally Hosted Model (PyTorch / Transformers / llama.cpp / Ollama / Local Engine)
+        │
+        ▼
+Deterministic Validation & Post-Processing
+        │
+        ▼
+Database Persistence (SQL Server / SQLite)
+```
+
+**Strictly Prohibited**:
+```
+Django View  ──(Outbound HTTP Request)──>  Cloud AI API (Gemini / OpenAI / Claude)
+```
+

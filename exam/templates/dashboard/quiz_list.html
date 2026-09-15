@@ -440,7 +440,6 @@ function toggleActionMenu(event, menuId) {
         document.body.appendChild(targetMenu);
         
         targetMenu.style.display = 'flex';
-        targetMenu.style.visibility = 'hidden';
         
         const rect = btn.getBoundingClientRect();
         const menuWidth = targetMenu.offsetWidth || 175;
@@ -463,7 +462,9 @@ function toggleActionMenu(event, menuId) {
         targetMenu.style.top = `${topPos}px`;
         targetMenu.style.left = `${leftPos}px`;
         targetMenu.style.right = 'auto';
-        targetMenu.style.visibility = 'visible';
+        
+        // Force reflow and transition in
+        targetMenu.offsetHeight;
         targetMenu.classList.add('open');
         
         btn.setAttribute('aria-expanded', 'true');
@@ -472,11 +473,17 @@ function toggleActionMenu(event, menuId) {
 
 function closeAllActionMenus() {
     if (currentOpenMenu) {
-        currentOpenMenu.classList.remove('open');
-        currentOpenMenu.style.display = 'none';
-        if (currentMenuOriginalParent) {
-            currentMenuOriginalParent.appendChild(currentOpenMenu);
-        }
+        const menuToClose = currentOpenMenu;
+        const parentToRestore = currentMenuOriginalParent;
+        menuToClose.classList.remove('open');
+        setTimeout(() => {
+            if (!menuToClose.classList.contains('open')) {
+                menuToClose.style.display = 'none';
+                if (parentToRestore && menuToClose.parentElement === document.body) {
+                    parentToRestore.appendChild(menuToClose);
+                }
+            }
+        }, 200);
         currentOpenMenu = null;
         currentMenuOriginalParent = null;
     }

@@ -63,40 +63,44 @@
 }
 
 .school-branding {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 12px;
+    justify-content: center;
+    gap: 8px;
+    line-height: 1;
 }
 
 .school-banner-img {
-    max-height: 42px !important;
+    max-height: 40px !important;
     max-width: 220px !important;
     width: auto !important;
     height: auto !important;
     object-fit: contain !important;
     border-radius: var(--radius-xs, 6px);
+    vertical-align: middle;
 }
 
 .school-logo-img {
-    max-height: 40px !important;
-    max-width: 100px !important;
+    max-height: 34px !important;
+    max-width: 38px !important;
     width: auto !important;
     height: auto !important;
     object-fit: contain !important;
     border-radius: var(--radius-xs, 6px);
     flex-shrink: 0;
+    vertical-align: middle;
 }
 
 .school-icon-default {
-    width: 38px;
-    height: 38px;
-    border-radius: var(--radius-md, 12px);
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm, 8px);
     background: var(--accent-primary, #635BFF);
     color: var(--text-inverse, #FFFFFF);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 1rem;
     flex-shrink: 0;
     box-shadow: 0 2px 6px rgba(99, 91, 255, 0.25);
 }
@@ -104,13 +108,17 @@
 .school-name {
     font-family: var(--font-heading, 'Outfit', sans-serif);
     font-weight: 700;
-    font-size: 1.125rem;
+    font-size: 1.1rem;
     color: var(--text-primary, #18181B);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 220px;
     letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
 }
 
 /* Center: Exam Information */

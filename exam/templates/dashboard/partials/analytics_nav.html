@@ -299,6 +299,16 @@ window.loadAnalyticsPanel = function(targetUrl, pushState = true) {
                 dynamicPanel.style.transform = '';
                 dynamicPanel.className = 'analytics-dynamic-panel panel-card-fade-in';
 
+                // Synchronize any modals from the fetched page into document.body
+                const newModals = doc.querySelectorAll('.modal-overlay');
+                newModals.forEach(modal => {
+                    if (modal.id) {
+                        const existing = document.getElementById(modal.id);
+                        if (existing) existing.remove();
+                        document.body.appendChild(modal.cloneNode(true));
+                    }
+                });
+
                 // Synchronize navigation state with targetUrl quiz param
                 const targetUrlObj = new URL(targetUrl, window.location.origin);
                 const quizIdFromTarget = targetUrlObj.searchParams.get('quiz');

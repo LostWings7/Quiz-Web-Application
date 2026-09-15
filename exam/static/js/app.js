@@ -96,7 +96,7 @@
             return this.getCoords(defaultLink, nav);
         },
 
-        animateBlob(pill, startCoords, endCoords, duration = 380, onComplete = null) {
+        animateBlob(pill, startCoords, endCoords, duration = 330, onComplete = null) {
             if (!pill || !startCoords || !endCoords) return;
 
             if (this.activeAnimation) {
@@ -114,10 +114,16 @@
             const shell = document.getElementById('appShell') || document.getElementById('dashboardShell');
             const isCollapsed = shell ? shell.classList.contains('sidebar-collapsed') : false;
 
-            // Distance intensity ratio (0.2 to 1.0)
+            // Distance intensity scaling
             const distRatio = Math.min(1.0, Math.max(0.2, Math.abs(deltaY) / 180));
-            const maxStretchY = (isCollapsed ? 0.18 : 0.14) * distRatio;
-            const maxSqueezeX = (isCollapsed ? 0.10 : 0.06) * distRatio;
+            const maxStretchY = (isCollapsed ? 0.12 : 0.09) * distRatio;
+            const maxSqueezeX = (isCollapsed ? 0.06 : 0.04) * distRatio;
+
+            // Analytical damped spring parameters (zeta = 0.78 for gentle natural settle, omega = 9.8)
+            const zeta = 0.78;
+            const omega = 9.8;
+            const wd = omega * Math.sqrt(1.0 - zeta * zeta);
+            const zetaCoeff = (zeta * omega) / wd;
 
             // Ensure transitions on transform are disabled during rAF animation
             pill.style.transition = 'none';
@@ -127,7 +133,7 @@
             pill.style.height = `${startCoords.height.toFixed(2)}px`;
             pill.style.opacity = '1';
 
-            // Force reflow to guarantee the browser commits the start position BEFORE stepping
+            // Force reflow
             void pill.offsetHeight;
 
             let startTime = null;
@@ -140,26 +146,31 @@
                 if (t < 0) t = 0;
                 if (t > 1) t = 1;
 
-                // Motion translation curve (cubic spring ease)
-                const ease = 1 + 1.5 * Math.pow(t - 1, 3) + 0.5 * Math.pow(t - 1, 2);
-                const currentTop = startCoords.top + (endCoords.top - startCoords.top) * ease;
-                const currentHeight = startCoords.height + (endCoords.height - startCoords.height) * ease;
+                // Unified continuous harmonic spring trajectory
+                let ease = 1.0;
+                if (t < 1.0) {
+                    const envelope = Math.exp(-zeta * omega * t);
+                    ease = 1.0 - envelope * (Math.cos(wd * t) + zetaCoeff * Math.sin(wd * t));
+                }
 
+                // Smooth coupled stretch & micro-squish
                 let scaleY = 1.0;
                 let scaleX = 1.0;
 
                 if (Math.abs(deltaY) > 8) {
-                    if (t < 0.72) {
-                        const morphPhase = Math.sin((t / 0.72) * Math.PI);
-                        scaleY = 1.0 + maxStretchY * morphPhase;
-                        scaleX = 1.0 - maxSqueezeX * morphPhase;
+                    if (t < 0.40) {
+                        const stretchPhase = Math.sin((t / 0.40) * Math.PI);
+                        scaleY = 1.0 + maxStretchY * stretchPhase;
+                        scaleX = 1.0 - maxSqueezeX * stretchPhase;
                     } else {
-                        const reboundT = (t - 0.72) / 0.28;
-                        const reboundPhase = Math.sin(reboundT * Math.PI) * Math.exp(-2.2 * reboundT);
-                        scaleY = 1.0 - (maxStretchY * 0.25) * reboundPhase;
-                        scaleX = 1.0 + (maxSqueezeX * 0.25) * reboundPhase;
+                        const overshoot = ease - 1.0;
+                        scaleY = 1.0 - overshoot * 0.9;
+                        scaleX = 1.0 + overshoot * 0.45;
                     }
                 }
+
+                const currentTop = startCoords.top + (endCoords.top - startCoords.top) * ease;
+                const currentHeight = startCoords.height + (endCoords.height - startCoords.height) * ease;
 
                 pill.style.transform = `translate3d(0, ${currentTop.toFixed(2)}px, 0) scale(${scaleX.toFixed(4)}, ${scaleY.toFixed(4)})`;
                 pill.style.height = `${currentHeight.toFixed(2)}px`;
@@ -272,71 +283,47 @@
                 if (activeLink) {
                     activeLink.classList.add('active');
 
-                    // Check for previous navigation state from sessionStorage
-                    let navState = null;
+                    let fromTop = null;
                     try {
-                        const raw = sessionStorage.getItem('quizx_sidebar_nav_state');
-                        if (raw) navState = JSON.parse(raw);
+                        const raw = sessionStorage.getItem('quizx_sidebar_from_top');
+                        if (raw !== null) {
+                            fromTop = parseFloat(raw);
+                            sessionStorage.removeItem('quizx_sidebar_from_top');
+                        }
                     } catch (e) {}
 
                     const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                     const endCoords = this.getCoords(activeLink, nav);
 
-                    if (navState && typeof navState.fromTop === 'number' && !prefersReducedMotion) {
-                        const elapsed = Date.now() - (navState.timestamp || 0);
-                        // If navigation occurred within the last 450ms and start was at a different position
-                        if (elapsed < 450 && Math.abs(navState.fromTop - endCoords.top) >= 2) {
-                            const startCoords = {
-                                top: navState.fromTop,
-                                height: navState.fromHeight || endCoords.height
-                            };
-                            this.animateBlob(pill, startCoords, endCoords, 380, () => {
-                                try { sessionStorage.removeItem('quizx_sidebar_nav_state'); } catch (e) {}
-                            });
-                        } else {
-                            this.updatePillPosition(pill, activeLink);
-                            try { sessionStorage.removeItem('quizx_sidebar_nav_state'); } catch (e) {}
-                        }
+                    if (fromTop !== null && !isNaN(fromTop) && Math.abs(fromTop - endCoords.top) >= 4 && !prefersReducedMotion) {
+                        const startCoords = {
+                            top: fromTop,
+                            height: endCoords.height
+                        };
+                        // Execute the full animation in one uninterrupted go on the freshly loaded page
+                        this.animateBlob(pill, startCoords, endCoords, 330);
                     } else {
-                        // Position instantly on page load without animation (no flash)
                         this.updatePillPosition(pill, activeLink);
-                        try { sessionStorage.removeItem('quizx_sidebar_nav_state'); } catch (e) {}
                     }
                 } else {
                     pill.style.opacity = '0';
-                    try { sessionStorage.removeItem('quizx_sidebar_nav_state'); } catch (e) {}
+                    try { sessionStorage.removeItem('quizx_sidebar_from_top'); } catch (e) {}
                 }
 
-                // Record clicked path and animate optimistically on sidebar link click
+                // Record previous position on link click so the new page animates smoothly in one go
                 links.forEach(link => {
                     link.addEventListener('click', () => {
                         const currentActive = nav.querySelector('.app-nav-item.active');
                         if (currentActive) {
                             const startCoords = this.getCurrentPillCoords(pill, currentActive, nav);
-                            const endCoords = this.getCoords(link, nav);
-
                             try {
-                                const targetUrl = new URL(link.href, window.location.origin);
-                                sessionStorage.setItem('quizx_sidebar_nav_state', JSON.stringify({
-                                    fromTop: startCoords.top,
-                                    fromHeight: startCoords.height,
-                                    targetPath: targetUrl.pathname,
-                                    targetTop: endCoords.top,
-                                    targetHeight: endCoords.height,
-                                    timestamp: Date.now()
-                                }));
+                                sessionStorage.setItem('quizx_sidebar_from_top', String(startCoords.top));
                             } catch (err) {}
-
-                            if (currentActive !== link) {
-                                links.forEach(l => l.classList.remove('active'));
-                                link.classList.add('active');
-                                this.animateBlob(pill, startCoords, endCoords, 380);
-                            }
                         }
                     });
                 });
 
-                // Also record previous path for general internal link navigation (e.g. from page content)
+                // Also record previous position for general internal navigation links
                 document.addEventListener('click', (e) => {
                     const link = e.target.closest('a');
                     if (!link || !link.href || link.closest('.app-sidebar-nav, .dashboard-nav')) return;
@@ -346,12 +333,7 @@
                             const currentActive = nav.querySelector('.app-nav-item.active');
                             if (currentActive) {
                                 const startCoords = this.getCurrentPillCoords(pill, currentActive, nav);
-                                sessionStorage.setItem('quizx_sidebar_nav_state', JSON.stringify({
-                                    fromTop: startCoords.top,
-                                    fromHeight: startCoords.height,
-                                    targetPath: url.pathname,
-                                    timestamp: Date.now()
-                                }));
+                                sessionStorage.setItem('quizx_sidebar_from_top', String(startCoords.top));
                             }
                         }
                     } catch (err) {}

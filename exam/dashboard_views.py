@@ -1205,6 +1205,7 @@ def student_list(request):
             'page': {
                 'current': page_obj.number,
                 'total': page_obj.paginator.num_pages,
+                'start_index': page_obj.start_index(),
                 'has_previous': page_obj.has_previous(),
                 'has_next': page_obj.has_next(),
                 'previous_page': page_obj.previous_page_number() if page_obj.has_previous() else None,

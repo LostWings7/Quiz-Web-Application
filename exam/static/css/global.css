@@ -193,30 +193,32 @@ button, input, textarea, select {
     align-items: center;
     text-decoration: none;
     min-width: 0;
-    gap: 12px;
+    gap: 8px;
 }
 
 .brand-link img {
-    max-height: 38px;
-    max-width: 38px;
+    max-height: 34px;
+    max-width: 36px;
     width: auto;
     height: auto;
     object-fit: contain;
     border-radius: var(--radius-xs);
     flex-shrink: 0;
+    vertical-align: middle;
 }
 
 .brand-icon-box {
-    width: 38px;
-    height: 38px;
-    min-width: 38px;
-    min-height: 38px;
-    border-radius: var(--radius-md);
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    border-radius: var(--radius-sm);
     background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
     color: var(--text-inverse);
-    display: grid;
-    place-items: center;
-    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
     flex-shrink: 0;
     box-shadow: 0 4px 12px rgba(99, 91, 255, 0.25);
 }
@@ -224,9 +226,11 @@ button, input, textarea, select {
 .brand-info {
     display: flex;
     flex-direction: column;
+    justify-content: center;
     overflow: hidden;
     white-space: nowrap;
-    max-width: 140px;
+    max-width: 142px;
+    line-height: 1.2;
     opacity: 1;
     transform: translateX(0);
     transition: opacity 180ms ease, transform var(--sidebar-transition), max-width var(--sidebar-transition);
@@ -237,6 +241,7 @@ button, input, textarea, select {
     font-weight: 700;
     color: var(--text-primary);
     line-height: 1.2;
+    margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
 }
@@ -245,6 +250,8 @@ button, input, textarea, select {
     font-size: var(--text-xs);
     color: var(--text-secondary);
     font-weight: 500;
+    line-height: 1.2;
+    margin: 0;
 }
 
 .sidebar-collapsed .brand-info {
@@ -737,6 +744,49 @@ html.sidebar-collapsed-preload .app-shell .nav-section-label::after {
     display: flex;
     align-items: center;
     gap: var(--space-4);
+}
+
+.topbar-branding {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    line-height: 1;
+}
+
+.topbar-branding img,
+.topbar-branding .topbar-logo-img {
+    max-height: 32px;
+    max-width: 38px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-xs);
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.topbar-branding .topbar-banner-img {
+    max-height: 34px;
+    max-width: 220px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-xs);
+    vertical-align: middle;
+}
+
+.topbar-branding .topbar-school-name,
+.topbar-branding span {
+    font-weight: 700;
+    font-size: var(--text-base);
+    color: var(--text-primary);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
 }
 
 .command-trigger-btn {

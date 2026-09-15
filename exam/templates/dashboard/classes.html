@@ -95,7 +95,16 @@
     z-index: 1000;
     box-shadow: var(--shadow-md);
     pointer-events: none;
-    transition: opacity var(--duration-fast) ease;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 220ms ease, transform 260ms cubic-bezier(0.16, 1, 0.3, 1), visibility 220ms ease;
+}
+
+.modal-toast.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 
 .modal-toast.error {
@@ -107,10 +116,10 @@
 {% endblock %}
 
 {% block content %}
-<div class="classes-grid" id="classesGrid" style="animation: pageFadeIn var(--duration-normal) var(--ease-primary);">
+<div class="classes-grid fade-up" id="classesGrid">
 
 {% for class_obj in classes %}
-<div class="class-card" id="classCard-{{ class_obj.id }}">
+<div class="class-card fade-up stagger-{{ forloop.counter|default:1 }}" id="classCard-{{ class_obj.id }}">
     <div class="class-card-header" onclick="toggleClass({{ class_obj.id }})">
         <div>
             <h2 class="class-name">{{ class_obj.name }}</h2>
@@ -465,13 +474,14 @@ function showToastMsg(text, success) {
     if (!toast) return;
     toast.textContent = text;
     toast.className = success ? 'modal-toast' : 'modal-toast error';
-    toast.style.display = 'block';
-    toast.style.opacity = '1';
+    
+    // Force reflow and show smoothly
+    toast.offsetHeight;
+    toast.classList.add('show');
 
     clearTimeout(toast.timer);
     toast.timer = setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => { toast.style.display = 'none'; }, 250);
+        toast.classList.remove('show');
     }, 2500);
 }
 </script>
