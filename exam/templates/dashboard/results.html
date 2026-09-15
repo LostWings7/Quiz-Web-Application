@@ -7,6 +7,13 @@
 {% block heading %}Results Management{% endblock %}
 {% block subtitle %}Comprehensive submission logs, individual score records, and performance exports.{% endblock %}
 
+{% block actions %}
+<a class="btn btn-secondary" href="{% url 'dashboard_results_export_pdf' %}{% if selected_quiz %}?quiz={{ selected_quiz }}{% endif %}">
+    <i class="fa-solid fa-file-pdf"></i>
+    <span>Export PDF</span>
+</a>
+{% endblock %}
+
 {% block content %}
 <div class="card fade-up" style="padding: 24px;">
     <!-- Filter and Search Row -->

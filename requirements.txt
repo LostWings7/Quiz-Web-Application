@@ -1,8 +1,17 @@
+# Environment Configuration
+python-dotenv==1.2.2
+
+# Core Web Framework & Static Files
 Django==5.2.7
-openpyxl==3.1.5
-Pillow==12.0.0
-reportlab==4.4.4
 whitenoise==6.11.0
-xhtml2pdf==0.2.17
-mssql-django==1.8.0
+
+# Database Drivers & Connectors
 pyodbc==5.3.0
+mssql-django==1.8.0
+
+# Data & Document Processing
+Pillow==12.0.0
+openpyxl==3.1.5
+reportlab==4.4.4
+xhtml2pdf==0.2.17
+

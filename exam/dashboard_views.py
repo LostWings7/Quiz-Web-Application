@@ -1508,12 +1508,23 @@ def results_export_csv(request):
 
 @staff_member_required
 def results_export_pdf(request):
+    quiz_id = request.GET.get('quiz')
+    results_qs = QuizResult.objects.select_related('user', 'quiz').order_by('-submitted_at')
+    filename = 'quiz-results.pdf'
+    if quiz_id:
+        results_qs = results_qs.filter(quiz_id=quiz_id)
+        try:
+            from exam.models import Quiz as _Quiz
+            q = _Quiz.objects.get(id=quiz_id)
+            filename = f'quiz-{q.id}-results.pdf'
+        except Exception:
+            pass
     html = render_to_string('dashboard/results_pdf.html', {
-        'results': QuizResult.objects.select_related('user', 'quiz'),
+        'results': results_qs,
         'school_profile': SchoolProfile.get_instance(),
     }, request=request)
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="quiz-results.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
     pisa_status = pisa.CreatePDF(html, dest=response)
     if pisa_status.err:
         return HttpResponse('PDF generation error', status=500)

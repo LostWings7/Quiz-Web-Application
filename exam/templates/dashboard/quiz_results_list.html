@@ -8,6 +8,10 @@
 {% block subtitle %}View, manage, and export candidate performance records specifically for this examination.{% endblock %}
 
 {% block actions %}
+<a class="btn btn-secondary" href="{% url 'dashboard_quiz_report_pdf' quiz.id %}">
+    <i class="fa-solid fa-file-pdf"></i>
+    <span>Export PDF Report</span>
+</a>
 <a class="btn btn-secondary" href="{% url 'dashboard_analytics' %}?quiz={{ quiz.id }}">
     <i class="fa-solid fa-chart-line"></i>
     <span>Result Analysis</span>
