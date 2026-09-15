@@ -102,6 +102,7 @@
 <body>
 
     <div class="header">
+        {% if school_profile.school_name or school_profile.school_banner_image or school_profile.school_logo %}
         <div style="text-align: center; margin-bottom: 8px;">
             <table align="center" style="margin: 0 auto; border-collapse: collapse; border: none; max-width: 100%;">
                 <tr>
@@ -122,8 +123,8 @@
                 </tr>
             </table>
         </div>
-
         <div style="border-bottom: 1.5px solid #cbd5e1; margin: 4px 0 10px 0;"></div>
+        {% endif %}
 
         <div class="header-main">TEACHER REPORT: {{ quiz.title }}</div>
         <div class="header-stats">
@@ -171,6 +172,10 @@
                 <td style="text-align: left;">{{ tp.topic }}</td>
                 <td>{{ tp.percentage }}%</td>
             </tr>
+            {% empty %}
+            <tr>
+                <td colspan="2" style="text-align: center; color: #666;">No topic performance data available.</td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>
@@ -208,6 +213,10 @@
                     {% endfor %}
                 {% endif %}
             </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: #666;">No question analysis available.</td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>
@@ -232,6 +241,10 @@
                 <td style="text-align: left;">{{ s.student_name }} ({{ s.username }})</td>
                 <td>{{ s.score }}</td>
                 <td>{{ s.score }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center; color: #666;">No student submissions recorded.</td>
             </tr>
             {% endfor %}
         </tbody>

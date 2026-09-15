@@ -11,6 +11,7 @@
     </style>
 </head>
 <body>
+    {% if school_profile.school_name or school_profile.school_banner_image or school_profile.school_logo %}
     <div style="text-align: center; margin-bottom: 8px;">
         <table align="center" style="margin: 0 auto; border-collapse: collapse; border: none; max-width: 100%;">
             <tr>
@@ -31,8 +32,8 @@
             </tr>
         </table>
     </div>
-
     <div style="border-bottom: 1.5px solid #cbd5e1; margin: 6px 0 12px 0;"></div>
+    {% endif %}
 
     <div class="report-banner">
         <div class="report-title">Scorecard Report: {{ quiz.title }}</div>
@@ -43,6 +44,9 @@
             <tr>
                 {% for header in headers %}
                 <th>{{ header }}</th>
+                {% empty %}
+                <th>Student</th>
+                <th>Score</th>
                 {% endfor %}
             </tr>
         </thead>
@@ -52,6 +56,10 @@
                 {% for cell in row %}
                 <td>{{ cell }}</td>
                 {% endfor %}
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{{ headers|length|default:2 }}" style="text-align: center; padding: 12px; color: #64748b;">No candidate submissions recorded yet.</td>
             </tr>
             {% endfor %}
         </tbody>
