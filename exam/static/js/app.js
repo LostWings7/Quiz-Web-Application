@@ -783,9 +783,222 @@
     };
 
     // --------------------------------------------------------------------------
+    // 7. Theme Manager (Dark Mode & Light Mode Architecture)
+    // --------------------------------------------------------------------------
+    const ThemeManager = {
+        STORAGE_KEY: 'quizx-theme',
+
+        getTheme() {
+            try {
+                return localStorage.getItem(this.STORAGE_KEY) || document.documentElement.dataset.theme || 'light';
+            } catch (e) {
+                return document.documentElement.dataset.theme || 'light';
+            }
+        },
+
+        getChartTokens(theme) {
+            const currentTheme = theme || this.getTheme();
+            const isDark = currentTheme === 'dark';
+            return {
+                isDark,
+                gridColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(24, 24, 27, 0.06)',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(24, 24, 27, 0.1)',
+                tickColor: isDark ? '#9FA4B4' : '#71717A',
+                legendColor: isDark ? '#F4F4F6' : '#18181B',
+                tooltipBg: isDark ? '#181A22' : '#FFFFFF',
+                tooltipTitle: isDark ? '#F4F4F6' : '#18181B',
+                tooltipBody: isDark ? '#9FA4B4' : '#71717A',
+                tooltipBorder: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(24, 24, 27, 0.12)',
+                sliceBorder: isDark ? '#181A22' : '#000000',
+                gaugeEmptySlice: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(24, 24, 27, 0.06)',
+            };
+        },
+
+        setTheme(theme, save = true) {
+            const nextTheme = (theme === 'dark') ? 'dark' : 'light';
+            const prevTheme = document.documentElement.dataset.theme;
+
+            // Apply to document root (data-theme attribute on <html>)
+            document.documentElement.dataset.theme = nextTheme;
+
+            if (save) {
+                try {
+                    localStorage.setItem(this.STORAGE_KEY, nextTheme);
+                } catch (e) {}
+            }
+
+            // Update UI State on all toggle buttons
+            this.updateButtons(nextTheme);
+
+            // Synchronize chart defaults and instances
+            ChartThemeSync.applyTheme(nextTheme);
+
+            // Dispatch custom event for charts and decoupled listeners
+            if (prevTheme !== nextTheme) {
+                document.dispatchEvent(new CustomEvent('quizx:themechange', {
+                    detail: { theme: nextTheme, prevTheme }
+                }));
+            }
+        },
+
+        toggleTheme() {
+            const current = this.getTheme();
+            const next = current === 'dark' ? 'light' : 'dark';
+            this.setTheme(next, true);
+        },
+
+        updateButtons(theme) {
+            const isDark = theme === 'dark';
+            const toggleBtns = document.querySelectorAll('.theme-toggle-btn');
+            toggleBtns.forEach(btn => {
+                btn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+                btn.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+                btn.setAttribute('title', isDark ? 'Switch to Light Theme (Ctrl+Shift+D)' : 'Switch to Dark Theme (Ctrl+Shift+D)');
+            });
+        },
+
+        init() {
+            // Synchronize current active theme from storage or DOM
+            const currentTheme = this.getTheme();
+            this.setTheme(currentTheme, false);
+
+            // Bind click handler on existing and dynamically inserted toggle buttons
+            document.addEventListener('click', (e) => {
+                const btn = e.target.closest('.theme-toggle-btn');
+                if (btn) {
+                    e.preventDefault();
+                    this.toggleTheme();
+                }
+            });
+
+            // Cross-tab synchronization via storage event
+            window.addEventListener('storage', (e) => {
+                if (e.key === this.STORAGE_KEY && e.newValue) {
+                    this.setTheme(e.newValue, false);
+                }
+            });
+
+            // Keyboard shortcut: Ctrl + Shift + D
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+                    const target = e.target;
+                    const isInput = target && (
+                        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+                        target.isContentEditable
+                    );
+                    if (!isInput) {
+                        e.preventDefault();
+                        this.toggleTheme();
+                    }
+                }
+            });
+        }
+    };
+
+    // --------------------------------------------------------------------------
+    // 8. Chart.js Theme Sync Listener
+    // --------------------------------------------------------------------------
+    const ChartThemeSync = {
+        applyTheme(theme) {
+            const currentTheme = theme || ThemeManager.getTheme();
+            const tokens = ThemeManager.getChartTokens(currentTheme);
+
+            if (window.Chart) {
+                try {
+                    window.Chart.defaults.color = tokens.tickColor;
+                    window.Chart.defaults.borderColor = tokens.gridColor;
+                    if (window.Chart.defaults.plugins) {
+                        if (window.Chart.defaults.plugins.legend && window.Chart.defaults.plugins.legend.labels) {
+                            window.Chart.defaults.plugins.legend.labels.color = tokens.legendColor;
+                        }
+                        if (window.Chart.defaults.plugins.tooltip) {
+                            window.Chart.defaults.plugins.tooltip.backgroundColor = tokens.tooltipBg;
+                            window.Chart.defaults.plugins.tooltip.titleColor = tokens.tooltipTitle;
+                            window.Chart.defaults.plugins.tooltip.bodyColor = tokens.tooltipBody;
+                            window.Chart.defaults.plugins.tooltip.borderColor = tokens.tooltipBorder;
+                        }
+                    }
+                } catch (e) {}
+
+                if (window.Chart.instances) {
+                    Object.values(window.Chart.instances).forEach(chart => {
+                        if (!chart || !chart.options) return;
+
+                        // Scales update
+                        if (chart.options.scales) {
+                            ['x', 'y', 'r'].forEach(axisKey => {
+                                if (chart.options.scales[axisKey]) {
+                                    const scale = chart.options.scales[axisKey];
+                                    if (scale.grid) {
+                                        scale.grid.color = tokens.gridColor;
+                                        scale.grid.borderColor = tokens.borderColor;
+                                    }
+                                    if (scale.ticks) {
+                                        scale.ticks.color = tokens.tickColor;
+                                    }
+                                    if (scale.pointLabels) {
+                                        scale.pointLabels.color = tokens.tickColor;
+                                    }
+                                    if (scale.angleLines) {
+                                        scale.angleLines.color = tokens.gridColor;
+                                    }
+                                }
+                            });
+                        }
+
+                        // Legend & Tooltips
+                        if (chart.options.plugins) {
+                            if (chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+                                chart.options.plugins.legend.labels.color = tokens.legendColor;
+                            }
+                            if (chart.options.plugins.tooltip) {
+                                chart.options.plugins.tooltip.backgroundColor = tokens.tooltipBg;
+                                chart.options.plugins.tooltip.titleColor = tokens.tooltipTitle;
+                                chart.options.plugins.tooltip.bodyColor = tokens.tooltipBody;
+                                chart.options.plugins.tooltip.borderColor = tokens.tooltipBorder;
+                            }
+                        }
+
+                        // Speed dial gauge empty slice color update (only for 2-slice semi-circle gauges)
+                        const isSpeedDial = (chart.config?.options?.plugins?.speedDialNumberPlugin || chart.options?.plugins?.speedDialNumberPlugin) || (chart.canvas && chart.canvas.id === 'overallChart');
+                        if (isSpeedDial && chart.data && chart.data.datasets && chart.data.datasets[0]) {
+                            if (Array.isArray(chart.data.datasets[0].backgroundColor) && chart.data.datasets[0].backgroundColor.length === 2) {
+                                chart.data.datasets[0].backgroundColor[1] = tokens.gaugeEmptySlice;
+                            }
+                        }
+
+                        chart.update('none');
+                    });
+                }
+            }
+        },
+
+        init() {
+            // Apply theme colors to chart defaults and any early rendered charts
+            this.applyTheme();
+
+            // Listen for theme change events
+            document.addEventListener('quizx:themechange', (e) => {
+                this.applyTheme(e.detail?.theme);
+            });
+
+            // Also re-check once page finishes loading
+            window.addEventListener('load', () => {
+                this.applyTheme();
+            });
+
+            // Fallback intervals for charts rendered with requestAnimationFrame or setTimeout
+            setTimeout(() => this.applyTheme(), 150);
+            setTimeout(() => this.applyTheme(), 600);
+        }
+    };
+
+    // --------------------------------------------------------------------------
     // Initialize Everything on DOM Ready
     // --------------------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', () => {
+        ThemeManager.init();
+        ChartThemeSync.init();
         ProgressBar.init();
         StateMemory.init();
         Navigation.init();
@@ -794,8 +1007,10 @@
         Lightbox.init();
     });
 
+    window.ThemeManager = ThemeManager;
     window.ProgressBar = ProgressBar;
     window.StatCounter = StatCounters;
     window.Navigation = Navigation;
     window.StateMemory = StateMemory;
 })();
+

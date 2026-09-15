@@ -69,6 +69,7 @@
     --border-hover: rgba(24, 24, 27, 0.18);
     --border-focus: #635BFF;
     --ring-focus: rgba(99, 91, 255, 0.20);
+    --focus-ring: #635BFF;
 
     /* ----------------------------------------------------------------------
        2. Typography (Inter + Outfit)
@@ -187,4 +188,93 @@
     --transition: var(--transition-normal);
     --nav-height: var(--topbar-height);
     --content-width: var(--content-max-width);
+}
+
+/* ==========================================================================
+   Dark Theme Design Tokens (Applied when documentElement has data-theme="dark")
+   ========================================================================== */
+
+[data-theme="dark"] {
+    /* ----------------------------------------------------------------------
+       1. Core Color Palette & Surface Tokens (Obsidian + Slate)
+       ---------------------------------------------------------------------- */
+    --bg-primary: #0D0E12;
+    --bg-secondary: #13151B;
+    --surface: #181A22;
+    --surface-hover: #202330;
+    --surface-active: #262B3D;
+    --surface-subtle: #1C1F2B;
+    --surface-sunken: #111318;
+
+    /* Text Hierarchy */
+    --text-primary: #F4F4F6;
+    --text-secondary: #9FA4B4;
+    --text-muted: #686E80;
+    --text-inverse: #0D0E12;
+
+    /* Primary Accent (Electric Indigo for Dark Mode) */
+    --accent-primary: #7B73FF;
+    --accent-primary-hover: #8F87FF;
+    --accent-primary-active: #635BFF;
+    --accent-primary-light: rgba(123, 115, 255, 0.16);
+    --accent-primary-subtle: rgba(123, 115, 255, 0.08);
+    --accent-primary-border: rgba(123, 115, 255, 0.35);
+    --accent-primary-rgb: 123, 115, 255;
+
+    /* Secondary & Subtle Accents */
+    --accent-secondary: #8E82FF;
+    --accent-secondary-light: rgba(142, 130, 255, 0.16);
+    --accent-cyan: #2FD5E6;
+    --accent-cyan-light: rgba(47, 213, 230, 0.15);
+    --accent-cyan-border: rgba(47, 213, 230, 0.35);
+
+    /* State & Semantic Colors */
+    --success: #34D399;
+    --success-hover: #2EC089;
+    --success-light: rgba(52, 211, 153, 0.15);
+    --success-border: rgba(52, 211, 153, 0.35);
+
+    --warning: #FBBF24;
+    --warning-hover: #F59E0B;
+    --warning-light: rgba(251, 191, 36, 0.15);
+    --warning-border: rgba(251, 191, 36, 0.35);
+
+    --error: #F87171;
+    --error-hover: #EF4444;
+    --error-light: rgba(248, 113, 113, 0.15);
+    --error-border: rgba(248, 113, 113, 0.35);
+
+    /* Bloom's Cognitive Taxonomy Tokens */
+    --bloom-remember: #7B73FF;
+    --bloom-understand: #2FD5E6;
+    --bloom-apply: #FBBF24;
+    --bloom-analyze: #34D399;
+    --bloom-remember-light: rgba(123, 115, 255, 0.16);
+    --bloom-understand-light: rgba(47, 213, 230, 0.15);
+    --bloom-apply-light: rgba(251, 191, 36, 0.15);
+    --bloom-analyze-light: rgba(52, 211, 153, 0.15);
+
+    /* Neutral Borders & Dividers */
+    --border: rgba(255, 255, 255, 0.09);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --border-hover: rgba(255, 255, 255, 0.24);
+    --border-focus: #7B73FF;
+    --ring-focus: rgba(123, 115, 255, 0.30);
+    --focus-ring: #7B73FF;
+
+    /* Shadows (Dark Mode Ambient Glow & Depth) */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.40);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+    --shadow-floating: 0 20px 48px rgba(0, 0, 0, 0.65);
+    --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.75);
+    --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.50);
+
+    /* Glass & Translucency */
+    --glass-bg: rgba(24, 26, 34, 0.88);
+    --glass-bg-subtle: rgba(20, 22, 28, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.10);
+    --modal-backdrop: rgba(0, 0, 0, 0.72);
 }

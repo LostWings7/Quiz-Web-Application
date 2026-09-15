@@ -1,9 +1,19 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+    (function () {
+      try {
+        const theme = localStorage.getItem('quizx-theme') || 'light';
+        document.documentElement.dataset.theme = (theme === 'dark') ? 'dark' : 'light';
+      } catch (e) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+    </script>
     <title>Sign In | {% if school_profile.has_custom_branding and school_profile.school_name %}{{ school_profile.school_name }}{% else %}QuizX{% endif %}</title>
 
     <!-- Local Fonts -->
@@ -196,6 +206,11 @@
     </script>
 </head>
 <body>
+
+<button class="theme-toggle-btn login-theme-toggle" id="loginThemeToggleBtn" type="button" aria-label="Switch to dark theme" title="Switch Theme (Ctrl+Shift+D)">
+    <span class="theme-toggle-icon icon-moon" aria-hidden="true"><i class="fa-solid fa-moon"></i></span>
+    <span class="theme-toggle-icon icon-sun" aria-hidden="true"><i class="fa-solid fa-sun"></i></span>
+</button>
 
 <div class="ambient-bg" aria-hidden="true">
     <div class="ambient-blob ambient-blob-1"></div>

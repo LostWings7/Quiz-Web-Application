@@ -995,8 +995,20 @@ if (window.MathJax && window.MathJax.typesetPromise) {
             sessionStorage.removeItem('analytics_selected_quiz_id');
         } catch(e) {}
 
-        const lightGrid = { color: "rgba(24, 24, 27, 0.06)", borderColor: "rgba(24, 24, 27, 0.1)" };
-        const lightTicks = { color: "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
+        const themeTokens = (window.ThemeManager && window.ThemeManager.getChartTokens)
+            ? window.ThemeManager.getChartTokens()
+            : {
+                isDark: document.documentElement.dataset.theme === 'dark',
+                gridColor: document.documentElement.dataset.theme === 'dark' ? "rgba(255, 255, 255, 0.08)" : "rgba(24, 24, 27, 0.06)",
+                borderColor: document.documentElement.dataset.theme === 'dark' ? "rgba(255, 255, 255, 0.12)" : "rgba(24, 24, 27, 0.1)",
+                tickColor: document.documentElement.dataset.theme === 'dark' ? "#9FA4B4" : "#71717A",
+                legendColor: document.documentElement.dataset.theme === 'dark' ? "#F4F4F6" : "#18181B",
+                tooltipBg: document.documentElement.dataset.theme === 'dark' ? "#181A22" : "#FFFFFF",
+                tooltipTitle: document.documentElement.dataset.theme === 'dark' ? "#F4F4F6" : "#18181B",
+                tooltipBody: document.documentElement.dataset.theme === 'dark' ? "#9FA4B4" : "#71717A",
+                tooltipBorder: document.documentElement.dataset.theme === 'dark' ? "rgba(255, 255, 255, 0.15)" : "rgba(24, 24, 27, 0.12)",
+                sliceBorder: document.documentElement.dataset.theme === 'dark' ? "#181A22" : "#FFFFFF"
+            };
 
         const bloomLevelColors = [
             'rgba(99, 91, 255, 0.85)',   // Remember
@@ -1036,16 +1048,16 @@ if (window.MathJax && window.MathJax.typesetPromise) {
                         easing: 'easeOutQuart'
                     },
                     scales: {
-                        x: { grid: lightGrid, ticks: lightTicks },
-                        y: { beginAtZero: true, max: 100, grid: lightGrid, ticks: lightTicks }
+                        x: { grid: { color: themeTokens.gridColor, borderColor: themeTokens.borderColor }, ticks: { color: themeTokens.tickColor, font: { family: "'Inter', sans-serif", size: 12 } } },
+                        y: { beginAtZero: true, max: 100, grid: { color: themeTokens.gridColor, borderColor: themeTokens.borderColor }, ticks: { color: themeTokens.tickColor, font: { family: "'Inter', sans-serif", size: 12 } } }
                     },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: "#FFFFFF",
-                            titleColor: "#18181B",
-                            bodyColor: "#71717A",
-                            borderColor: "rgba(24, 24, 27, 0.12)",
+                            backgroundColor: themeTokens.tooltipBg,
+                            titleColor: themeTokens.tooltipTitle,
+                            bodyColor: themeTokens.tooltipBody,
+                            borderColor: themeTokens.tooltipBorder,
                             borderWidth: 1,
                             padding: 10,
                             cornerRadius: 8,
@@ -1080,7 +1092,7 @@ if (window.MathJax && window.MathJax.typesetPromise) {
                         data: {{ bloom_data.chart_data.doughnutValues|safe }},
                         backgroundColor: bloomLevelColors,
                         borderWidth: 2,
-                        borderColor: '#FFFFFF',
+                        borderColor: themeTokens.sliceBorder,
                     }]
                 },
                 options: {
@@ -1095,13 +1107,13 @@ if (window.MathJax && window.MathJax.typesetPromise) {
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: { color: "#18181B", font: { family: "'Inter', sans-serif", size: 12 }, padding: 14 }
+                            labels: { color: themeTokens.legendColor, font: { family: "'Inter', sans-serif", size: 12 }, padding: 14 }
                         },
                         tooltip: {
-                            backgroundColor: "#FFFFFF",
-                            titleColor: "#18181B",
-                            bodyColor: "#71717A",
-                            borderColor: "rgba(24, 24, 27, 0.12)",
+                            backgroundColor: themeTokens.tooltipBg,
+                            titleColor: themeTokens.tooltipTitle,
+                            bodyColor: themeTokens.tooltipBody,
+                            borderColor: themeTokens.tooltipBorder,
                             borderWidth: 1,
                             padding: 10,
                             cornerRadius: 8,

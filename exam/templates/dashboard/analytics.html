@@ -205,8 +205,9 @@
     } catch(e) {}
 
     const chartData = JSON.parse(dataEl.textContent);
-    const lightGrid = { color: "rgba(24, 24, 27, 0.06)", borderColor: "rgba(24, 24, 27, 0.1)" };
-    const lightTicks = { color: "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
+    const isDark = document.documentElement.dataset.theme === 'dark';
+    const lightGrid = { color: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(24, 24, 27, 0.06)", borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(24, 24, 27, 0.1)" };
+    const lightTicks = { color: isDark ? "#9FA4B4" : "#71717A", font: { family: "'Inter', sans-serif", size: 12 } };
 
     const speedDialNumberPlugin = {
         id: 'speedDialNumberPlugin',
@@ -235,19 +236,20 @@
             // Responsive typography based on gauge radius
             const numFontSize = Math.min(64, Math.max(36, Math.round(innerRadius * 0.32)));
             const labelFontSize = Math.min(16, Math.max(12, Math.round(numFontSize * 0.32)));
+            const currentDark = document.documentElement.dataset.theme === 'dark';
 
             ctx.save();
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            // Main score text: Solid black
+            // Main score text
             ctx.font = `bold ${numFontSize}px 'Inter', -apple-system, BlinkMacSystemFont, sans-serif`;
-            ctx.fillStyle = "#000000";
+            ctx.fillStyle = currentDark ? "#F4F4F6" : "#000000";
             ctx.fillText(animatedValue + '%', cx, centerY - (labelFontSize * 0.6));
 
             // Sub-label
             ctx.font = `600 ${labelFontSize}px 'Inter', -apple-system, BlinkMacSystemFont, sans-serif`;
-            ctx.fillStyle = "#71717A";
+            ctx.fillStyle = currentDark ? "#9FA4B4" : "#71717A";
             ctx.fillText("Average Score", cx, centerY + (numFontSize * 0.48));
 
             ctx.restore();
@@ -271,6 +273,22 @@
             if (existing) existing.destroy();
         } catch(e) {}
 
+        const themeTokens = (window.ThemeManager && window.ThemeManager.getChartTokens)
+            ? window.ThemeManager.getChartTokens()
+            : {
+                isDark: document.documentElement.dataset.theme === 'dark',
+                gridColor: document.documentElement.dataset.theme === 'dark' ? "rgba(255, 255, 255, 0.08)" : "rgba(24, 24, 27, 0.06)",
+                borderColor: document.documentElement.dataset.theme === 'dark' ? "rgba(255, 255, 255, 0.12)" : "rgba(24, 24, 27, 0.1)",
+                tickColor: document.documentElement.dataset.theme === 'dark' ? "#9FA4B4" : "#71717A",
+                legendColor: document.documentElement.dataset.theme === 'dark' ? "#F4F4F6" : "#18181B",
+                tooltipBg: document.documentElement.dataset.theme === 'dark' ? "#181A22" : "#FFFFFF",
+                tooltipTitle: document.documentElement.dataset.theme === 'dark' ? "#F4F4F6" : "#18181B",
+                tooltipBody: document.documentElement.dataset.theme === 'dark' ? "#9FA4B4" : "#71717A",
+                tooltipBorder: document.documentElement.dataset.theme === 'dark' ? "rgba(255, 255, 255, 0.15)" : "rgba(24, 24, 27, 0.12)",
+                sliceBorder: document.documentElement.dataset.theme === 'dark' ? "#181A22" : "#000000",
+                gaugeEmptySlice: document.documentElement.dataset.theme === 'dark' ? "rgba(255, 255, 255, 0.08)" : "rgba(24, 24, 27, 0.06)"
+            };
+
         let backgroundColor = [
             "rgba(99, 91, 255, 0.85)",
             "rgba(34, 184, 199, 0.85)",
@@ -281,7 +299,7 @@
         if (id === 'croChart') {
             backgroundColor = ["rgba(217, 87, 99, 0.85)", "rgba(217, 154, 50, 0.85)", "rgba(46, 155, 103, 0.85)"];
         } else if (id === 'overallChart') {
-            backgroundColor = ["rgba(99, 91, 255, 0.9)", "rgba(24, 24, 27, 0.06)"];
+            backgroundColor = ["rgba(99, 91, 255, 0.9)", themeTokens.gaugeEmptySlice];
         } else if (id === 'bloomChart') {
             backgroundColor = ["rgba(99, 91, 255, 0.85)", "rgba(34, 184, 199, 0.85)", "rgba(217, 154, 50, 0.85)", "rgba(46, 155, 103, 0.85)"];
         }
@@ -303,14 +321,14 @@
                 datasets: [{
                     label,
                     data: initialData,
-                    borderColor: "#000000",
+                    borderColor: themeTokens.sliceBorder,
                     backgroundColor: backgroundColor,
                     borderWidth: 2,
                     borderRadius: type === "bar" ? 6 : 0,
                     maxBarThickness: 42,
                     tension: 0.35,
                     fill: type === "line",
-                    pointBorderColor: "#000000",
+                    pointBorderColor: themeTokens.sliceBorder,
                     pointBackgroundColor: "#635BFF",
                     pointBorderWidth: 2,
                     pointRadius: 4,
@@ -343,14 +361,14 @@
                     speedDialNumberPlugin: id === 'overallChart',
                     legend: {
                         display: type === "pie" || type === "doughnut",
-                        labels: { color: "#18181B", font: { family: "'Inter', sans-serif", size: 12 } }
+                        labels: { color: themeTokens.legendColor, font: { family: "'Inter', sans-serif", size: 12 } }
                     },
                     tooltip: {
                         enabled: id !== 'overallChart',
-                        backgroundColor: "#FFFFFF",
-                        titleColor: "#18181B",
-                        bodyColor: "#71717A",
-                        borderColor: "rgba(24, 24, 27, 0.12)",
+                        backgroundColor: themeTokens.tooltipBg,
+                        titleColor: themeTokens.tooltipTitle,
+                        bodyColor: themeTokens.tooltipBody,
+                        borderColor: themeTokens.tooltipBorder,
                         borderWidth: 1,
                         padding: 10,
                         cornerRadius: 8,
@@ -363,8 +381,8 @@
                     }
                 },
                 scales: type === "doughnut" || type === "pie" ? {} : {
-                    x: { grid: lightGrid, ticks: lightTicks },
-                    y: { beginAtZero: true, grid: lightGrid, ticks: lightTicks }
+                    x: { grid: { color: themeTokens.gridColor, borderColor: themeTokens.borderColor }, ticks: { color: themeTokens.tickColor, font: { family: "'Inter', sans-serif", size: 12 } } },
+                    y: { beginAtZero: true, grid: { color: themeTokens.gridColor, borderColor: themeTokens.borderColor }, ticks: { color: themeTokens.tickColor, font: { family: "'Inter', sans-serif", size: 12 } } }
                 },
                 ...chartOptions
             }
