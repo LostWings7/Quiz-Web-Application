@@ -106,6 +106,37 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="map-row">
+                        <label>Bloom's Level <span class="opt">optional</span></label>
+                        <select name="map_bloom_level" id="mapBloomLevel">
+                            <option value="">— None —</option>
+                            {% for col in columns %}
+                            <option value="{{ col.index }}">{{ col.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="map-row">
+                        <label>Default Bloom Level <span class="opt">fallback</span></label>
+                        <select name="default_bloom_level" id="defaultBloomLevel">
+                            <option value="">— None / Keep Unclassified —</option>
+                            <option value="remember">Remember</option>
+                            <option value="understand">Understand</option>
+                            <option value="apply">Apply</option>
+                            <option value="analyze">Analyze</option>
+                        </select>
+                    </div>
+                    <div class="map-row" style="background: var(--bg-secondary);">
+                        <label style="display: flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-primary);"></i>
+                            Auto-Classify (AI)
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" name="auto_classify_bloom" id="autoClassifyBloom" value="1" style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--accent-primary);">
+                            <label for="autoClassifyBloom" style="cursor: pointer; font-weight: normal; font-size: var(--text-xs); margin: 0; color: var(--text-secondary);">
+                                Automatically classify unclassified questions using local Bloom AI model during ingestion
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -177,7 +208,7 @@
             {% endif %}
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" id="submitIngestBtn">
                     <i class="fa-solid fa-file-import"></i> Ingest {{ row_count }} Question{{ row_count|pluralize }}
                 </button>
             </div>
@@ -238,5 +269,35 @@ document.getElementById('optionRowsContainer').addEventListener('click', functio
 });
 
 refreshOptionIndices();
+
+// Auto-match Bloom Level column if header contains keywords
+const bloomSelect = document.getElementById('mapBloomLevel');
+if (bloomSelect && !bloomSelect.value) {
+    const candidateNames = ['bloom', 'bloom_level', 'blooms_level', 'bloom level', 'blooms level', "bloom's level", 'taxonomy', 'cognitive_level'];
+    for (let i = 0; i < bloomSelect.options.length; i++) {
+        const text = bloomSelect.options[i].textContent.trim().toLowerCase();
+        if (candidateNames.includes(text)) {
+            bloomSelect.selectedIndex = i;
+            break;
+        }
+    }
+}
+
+// Ingestion feedback on submit
+const mapForm = document.getElementById('mapForm');
+if (mapForm) {
+    mapForm.addEventListener('submit', function() {
+        const btn = document.getElementById('submitIngestBtn');
+        const autoClassify = document.getElementById('autoClassifyBloom');
+        if (btn) {
+            btn.style.pointerEvents = 'none';
+            if (autoClassify && autoClassify.checked) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Ingesting &amp; Classifying with AI...';
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Ingesting Questions...';
+            }
+        }
+    });
+}
 </script>
 {% endblock %}

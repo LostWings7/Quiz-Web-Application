@@ -3,8 +3,11 @@
 .env.*
 !.env.example
 
-# AI Reports Module (WIP)
-ai_reports/
+# AI Reports Module (WIP - only bloom classifier is exposed)
+ai_reports/*
+!ai_reports/__init__.py
+!ai_reports/bloom/
+!ai_reports/management/
 temp_analytics.html
 
 # Python
@@ -35,3 +38,9 @@ media/*
 *.swp
 .agent/
 UI_UX_AUDIT_REPORT.md
+
+# AI Benchmark & Unreleased AI Specs
+.venv_ai_benchmark/
+ai_benchmark/
+QUIZX_*.md
+LOCAL_NETWORK_SETUP_GUIDE.*

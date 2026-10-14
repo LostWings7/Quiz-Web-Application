@@ -15,3 +15,7 @@ openpyxl==3.1.5
 reportlab==4.4.4
 xhtml2pdf==0.2.17
 
+# Local AI / Bloom's Taxonomy Classifier (CPU-supported)
+transformers>=4.40.0
+torch>=2.0.0
+

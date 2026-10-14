@@ -3,6 +3,9 @@ import csv
 import html
 import io
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -903,6 +906,30 @@ def question_import(request):
             map_correct_option = request.POST.get('map_correct_option', '')
             map_order          = request.POST.get('map_order', '')
             map_subtopic       = request.POST.get('map_subtopic', '')
+            map_bloom_level    = request.POST.get('map_bloom_level', '')
+            default_bloom_level = request.POST.get('default_bloom_level', '').strip().lower()
+            auto_classify_bloom = request.POST.get('auto_classify_bloom') in ('1', 'true', 'True', True, 'on')
+
+            def normalize_bloom_level(val):
+                if not val:
+                    return None
+                val = str(val).strip().lower()
+                valid_map = {
+                    'remember': 'remember',
+                    'remembering': 'remember',
+                    'recall': 'remember',
+                    'knowledge': 'remember',
+                    'understand': 'understand',
+                    'understanding': 'understand',
+                    'comprehension': 'understand',
+                    'apply': 'apply',
+                    'applying': 'apply',
+                    'application': 'apply',
+                    'analyze': 'analyze',
+                    'analyzing': 'analyze',
+                    'analysis': 'analyze',
+                }
+                return valid_map.get(val)
 
             # Collect option columns: text + optional image column per option
             option_text_cols  = []
@@ -931,6 +958,7 @@ def question_import(request):
             data_rows = rows[1:] if has_header else rows
             created = 0
             skipped = 0
+            created_questions = []
 
             def resolve_image(cell_val):
                 """Resolve a cell value to an image path or ContentFile from ZIP/URL."""
@@ -1020,11 +1048,38 @@ def question_import(request):
                 if subtopic_name:
                     subtopic, _ = Subtopic.objects.get_or_create(quiz=quiz, name=subtopic_name)
 
+                # Determine Bloom's Taxonomy Level if mapped or default specified
+                row_bloom_level = None
+                row_bloom_conf = None
+                row_bloom_src = None
+                row_bloom_reviewed = False
+
+                if map_bloom_level != '':
+                    cell_bloom = cell_value(row, map_bloom_level)
+                    matched_bloom = normalize_bloom_level(cell_bloom)
+                    if matched_bloom:
+                        row_bloom_level = matched_bloom
+                        row_bloom_conf = 1.0
+                        row_bloom_src = SOURCE_MANUAL
+                        row_bloom_reviewed = True
+
+                if not row_bloom_level and default_bloom_level:
+                    def_matched = normalize_bloom_level(default_bloom_level)
+                    if def_matched:
+                        row_bloom_level = def_matched
+                        row_bloom_conf = 1.0
+                        row_bloom_src = SOURCE_MANUAL
+                        row_bloom_reviewed = True
+
                 question = Question.objects.create(
                     quiz=quiz,
                     subtopic=subtopic,
                     order=parse_order_value(cell_value(row, map_order)),
                     text=text,
+                    bloom_level=row_bloom_level,
+                    bloom_confidence=row_bloom_conf,
+                    bloom_classification_source=row_bloom_src,
+                    bloom_reviewed=row_bloom_reviewed,
                 )
                 save_question_options(question, option_rows)
 
@@ -1044,10 +1099,42 @@ def question_import(request):
                         question.image = q_img_resolved
                         question.save(update_fields=['image'])
 
+                created_questions.append(question)
                 created += 1
 
+            # Auto-classify unclassified questions using local Bloom AI model if requested
+            if auto_classify_bloom and created_questions:
+                unclassified_ids = [q.id for q in created_questions if not q.bloom_level]
+                if unclassified_ids:
+                    try:
+                        import importlib
+                        ai_bloom = importlib.import_module('ai_reports.bloom')
+                        BloomClassificationService = getattr(ai_bloom, 'BloomClassificationService', None)
+                        if BloomClassificationService:
+                            service = BloomClassificationService()
+                            target_qs = Question.objects.filter(id__in=unclassified_ids)
+                            service.batch_classify_questions(target_qs, unclassified_only=True, save=True)
+                    except Exception as exc:
+                        logger.exception("Failed to auto-classify imported questions with Bloom classifier: %s", exc)
+                        messages.warning(
+                            request,
+                            "Questions were imported successfully, but local AI auto-classification encountered an issue. "
+                            "You can classify them using the 'Auto-Classify Bloom' button on the questions page."
+                        )
+
+            total_bloom_count = Question.objects.filter(
+                id__in=[q.id for q in created_questions],
+                bloom_level__isnull=False
+            ).exclude(bloom_level='').count()
+
             request.session.pop(QUESTION_IMPORT_SESSION, None)
-            messages.success(request, f'Imported {created} questions. Skipped {skipped} rows.')
+            if total_bloom_count > 0:
+                messages.success(
+                    request,
+                    f'Imported {created} questions ({total_bloom_count} classified with Bloom\'s Taxonomy). Skipped {skipped} rows.'
+                )
+            else:
+                messages.success(request, f'Imported {created} questions. Skipped {skipped} rows.')
             return redirect('dashboard_quiz_questions', quiz_id=quiz.id)
 
     if payload:
@@ -1092,6 +1179,7 @@ def import_questions_sample(request):
         'option_4_image',
         'correct_option',
         'subtopic',
+        'bloom_level',
     ])
     writer.writerow([
         '1',
@@ -1107,6 +1195,7 @@ def import_questions_sample(request):
         '',
         '1',
         'Geography',
+        'Remember',
     ])
     writer.writerow([
         '2',
@@ -1122,6 +1211,7 @@ def import_questions_sample(request):
         '',
         '1',
         'Science',
+        'Understand',
     ])
     writer.writerow([
         '3',
@@ -1137,6 +1227,7 @@ def import_questions_sample(request):
         '',
         '1',
         'Geography',
+        'Apply',
     ])
     return response
 

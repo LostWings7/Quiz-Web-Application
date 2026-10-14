@@ -103,15 +103,28 @@
                     <tr><td><code>correct_option</code></td><td>Index of the correct answer: <code>1</code>, <code>2</code>, <code>3</code>, or <code>4</code></td><td><span class="pill error" style="font-size: 11px;">Required*</span></td></tr>
                     <tr><td><code>subtopic</code></td><td>Subtopic categorization label</td><td><span class="pill" style="font-size: 11px;">Optional</span></td></tr>
                     <tr><td><code>order</code></td><td>Sequential question sort order number</td><td><span class="pill" style="font-size: 11px;">Optional</span></td></tr>
+                    <tr><td><code>bloom_level</code></td><td>Cognitive level: <code>Remember</code>, <code>Understand</code>, <code>Apply</code>, <code>Analyze</code></td><td><span class="pill" style="font-size: 11px;">Optional</span></td></tr>
                 </tbody>
             </table>
         </div>
         <small style="color: var(--text-muted); margin-top: 8px; display: block; font-size: var(--text-xs);">* Required for CSV. In Excel (.xlsx), highlighted correct answer cells are detected automatically.</small>
 
+        <div style="background: var(--surface-sunken); border: 1px solid var(--border); border-left: 3px solid var(--accent-primary); border-radius: var(--radius-sm); padding: 12px 16px; margin-top: 14px; font-size: var(--text-xs); line-height: 1.6; color: var(--text-secondary);">
+            <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-circle-info" style="color: var(--accent-primary);"></i>
+                Important Formatting Notes:
+            </div>
+            <ul style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px;">
+                <li><strong>Text is required:</strong> Questions and options cannot be image-only. For diagram-based items, include a prompt (e.g. <code>"Refer to image"</code>) or option label (e.g. <code>"Figure A"</code> or <code>"-"</code>).</li>
+                <li><strong>Color Highlighting (Excel):</strong> Always highlight the <strong>option text cell</strong>. Highlighting the image filename cell does not count.</li>
+                <li><strong>Bloom's AI Classifier:</strong> The local model reads question text to classify cognitive levels and will not work on image-only questions without text.</li>
+            </ul>
+        </div>
+
         <div class="guide-grid" style="margin-top: 20px;">
             <div class="guide-step">
                 <h4><i class="fa-solid fa-file-excel"></i> Excel (.xlsx)</h4>
-                <p>Highlight correct answer cells in color for automatic detection without needing a <code>correct_option</code> column.</p>
+                <p>Highlight correct answer text cells in color for automatic detection without needing a <code>correct_option</code> column.</p>
                 <ul>
                     <li>1 row = 1 question</li>
                     <li>Specify image filenames (e.g. <code>q1.png</code>)</li>
